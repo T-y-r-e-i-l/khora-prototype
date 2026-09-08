@@ -27,6 +27,13 @@
   let cam = { theta: -Math.PI / 2, phi: 1.13, dist: 12.4, target: new T.Vector3() };
   let spin = 0;
   let transition = 1;                 // 0..1 while a new orbit settles in
+  let tStart = 0;                     // when the current settle began
+  let centreFrom = 1;                 // scale the new centre grows from
+  let pendingR = 0;                   // world radius of the orb that was clicked
+  const SETTLE = 620;                 // ms for a selection to settle, by the clock
+                                      // rather than by frame count
+  let settleC = 1, settleO = 1;       // eased centre / orbit progress, for tests
+  let hudDrop = 0;
   let disposables = [];
   let hud = null, hudId = null, centreR = 0.9;
   let tip = null, hoverId = null;
@@ -175,6 +182,14 @@
     // the centre: a lit world with a ring
     const cr = node.type === 'note' ? 0.9 : 0.8;
     centreR = cr;
+
+    // The orb you clicked is the thing that becomes the centre, so it grows
+    // from the size it had out in the old orbit instead of being replaced at
+    // full size. Arriving with no source — first mount, or stepping back up
+    // the trail — grows from a fixed fraction instead.
+    centreFrom = pendingR ? clamp(pendingR / cr, 0.12, 0.85) : 0.4;
+    pendingR = 0;
+    centreGroup.scale.setScalar(centreFrom);
     let centre;
     if (node.type === 'media' && node._url) {
       const geo = new T.SphereGeometry(cr, 44, 32);
@@ -233,6 +248,7 @@
     });
 
     transition = 0;
+    tStart = performance.now();
     if (hud) hud.style.opacity = '0';
     // the orbs the old hover referred to no longer exist
     hoverId = null;
@@ -283,6 +299,7 @@
     const focal = h / (2 * Math.tan(camera.fov * Math.PI / 360));
     const screenR = (centreR * centreGroup.scale.x * 1.85 * focal) / Math.max(0.001, cam.dist);
     const drop = Math.min(h * 0.34, screenR + 22);
+    hudDrop = Math.round(drop);
     const next = 'translate3d(' + Math.round(w * 0.5) + 'px,' +
       Math.round(h * 0.5 + drop) + 'px,0) translate(-50%,0)';
     if (hud._xf !== next) { hud.style.transform = next; hud._xf = next; }
@@ -381,17 +398,26 @@
     // Selecting re-centres and shows what the node connects to. The camera
     // does not move; the new orbit simply fades up around the new centre.
     if (transition < 1) {
-      transition = Math.min(1, transition + 0.075);
+      transition = clamp((performance.now() - tStart) / SETTLE, 0, 1);
       const e = 1 - Math.pow(1 - transition, 3);
-      orbitGroup.scale.setScalar(0.94 + 0.06 * e);
+
+      // the centre grows into place from the orb that was clicked
+      centreGroup.scale.setScalar(centreFrom + (1 - centreFrom) * e);
+      settleC = e;
+
+      // What it connects to arrives just behind it, so the eye lands on the
+      // new centre first and reads its orbit second.
+      const o = 1 - Math.pow(1 - clamp((transition - 0.22) / 0.78, 0, 1), 3);
+      settleO = o;
+      orbitGroup.scale.setScalar(0.94 + 0.06 * o);
       orbitGroup.children.forEach(ch => {
         if (ch.material) {
           ch.material.transparent = true;
           const base = ch.userData.baseOpacity === undefined ? 1 : ch.userData.baseOpacity;
-          ch.material.opacity = base * e;
+          ch.material.opacity = base * o;
         }
       });
-      if (hud) hud.style.opacity = String(e);
+      if (hud) hud.style.opacity = String(o);
     }
 
     place();
@@ -460,6 +486,10 @@
   // distance, and only the orbit around the centre changes.
   function descend(id) {
     if (id === model.selected()) return;
+    // hand the rebuild the size this orb currently is, so the new centre can
+    // continue it rather than start from nothing
+    const p = picks.find(x => x.id === id);
+    pendingR = p ? (p.mesh.userData.r || 0.3) * orbitGroup.scale.x : 0;
     model.select(id);                 // notifies, which rebuilds the scene
   }
 
@@ -563,6 +593,13 @@
     cameraState: () => ({ dist: cam.dist, theta: cam.theta, phi: cam.phi }),
     orbitPhase: () => spin,
     hovered: () => hoverId,
+    settleState: () => ({
+      transition,
+      centre: centreGroup ? centreGroup.scale.x : 1,
+      centreProgress: settleC,
+      orbitOpacity: settleO,
+      hudDrop
+    }),
     rebuild: () => { if (renderer) build(); }
   };
 })();
