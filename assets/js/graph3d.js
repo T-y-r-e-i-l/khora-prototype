@@ -22,16 +22,23 @@
   };
 
   let renderer, scene, camera, raf = null, host = null, model = null;
-  let starfield, centreGroup, orbitGroup, ringMesh;
+  let starfield, centreGroup, orbitGroup, trailGroup, ringMesh;
   let picks = [];                    // { mesh, id }
   let cam = { theta: -Math.PI / 2, phi: 1.13, dist: 12.4, target: new T.Vector3() };
   let spin = 0;
+  let trailSpin = 0;                  // slower revolution of the path you took
+  let trailIds = [];                  // previous trail nodes, not the centre
+  let trailConnector = null;
+  let lastTick = 0;
   let transition = 1;                 // 0..1 while a new orbit settles in
   let tStart = 0;                     // when the current settle began
   let centreFrom = 1;                 // scale the new centre grows from
   let pendingR = 0;                   // world radius of the orb that was clicked
   const SETTLE = 620;                 // ms for a selection to settle, by the clock
                                       // rather than by frame count
+  // The trail turns about a third as fast as the equatorial orbit, by the
+  // clock: 0.022 rad/s is a full revolution in about 4.8 minutes.
+  const TRAIL_SPIN = 0.022 / 1000;
   let settleC = 1, settleO = 1;       // eased centre / orbit progress, for tests
   let hudDrop = 0;
   let disposables = [];
@@ -42,6 +49,11 @@
   const HOME_DIST = 12.4;
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  function reducedMotion() {
+    return !!(window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
 
   /* ---------- labels drawn to a canvas and billboarded ---------- */
 
@@ -165,13 +177,120 @@
   /* ---------- scene assembly ---------- */
 
   function clearGroup(g) {
+    if (!g) return;
     while (g.children.length) g.remove(g.children[0]);
+  }
+
+  // Previous worlds on the shared trail, laid on a curve that leads into
+  // the centre from the right and slightly below — off the equatorial
+  // orbit, so the path reads as a path and not another ring.
+  function trailPose(i, n) {
+    const t = n <= 1 ? 0.52 : i / Math.max(1, n - 1);
+    const te = t * t * (3 - 2 * t);
+    const u = 1 - te;
+    const r = 2.12 + u * 3.98;
+    const a = -0.20 + te * 0.72;
+    const y = -0.78 - u * 1.42;
+    return new T.Vector3(Math.cos(a) * r, y, Math.sin(a) * r);
+  }
+
+  function trailRibbon(pts) {
+    const curve = new T.CatmullRomCurve3(pts);
+    const segs = Math.max(24, pts.length * 16);
+    const geo = new T.TubeGeometry(curve, segs, 0.018, 6, false);
+    const mat = new T.MeshBasicMaterial({
+      color: 0xc5c2b8, transparent: true, opacity: 0.26,
+      blending: T.AdditiveBlending, depthWrite: false
+    });
+    disposables.push(geo, mat);
+    const m = new T.Mesh(geo, mat);
+    m.userData.baseOpacity = 0.26;
+    m.userData.connector = true;
+    return m;
+  }
+
+  function followLabels(g) {
+    if (!g) return;
+    g.children.forEach(ch => {
+      if (ch.userData && ch.userData.follow) {
+        ch.position.set(ch.userData.follow.position.x,
+                        ch.userData.follow.position.y + ch.userData.lift,
+                        ch.userData.follow.position.z);
+      }
+    });
+  }
+
+  function fadeGroup(g, o) {
+    if (!g) return;
+    g.children.forEach(ch => {
+      if (ch.material) {
+        ch.material.transparent = true;
+        const base = ch.userData.baseOpacity === undefined ? 1 : ch.userData.baseOpacity;
+        ch.material.opacity = base * o;
+      }
+    });
+  }
+
+  // Same history as #gx-trail. The centre is the current node; everything
+  // before it becomes a physical orb on the path in. One crumb draws nothing.
+  function buildTrail(centreId) {
+    trailIds = [];
+    trailConnector = null;
+    if (!trailGroup) return;
+
+    const stack = (model.trail() || [])
+      .filter(tid => tid && tid !== centreId)
+      .map(tid => model.node(tid))
+      .filter(Boolean);
+    if (!stack.length) return;
+
+    const pts = [];
+    stack.forEach((node, i) => {
+      const hue = HUE[model.category(node)] || 0x9aa0aa;
+      const rr = node.type === 'note' || node.type === 'note-other' ? 0.32
+               : node.type === 'work' ? 0.24
+               : node.type === 'media' ? 0.3
+               : node.type === 'tradition' ? 0.18 : 0.26;
+      const pos = trailPose(i, stack.length);
+
+      let m;
+      if (node.type === 'media' && node._url) {
+        const geo = new T.SphereGeometry(rr, 32, 24);
+        disposables.push(geo);
+        m = new T.Mesh(geo, thumbnailMaterial(node._url, hue));
+      } else {
+        m = world(hue, rr, 0.22);
+      }
+      m.position.copy(pos);
+      m.userData.id = node.id;
+      m.userData.r = rr;
+      m.userData.trail = true;
+      trailGroup.add(m);
+      picks.push({ mesh: m, id: node.id });
+      trailIds.push(node.id);
+      pts.push(pos.clone());
+
+      const l = labelSprite(model.kicker(node), model.label(node), hue);
+      l.position.set(pos.x, pos.y + rr + 0.28, pos.z);
+      l.userData.follow = m;
+      l.userData.lift = rr + 0.28;
+      trailGroup.add(l);
+    });
+
+    if (pts.length) {
+      pts.push(new T.Vector3(0, -0.95, 0));
+      trailConnector = trailRibbon(pts);
+      trailGroup.add(trailConnector);
+    }
   }
 
   function build() {
     picks = [];
     clearGroup(centreGroup);
     clearGroup(orbitGroup);
+    clearGroup(trailGroup);
+    trailIds = [];
+    trailConnector = null;
 
     const id = model.selected();
     const node = model.node(id);
@@ -212,8 +331,11 @@
     lab.position.set(0, cr + 0.5, 0);
     centreGroup.add(lab);
 
-    // the orbit
-    const kids = model.orbit(id, 12);
+    // the orbit — neighbours of the current world. A node already on the
+    // trail is drawn there instead, so the path does not double as a copy
+    // on the equator.
+    const prior = new Set((model.trail() || []).filter(tid => tid !== id));
+    const kids = model.orbit(id, 12).filter(k => !prior.has(k.id));
     const R = 4.3 + Math.min(2.2, kids.length * 0.12);
     orbitGroup.add(orbitPath(R, hue));
 
@@ -246,6 +368,9 @@
       l.userData.lift = rr + 0.3;
       orbitGroup.add(l);
     });
+
+    buildTrail(id);
+    if (trailGroup) trailGroup.scale.setScalar(0.96);
 
     transition = 0;
     tStart = performance.now();
@@ -380,18 +505,23 @@
     if (!renderer) return;
     raf = requestAnimationFrame(frame);
 
+    const now = performance.now();
+    const dt = lastTick ? Math.min(48, now - lastTick) : 16.67;
+    lastTick = now;
+
     // Hovering drops the orbit to a quarter speed rather than stopping it:
     // the field stays alive, but what you are reading stays put.
     spin += hoverId ? 0.000275 : 0.0011;
     orbitGroup.rotation.y = spin;
-    // labels ride with their world but never rotate out of legibility
-    orbitGroup.children.forEach(ch => {
-      if (ch.userData && ch.userData.follow) {
-        ch.position.set(ch.userData.follow.position.x,
-                        ch.userData.follow.position.y + ch.userData.lift,
-                        ch.userData.follow.position.z);
-      }
-    });
+
+    // The trail turns on the clock, slower than the equator, and holds
+    // still for anyone who has asked for less motion.
+    const trailRate = reducedMotion() ? 0 : TRAIL_SPIN * (hoverId ? 0.25 : 1);
+    trailSpin += trailRate * dt;
+    if (trailGroup) trailGroup.rotation.y = trailSpin;
+
+    followLabels(orbitGroup);
+    followLabels(trailGroup);
     if (ringMesh) ringMesh.rotation.z += 0.0016;
     if (starfield) starfield.rotation.y += 0.00016;
 
@@ -410,13 +540,14 @@
       const o = 1 - Math.pow(1 - clamp((transition - 0.22) / 0.78, 0, 1), 3);
       settleO = o;
       orbitGroup.scale.setScalar(0.94 + 0.06 * o);
-      orbitGroup.children.forEach(ch => {
-        if (ch.material) {
-          ch.material.transparent = true;
-          const base = ch.userData.baseOpacity === undefined ? 1 : ch.userData.baseOpacity;
-          ch.material.opacity = base * o;
-        }
-      });
+      fadeGroup(orbitGroup, o);
+      // History is already known, so the trail eases in just ahead of the
+      // new orbit — still behind the centre, never a snap.
+      const tr = 1 - Math.pow(1 - clamp((transition - 0.08) / 0.82, 0, 1), 3);
+      if (trailGroup) {
+        trailGroup.scale.setScalar(0.96 + 0.04 * tr);
+        fadeGroup(trailGroup, tr);
+      }
       if (hud) hud.style.opacity = String(o);
     }
 
@@ -489,7 +620,8 @@
     // hand the rebuild the size this orb currently is, so the new centre can
     // continue it rather than start from nothing
     const p = picks.find(x => x.id === id);
-    pendingR = p ? (p.mesh.userData.r || 0.3) * orbitGroup.scale.x : 0;
+    const parentS = p && p.mesh.parent ? p.mesh.parent.scale.x : 1;
+    pendingR = p ? (p.mesh.userData.r || 0.3) * parentS : 0;
     model.select(id);                 // notifies, which rebuilds the scene
   }
 
@@ -526,7 +658,8 @@
 
     centreGroup = new T.Group();
     orbitGroup = new T.Group();
-    scene.add(centreGroup, orbitGroup);
+    trailGroup = new T.Group();
+    scene.add(centreGroup, orbitGroup, trailGroup);
 
     hud = document.createElement('div');
     hud.className = 'gx-hud';
@@ -573,6 +706,11 @@
     }
     renderer = scene = camera = null;
     picks = [];
+    trailGroup = null;
+    trailIds = [];
+    trailConnector = null;
+    trailSpin = 0;
+    lastTick = 0;
   }
 
   // where each world currently sits on screen — used by tests, and cheap
@@ -600,6 +738,25 @@
       orbitOpacity: settleO,
       hudDrop
     }),
-    rebuild: () => { if (renderer) build(); }
+    rebuild: () => { if (renderer) build(); },
+    trailState: () => {
+      const positions = [];
+      if (trailGroup) {
+        trailGroup.children.forEach(ch => {
+          if (!ch.userData || !ch.userData.trail || !ch.userData.id) return;
+          const v = ch.getWorldPosition(new T.Vector3());
+          positions.push({ id: ch.userData.id, x: v.x, y: v.y, z: v.z });
+        });
+      }
+      return {
+        ids: trailIds.slice(),
+        count: trailIds.length,
+        connectors: !!(trailConnector && trailConnector.parent),
+        centreId: model ? model.selected() : null,
+        spin: trailSpin,
+        reducedMotion: reducedMotion(),
+        positions
+      };
+    }
   };
 })();
