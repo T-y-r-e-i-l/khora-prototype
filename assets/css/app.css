@@ -156,7 +156,41 @@ aside.rail {
 }
 .search input::placeholder { color: var(--ink-3); }
 
-.note-list { flex: 1; overflow-y: auto; padding: 6px 10px 20px; }
+/* The daily prompt lives with the notes it starts, not above the editor. */
+aside.rail .prompt-card {
+  flex: none;
+  margin: 0 10px 8px;
+  padding: 14px 14px 12px;
+  margin-bottom: 8px;
+}
+aside.rail .prompt-card::after {
+  width: 120px; height: 120px; right: -40px; top: -50px;
+}
+aside.rail .prompt-kicker { margin-bottom: 8px; }
+aside.rail .prompt-text {
+  font-size: 14.5px; line-height: 1.45; margin: 0 0 8px; max-width: none;
+}
+aside.rail .prompt-source { font-size: 11px; margin-bottom: 12px; }
+aside.rail .prompt-actions { gap: 8px; }
+aside.rail .prompt-actions .ghost.solid {
+  flex: 1 1 100%; text-align: center; justify-content: center;
+}
+aside.rail .skip-track { margin-left: 0; }
+
+.note-list { flex: 1; overflow-y: auto; padding: 6px 10px 12px; }
+
+.rail-new {
+  flex: none;
+  display: block; width: calc(100% - 20px); margin: 0 10px 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--hairline); border-radius: var(--r-sm);
+  background: rgba(255,255,255,.92); color: #14121a;
+  font-family: var(--sans); font-size: 10px; font-weight: 700;
+  letter-spacing: .16em; text-transform: uppercase;
+  cursor: pointer;
+  transition: background .18s var(--ease);
+}
+.rail-new:hover { background: #fff; }
 .note-item {
   padding: 11px 12px; border-radius: var(--r-md); cursor: pointer;
   border: 1px solid transparent; margin-bottom: 3px;

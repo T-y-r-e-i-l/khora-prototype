@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/app.css">
+<link rel="stylesheet" href="assets/css/app.css?v=2">
 </head>
 <body>
 
@@ -84,7 +84,28 @@
           <input id="q" type="search" placeholder="Search notes and concepts…" autocomplete="off">
         </div>
       </div>
+
+      <section class="prompt-card" id="prompt-card">
+        <div class="prompt-kicker">
+          <span class="orb sm" style="--c:var(--resonance)"></span>
+          <span id="prompt-kicker-text">Today’s prompt</span>
+        </div>
+        <p class="prompt-text" id="prompt-text"></p>
+        <p class="prompt-source" id="prompt-source"></p>
+        <div class="prompt-actions">
+          <button class="ghost solid" id="btn-write">Write on this</button>
+          <button class="ghost" id="btn-skip">Skip</button>
+          <span class="skip-track">
+            <span class="skip-label" id="skip-label">3 skips left</span>
+            <span class="skip-pip" data-i="0"></span>
+            <span class="skip-pip" data-i="1"></span>
+            <span class="skip-pip" data-i="2"></span>
+          </span>
+        </div>
+      </section>
+
       <div class="note-list" id="note-list"></div>
+      <button class="rail-new" id="btn-new-list">New note</button>
       <div class="rail-foot">
         <button class="micro" id="btn-reset-day" title="Development helper: rolls the day forward so the skip allowance can be tested">Reset today</button>
       </div>
@@ -93,26 +114,6 @@
     <!-- ============ centre ============ -->
     <main class="centre">
       <div class="centre-inner" id="centre-inner">
-
-        <!-- daily prompt -->
-        <section class="prompt-card" id="prompt-card">
-          <div class="prompt-kicker">
-            <span class="orb sm" style="--c:var(--resonance)"></span>
-            <span id="prompt-kicker-text">Today’s prompt</span>
-          </div>
-          <p class="prompt-text" id="prompt-text"></p>
-          <p class="prompt-source" id="prompt-source"></p>
-          <div class="prompt-actions">
-            <button class="ghost solid" id="btn-write">Write on this</button>
-            <button class="ghost" id="btn-skip">Skip</button>
-            <span class="skip-track">
-              <span class="skip-label" id="skip-label">3 skips left</span>
-              <span class="skip-pip" data-i="0"></span>
-              <span class="skip-pip" data-i="1"></span>
-              <span class="skip-pip" data-i="2"></span>
-            </span>
-          </div>
-        </section>
 
         <!-- editor -->
         <section id="editor-wrap" hidden>

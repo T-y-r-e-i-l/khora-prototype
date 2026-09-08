@@ -207,6 +207,7 @@
     el.title.focus();
   }
   $('#btn-new').addEventListener('click', newNote);
+  $('#btn-new-list').addEventListener('click', newNote);
   $('#btn-new-2').addEventListener('click', newNote);
 
   function grow() {
@@ -920,7 +921,6 @@
     const w = findWork(id);
     if (!w) { toast('That work is not in the library.'); return; }
 
-    el.promptCard.style.display = 'none';
     el.editorWrap.hidden = true;
     el.empty.style.display = 'none';
     const banner = $('#prompt-banner'); if (banner) banner.style.display = 'none';
@@ -992,7 +992,6 @@
     el.editorWrap.hidden = false;
     const n = Notes.get(activeId);
     const todays = Prompts.state().prompt.text;
-    el.promptCard.style.display = '';
     setBanner(n.promptText && n.promptText !== todays ? n.promptText : null);
     markWritingOnToday(!!n.promptText && n.promptText === todays);
     grow();
