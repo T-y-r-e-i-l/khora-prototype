@@ -21,10 +21,11 @@ await page.reload({ waitUntil: 'networkidle' });
 
 /* Collapsing takes the Reading rail's column to zero, so reopening it is a
    question of whether its chevron is still reachable at all. An unreachable
-   control times out; report that as a failure rather than crashing out. */
+   control times out; report that as a failure rather than crashing out —
+   carrying the real reason, since not every failure here is a timeout. */
 const tryClick = async sel => {
-  try { await page.click(sel, { timeout: 3000 }); return true; }
-  catch { return false; }
+  try { await page.click(sel, { timeout: 3000 }); return { ok: true, why: '' }; }
+  catch (e) { return { ok: false, why: String(e.message).split('\n')[0] }; }
 };
 
 const finish = async () => {
@@ -47,8 +48,7 @@ const geo = await page.evaluate(() => {
   const items = [...nav.querySelectorAll('.nav-item')].map(el => {
     const b = el.getBoundingClientRect();
     return { id: el.id, view: el.dataset.view || '',
-             w: Math.round(b.width), h: Math.round(b.height), top: Math.round(b.top),
-             label: (el.querySelector('.nav-lab') || {}).textContent || '' };
+             w: Math.round(b.width), h: Math.round(b.height), top: Math.round(b.top) };
   });
   // a label may hang outside its own 56px target and still be perfectly
   // legible; what would actually cut it off is the 78px rail
@@ -82,12 +82,18 @@ check('Notes is the only one marked active',
   geo.onIds.join(',') || 'none');
 check('destinations are 56px tall', geo.items.every(i => i.h === 56),
   geo.items.map(i => i.h).join(','));
+/* 56 wide, not the 40 of the pill: a 40px target leaves 'Explore' hanging
+   outside the thing you can click. Nothing else measures this, since the
+   labels fit the rail at either width. */
+check('destinations are 56px wide', geo.items.every(i => i.w === 56),
+  geo.items.map(i => i.w).join(','));
 check('destinations sit on a 72px pitch', geo.items.every((it, k) =>
   k === 0 || it.top - geo.items[k - 1].top === 72),
   geo.items.map(i => i.top).join(','));
 check('no label is clipped by the rail', !geo.navScrolls &&
   geo.labelFits.every(l => l.out <= 0),
-  geo.labelFits.map(l => l.text + ' ' + l.out + 'px past').join(', '));
+  geo.labelFits.map(l => l.out > 0 ? l.text + ' ' + l.out + 'px past the rail'
+                                   : l.text + ' ' + -l.out + 'px clear').join(', '));
 check('the brand glyph is in the rail', await page.isVisible('nav.sidenav .nav-brand svg'));
 check('the wordmark is gone', !(await page.evaluate(
   () => /Philosophical Reader/i.test(document.querySelector('nav.sidenav').textContent))));
@@ -126,21 +132,29 @@ check('Shelf and Profile change nothing yet',
 const collapsedBare = await tryClick('#btn-insights');
 await page.waitForTimeout(300);
 check('the chevron collapses the Reading rail before any note is written',
-  collapsedBare && await page.evaluate(
-    () => document.getElementById('body').classList.contains('insights-closed')));
+  collapsedBare.ok && await page.evaluate(
+    () => document.getElementById('body').classList.contains('insights-closed')),
+  collapsedBare.why);
 const reopenedBare = await tryClick('#btn-insights');
 await page.waitForTimeout(300);
-check('and is still reachable to reopen it', reopenedBare && await page.evaluate(
+check('and is still reachable to reopen it', reopenedBare.ok && await page.evaluate(
   () => !document.getElementById('body').classList.contains('insights-closed')),
-  reopenedBare ? '' : 'the collapsed chevron could not be clicked');
+  reopenedBare.why);
 
 // the compose control is an action, not a destination
 check('New note is in the rail', await page.isVisible('#btn-new'));
 check('New note is not a destination', await page.evaluate(
   () => !document.getElementById('btn-new').classList.contains('nav-item')));
+/* The app opens on a bare draft with #editor-wrap already visible, so asking
+   only whether the editor is showing would hold even if the button were
+   inert. Put a title in first: a new note has to arrive empty. */
+await page.fill('#title', 'Left over from before');
 await page.click('#btn-new');
 await page.waitForSelector('#body-input', { state: 'visible' });
-check('New note still creates a note', await page.isVisible('#editor-wrap'));
+const titleAfterNew = await page.inputValue('#title');
+check('New note still creates a note',
+  await page.isVisible('#editor-wrap') && titleAfterNew === '',
+  'title came back as ' + JSON.stringify(titleAfterNew));
 
 // Share belongs to the note it acts on
 check('Share sits with the note', await page.evaluate(
@@ -154,13 +168,14 @@ check('the chevron is on the rail, not the nav', await page.evaluate(
   () => !!document.querySelector('aside.insights #btn-insights')));
 const collapsed = await tryClick('#btn-insights');
 await page.waitForTimeout(300);
-check('the chevron collapses the Reading rail', collapsed && await page.evaluate(
-  () => document.getElementById('body').classList.contains('insights-closed')));
+check('the chevron collapses the Reading rail', collapsed.ok && await page.evaluate(
+  () => document.getElementById('body').classList.contains('insights-closed')),
+  collapsed.why);
 const broughtBack = await tryClick('#btn-insights');
 await page.waitForTimeout(300);
-check('and brings it back', broughtBack && await page.evaluate(
+check('and brings it back', broughtBack.ok && await page.evaluate(
   () => !document.getElementById('body').classList.contains('insights-closed')),
-  broughtBack ? '' : 'the collapsed chevron could not be clicked');
+  broughtBack.why);
 
 // Notes still toggles the Library
 await page.click('#btn-rail');
@@ -185,10 +200,15 @@ const clear = await page.evaluate(() => {
   const g = document.getElementById('graph').getBoundingClientRect();
   const mid = document.elementFromPoint(nav.width / 2, 300);
   return { graphLeft: Math.round(g.left), navRight: Math.round(nav.right),
-           hitsNav: !!(mid && mid.closest('nav.sidenav')) };
+           hitsNav: !!(mid && mid.closest('nav.sidenav')),
+           // #graph is fixed and the rail is not, so any horizontal scroll of
+           // <body> moves one and not the other. That is the only way these
+           // two disagree, so report it rather than leave a 1px gap unexplained.
+           bodyScrollLeft: document.body.scrollLeft };
 });
 check('the graph starts after the rail', clear.graphLeft === clear.navRight,
-  'graph ' + clear.graphLeft + ' vs rail ' + clear.navRight);
+  'graph ' + clear.graphLeft + ' vs rail ' + clear.navRight +
+  (clear.bodyScrollLeft ? ', body scrolled ' + clear.bodyScrollLeft + 'px' : ''));
 check('the rail takes the pointer over the graph', clear.hitsNav);
 
 await finish();
