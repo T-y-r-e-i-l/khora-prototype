@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/app.css?v=5">
+<link rel="stylesheet" href="assets/css/app.css?v=11">
 </head>
 <body>
 
@@ -301,6 +301,17 @@
 <!-- place-yourself overlay: one authored item, reached from a note or the graph -->
 <div class="scrim" id="place-scrim">
   <div class="modal place-modal" id="place-modal"></div>
+</div>
+
+<div class="scrim" id="forget-scrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="forget-title">
+    <h3 id="forget-title">Delete this note?</h3>
+    <p class="lede" id="forget-lede">This cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="ghost" type="button" id="forget-cancel">Keep it</button>
+      <button class="ghost danger" type="button" id="forget-confirm">Delete</button>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>

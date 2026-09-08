@@ -216,4 +216,63 @@ check('the graph starts after the rail', clear.graphLeft === clear.navRight,
   (clear.bodyScrollLeft ? ', body scrolled ' + clear.bodyScrollLeft + 'px' : ''));
 check('the rail takes the pointer over the graph', clear.hitsNav);
 
+await page.click('#btn-new');
+await page.waitForTimeout(300);
+const afterNew = await page.evaluate(() => ({
+  graph: document.getElementById('graph').hidden,
+  exploring: document.body.classList.contains('exploring'),
+  title: document.getElementById('title').value,
+  editor: !document.getElementById('editor-wrap').hidden
+}));
+check('New note closes Explore', afterNew.graph && !afterNew.exploring,
+  'graph hidden=' + afterNew.graph + ' exploring=' + afterNew.exploring);
+check('and shows the untitled note', afterNew.editor && afterNew.title === '',
+  JSON.stringify(afterNew.title));
+
+const doomed = await page.evaluate(() => document.querySelector('.note-item.active')?.dataset.id);
+const beforeCount = await page.$$eval('.note-item', els => els.length);
+const forgetSel = `.note-item[data-id="${doomed}"] [data-forget]`;
+const forgetOp = async () => page.evaluate(sel => {
+  const el = document.querySelector(sel);
+  return el ? Number(getComputedStyle(el).opacity) : -1;
+}, forgetSel);
+const restOp = await forgetOp();
+check('the delete control is hidden at rest', !!doomed && restOp === 0, 'opacity=' + restOp);
+await page.hover(`.note-item[data-id="${doomed}"] h4`);
+await page.waitForTimeout(200);
+const hoverOp = await forgetOp();
+check('and appears on hover', hoverOp === 1, 'opacity=' + hoverOp);
+await page.click(forgetSel);
+await page.waitForTimeout(200);
+const asked = await page.evaluate(id => ({
+  still: !!document.querySelector(`.note-item[data-id="${id}"]`),
+  modal: !!document.querySelector('#forget-scrim.on')
+}), doomed);
+check('delete waits for confirmation', asked.still && asked.modal,
+  'still=' + asked.still + ' modal=' + asked.modal);
+const cancelled = await tryClick('#forget-cancel');
+await page.waitForTimeout(150);
+const kept = await page.evaluate(id => ({
+  still: !!document.querySelector(`.note-item[data-id="${id}"]`),
+  modal: !!document.querySelector('#forget-scrim.on')
+}), doomed);
+check('cancelling keeps the note', cancelled.ok && kept.still && !kept.modal, cancelled.why);
+if (doomed && await page.$(forgetSel)) {
+  await page.hover(`.note-item[data-id="${doomed}"]`);
+  await page.click(forgetSel);
+}
+const confirmed = await tryClick('#forget-confirm');
+await page.waitForTimeout(250);
+const afterForget = await page.evaluate(id => ({
+  still: !!document.querySelector(`.note-item[data-id="${id}"]`),
+  count: document.querySelectorAll('.note-item').length,
+  open: document.querySelector('.note-item.active')?.dataset.id || null,
+  modal: !!document.querySelector('#forget-scrim.on')
+}), doomed);
+check('confirming removes the card', confirmed.ok && !afterForget.still && afterForget.count === beforeCount - 1,
+  confirmed.why || (afterForget.count + ' left, still=' + afterForget.still));
+check('the editor opens another note', afterForget.open && afterForget.open !== doomed,
+  String(afterForget.open));
+check('the confirm closes', !afterForget.modal);
+
 await finish();

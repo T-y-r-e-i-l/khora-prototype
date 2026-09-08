@@ -142,11 +142,70 @@
           <span>${fmtDate(n.updated)}</span>
           <span class="dot-row">${cats.map(c => `<i class="mini-orb" style="--mc:var(--${c})"></i>`).join('')}</span>
         </div>
+        <button class="forget" data-forget="${esc(n.id)}" title="Delete note" aria-label="Delete note">×</button>
       </div>`;
     }).join('');
   }
 
+  let pendingForget = null;
+
+  function askForget(id) {
+    const n = Notes.get(id);
+    if (!n) return;
+    pendingForget = id;
+    const label = (n.title || '').trim() || 'Untitled';
+    $('#forget-lede').textContent = '“' + label + '” will be removed from this device. This cannot be undone.';
+    $('#forget-scrim').classList.add('on');
+  }
+
+  function closeForget() {
+    pendingForget = null;
+    $('#forget-scrim').classList.remove('on');
+  }
+
+  function forgetNote(id) {
+    const n = Notes.get(id);
+    if (!n) return;
+    closeExplore();
+    (n.attachments || []).forEach(a => {
+      if (a.kind !== 'link') Media.del(a.id);
+    });
+    Notes.remove(id);
+    if (activeId === id) {
+      const next = Notes.all()[0];
+      if (next) openNote(next.id);
+      else {
+        activeId = null;
+        analysis = null;
+        el.editorWrap.hidden = true;
+        el.room.hidden = true;
+        el.empty.style.display = '';
+        renderList();
+      }
+    } else {
+      renderList();
+    }
+    toast('Note deleted.');
+  }
+
+  $('#forget-cancel').addEventListener('click', closeForget);
+  $('#forget-confirm').addEventListener('click', () => {
+    const id = pendingForget;
+    closeForget();
+    if (id) forgetNote(id);
+  });
+  $('#forget-scrim').addEventListener('click', e => {
+    if (e.target === $('#forget-scrim')) closeForget();
+  });
+
   el.list.addEventListener('click', e => {
+    const forget = e.target.closest('[data-forget]');
+    if (forget) {
+      e.preventDefault();
+      e.stopPropagation();
+      askForget(forget.dataset.forget);
+      return;
+    }
     const item = e.target.closest('.note-item');
     if (item) openNote(item.dataset.id);
   });
@@ -202,6 +261,9 @@
   }
 
   function newNote() {
+    closeExplore();
+    el.body.classList.remove('show-insights', 'show-rail');
+    syncNav('write');
     const n = Notes.create({});
     openNote(n.id);
     el.title.focus();
@@ -1384,7 +1446,10 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
   });
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { el.scrim.classList.remove('on'); }
+    if (e.key === 'Escape') {
+      el.scrim.classList.remove('on');
+      closeForget();
+    }
     if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); persist(); toast('Saved.'); }
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); run(false); }
   });

@@ -192,9 +192,23 @@ aside.rail .skip-track { margin-left: 0; }
 }
 .rail-new:hover { background: #fff; }
 .note-item {
-  padding: 11px 12px; border-radius: var(--r-md); cursor: pointer;
+  position: relative;
+  padding: 11px 32px 11px 12px; border-radius: var(--r-md); cursor: pointer;
   border: 1px solid transparent; margin-bottom: 3px;
   transition: background .16s var(--ease), border-color .16s var(--ease);
+}
+.note-item .forget {
+  position: absolute; top: 8px; right: 8px;
+  width: 22px; height: 22px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(6,5,8,.82); color: var(--ink-2); font-size: 13px; line-height: 1;
+  display: grid; place-items: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .16s var(--ease), background .16s var(--ease), color .16s var(--ease);
+}
+.note-item:hover .forget { opacity: 1; pointer-events: auto; }
+.note-item .forget:hover { color: #fff; background: rgba(229,72,77,.85); }
+@media (hover: none) {
+  .note-item .forget { opacity: 1; pointer-events: auto; }
 }
 .note-item:hover { background: var(--glass-2); }
 .note-item.active { background: var(--glass-3); border-color: var(--hairline); }
@@ -624,6 +638,9 @@ aside.insights {
 }
 .opt input { accent-color: var(--resonance); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.ghost.danger { color: #f0b4b6; border-color: rgba(229,72,77,.35); }
+.ghost.danger:hover { color: #fff; background: rgba(229,72,77,.85); border-color: transparent; }
+#forget-scrim { z-index: 56; }
 
 /* ---------- shared (read-only) view ----------------------------- */
 .shared-wrap { max-width: 720px; margin: 0 auto; padding: 46px 40px 90px; }
@@ -1309,7 +1326,7 @@ body.dim3 .gx-top, body.dim3 .gx-trail { right: 0; }
 .hud-acts { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
 .hud-acts a { text-decoration: none; display: inline-block; }
 
-@media (max-width: 900px) { .gx-hud { width: 270px; } }
+@media (max-width: 900px) { .gx-hud { width: 90vw; max-width: 90vw; } }
 
 .gx-tip {
   position: absolute; left: 0; top: 0;
@@ -1611,4 +1628,6 @@ nav.sidenav {
   nav.sidenav .nav-item::before { width: 40px; height: 40px; }
   nav.sidenav .nav-new { width: 40px; height: 40px; flex: none; }
   #graph { inset: 0 0 var(--bar) 0; }
+  #dropzone { display: none; }
+  #gx-trail { display: none; }
 }

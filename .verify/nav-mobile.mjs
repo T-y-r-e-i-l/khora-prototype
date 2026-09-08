@@ -125,6 +125,17 @@ check('and stops above the bar', lib.bottom <= lib.navTop + 1,
 
 await page.click('#btn-new');
 await page.waitForTimeout(200);
+const attach = await page.evaluate(() => {
+  const shown = el => !!(el && getComputedStyle(el).display !== 'none');
+  return {
+    drop: shown(document.getElementById('dropzone')),
+    media: shown(document.getElementById('btn-media')),
+    link: shown(document.getElementById('btn-link'))
+  };
+});
+check('the dropzone is gone on a phone', !attach.drop);
+check('Add media is still there', attach.media);
+check('Add link is still there', attach.link);
 await page.fill('#title', 'The job');
 await page.fill('#body-input',
   'I had no choice but to stay in that job. It was out of my hands and there was nothing I could do about any of it, so I kept going. My family expects things of me and I owe them that much.');
@@ -150,11 +161,18 @@ check('Explore opens the graph above the bar', exp.graphBottom <= exp.navTop + 1
 check('2D/3D stays in the graph chrome', exp.dimVisible);
 check('the bar stays clickable over Explore', exp.hitsNav);
 check('Explore marks itself active', exp.on === 'btn-explore', exp.on);
+check('the trail is off a phone', await page.evaluate(
+  () => getComputedStyle(document.getElementById('gx-trail')).display === 'none'));
 
 await page.click('#gx-dim [data-dim="3"]');
 await page.waitForTimeout(400);
 check('3D still switches from the graph chrome', await page.evaluate(
   () => document.body.classList.contains('dim3')));
+const hudW = await page.evaluate(() => {
+  const h = document.querySelector('.gx-hud');
+  return h ? Math.round(h.getBoundingClientRect().width) : 0;
+});
+check('the 3D card is 90vw', Math.abs(hudW - Math.round(390 * 0.9)) <= 2, hudW + 'px');
 
 await page.click('#btn-rail');
 await page.waitForTimeout(300);
@@ -162,5 +180,40 @@ check('Write from Explore closes the graph', await page.evaluate(
   () => document.getElementById('graph').hidden));
 check('and returns to Write', await page.evaluate(
   () => (document.querySelector('nav.sidenav .nav-item.on') || {}).id === 'btn-rail'));
+
+await page.click('#btn-nav-insights');
+await page.waitForTimeout(250);
+await page.click('#btn-new');
+await page.waitForTimeout(250);
+const fromInsights = await page.evaluate(() => ({
+  insights: getComputedStyle(document.querySelector('aside.insights')).display,
+  editor: !document.getElementById('editor-wrap').hidden,
+  title: document.getElementById('title').value,
+  body: document.getElementById('body-input').value,
+  on: (document.querySelector('nav.sidenav .nav-item.on') || {}).id
+}));
+check('New note leaves Insights for the editor',
+  fromInsights.insights === 'none' && fromInsights.editor, fromInsights.insights);
+check('the opened note is untitled', fromInsights.title === '',
+  JSON.stringify(fromInsights.title));
+check('and empty', fromInsights.body === '');
+check('Write is the view', fromInsights.on === 'btn-rail', fromInsights.on);
+
+await page.fill('#body-input',
+  'twelve words so the graph will open for this check of the new note action.');
+await page.waitForTimeout(1400);
+await page.click('#btn-explore');
+await page.waitForSelector('#graph:not([hidden])', { timeout: 8000 });
+await page.click('#btn-new');
+await page.waitForTimeout(300);
+const fromExplore = await page.evaluate(() => ({
+  graph: document.getElementById('graph').hidden,
+  title: document.getElementById('title').value,
+  on: (document.querySelector('nav.sidenav .nav-item.on') || {}).id
+}));
+check('New note leaves Explore for the editor', fromExplore.graph);
+check('that note is also untitled', fromExplore.title === '',
+  JSON.stringify(fromExplore.title));
+check('and Write is the view again', fromExplore.on === 'btn-rail', fromExplore.on);
 
 await finish();
