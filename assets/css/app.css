@@ -340,7 +340,7 @@ aside.insights {
   font-family: var(--serif); font-size: 19px; color: var(--ink);
 }
 .bars { flex: 1; display: grid; gap: 6px; min-width: 0; }
-.bar-row { display: grid; grid-template-columns: 66px 1fr; align-items: center; gap: 9px; }
+.bar-row { display: grid; grid-template-columns: 66px 1fr; align-items: center; gap: 9px; cursor: help; }
 .bar-row span { white-space: nowrap; }
 .bar-row span {
   font-size: 9px; letter-spacing: .13em; text-transform: uppercase; color: var(--ink-3);
@@ -360,6 +360,28 @@ aside.insights {
 .chip:hover { border-color: rgba(255,255,255,.22); color: var(--ink-2); }
 .chip.off { opacity: .34; }
 .chip .n { color: var(--ink-4); font-size: 9px; }
+
+/* Hover copy for the criteria bars and the lane chips. Fixed, because
+   the Reading rail clips overflow and a native title waits too long. */
+.read-tip {
+  position: fixed; z-index: 80; width: 248px; max-width: calc(100vw - 20px);
+  padding: 10px 12px 11px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: linear-gradient(165deg, rgba(14,12,17,.96), rgba(7,6,10,.98));
+  box-shadow: 0 12px 32px rgba(0,0,0,.5);
+  pointer-events: none;
+  opacity: 0; visibility: hidden;
+  transition: opacity .16s var(--ease);
+}
+.read-tip.on { opacity: 1; visibility: visible; }
+.read-tip-k {
+  font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--ink-3); font-weight: 700; margin-bottom: 6px;
+}
+.read-tip p {
+  margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--ink-2);
+}
 
 /* the orb — Khora's signature node */
 /* ---------- glass-liquid orb -------------------------------------

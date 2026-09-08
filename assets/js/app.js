@@ -109,7 +109,11 @@
 
   $('#btn-write').addEventListener('click', () => {
     const s = Prompts.state();
-    const n = Notes.create({ promptId: s.prompt.id, promptText: s.prompt.text, title: '' });
+    const n = Notes.create({
+      promptId: s.prompt.id,
+      promptText: s.prompt.text,
+      title: s.prompt.text
+    });
     Prompts.markWritten(s.prompt.id);
     openNote(n.id);
     renderList();
@@ -284,13 +288,25 @@
     range:'Range', dialectic:'Dialectic'
   };
 
+  /* How each bar is made — the formula in Palinode's voice, so a hover
+     can say what the number is counting rather than only that it exists. */
+  const METRIC_HOW = {
+    inquiry: 'Question marks, relative to how much you have written. Asking raises this; a passage that only asserts stays low.',
+    grounding: 'Reasons, instances, and times — because, for example, yesterday, according to. Writing that points at something outside the claim.',
+    reflexivity: 'Turns back on the writer: I wonder, I notice, I might be wrong, part of me. The writing looking at itself.',
+    range: 'How many philosophical concepts this passage has already walked into, and how many traditions they come from.',
+    dialectic: 'Counterpoints — but, however, although — brought down when logical tensions sit unresolved.'
+  };
+
   function renderScore() {
     const m = analysis.metrics;
     const C = 2 * Math.PI * 26;
     el.ringArc.style.strokeDashoffset = String(C - (C * m.overall) / 100);
     el.ringVal.textContent = m.thin ? '—' : m.overall;
     el.bars.innerHTML = Object.keys(METRIC_LABELS).map(k =>
-      `<div class="bar-row"><span>${METRIC_LABELS[k]}</span>
+      `<div class="bar-row" data-metric="${k}"
+            aria-label="${esc(METRIC_LABELS[k])}. ${esc(METRIC_HOW[k])}">
+        <span>${METRIC_LABELS[k]}</span>
         <div class="bar"><i style="width:${m[k]}%"></i></div></div>`).join('');
   }
 
@@ -301,7 +317,8 @@
     const counts = {};
     analysis.insights.forEach(i => counts[i.category] = (counts[i.category] || 0) + 1);
     el.filters.innerHTML = Object.values(CATS).map(c =>
-      `<button class="chip ${f[c.id] ? '' : 'off'}" data-cat="${c.id}" title="${esc(c.blurb)}">
+      `<button class="chip ${f[c.id] ? '' : 'off'}" data-cat="${c.id}"
+               aria-label="${esc(c.label)}. ${esc(c.blurb)}">
         ${orb(c.id, 'sm')}${c.label}<span class="n">${counts[c.id] || 0}</span>
       </button>`).join('');
   }
@@ -311,6 +328,81 @@
     if (!chip) return;
     Prefs.toggleFilter(chip.dataset.cat);
     refreshPanels();
+  });
+
+  /* ---------- hover explanations on the reading head ----------
+     Native title attributes wait too long to appear, and the Reading
+     rail clips overflow, so the tip is a fixed card next to whatever
+     is under the pointer. */
+
+  let readTip = null;
+
+  function ensureReadTip() {
+    if (readTip) return readTip;
+    readTip = document.createElement('div');
+    readTip.className = 'read-tip';
+    readTip.setAttribute('role', 'tooltip');
+    // Position in JS as well as CSS: the Reading rail clips overflow, and
+    // a stale stylesheet would leave a full-width block at the bottom.
+    readTip.style.position = 'fixed';
+    readTip.style.zIndex = '80';
+    readTip.style.width = '248px';
+    readTip.style.maxWidth = 'calc(100vw - 20px)';
+    readTip.style.pointerEvents = 'none';
+    document.body.appendChild(readTip);
+    return readTip;
+  }
+
+  function hideReadTip() {
+    if (readTip) readTip.classList.remove('on');
+  }
+
+  function showReadTip(anchor, kicker, line) {
+    const tip = ensureReadTip();
+    tip.innerHTML = `<div class="read-tip-k">${esc(kicker)}</div><p>${esc(line)}</p>`;
+    tip.classList.add('on');
+    const r = anchor.getBoundingClientRect();
+    const tw = tip.offsetWidth || 260;
+    const th = tip.offsetHeight || 80;
+    let left = r.left - tw - 12;
+    if (left < 10) left = Math.min(window.innerWidth - tw - 10, r.right + 12);
+    let top = r.top + (r.height - th) / 2;
+    top = Math.max(10, Math.min(top, window.innerHeight - th - 10));
+    tip.style.left = Math.round(left) + 'px';
+    tip.style.top = Math.round(top) + 'px';
+  }
+
+  el.bars.addEventListener('pointerover', e => {
+    const row = e.target.closest('.bar-row');
+    if (!row || !el.bars.contains(row)) return;
+    const k = row.dataset.metric;
+    const how = METRIC_HOW[k];
+    if (!how) return;
+    const thin = analysis && analysis.metrics && analysis.metrics.thin;
+    showReadTip(row, METRIC_LABELS[k], thin
+      ? how + ' Nothing registers until the note has a paragraph or so.'
+      : how);
+  });
+  el.bars.addEventListener('pointerout', e => {
+    const row = e.target.closest('.bar-row');
+    if (!row) return;
+    if (e.relatedTarget && row.contains(e.relatedTarget)) return;
+    hideReadTip();
+  });
+
+  el.filters.addEventListener('pointerover', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip || !el.filters.contains(chip)) return;
+    const cat = CATS[chip.dataset.cat];
+    if (!cat) return;
+    showReadTip(chip, cat.label,
+      cat.blurb + ' The number is how many the reader found in this note.');
+  });
+  el.filters.addEventListener('pointerout', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    if (e.relatedTarget && chip.contains(e.relatedTarget)) return;
+    hideReadTip();
   });
 
   /* ---------- constellation ---------- */
