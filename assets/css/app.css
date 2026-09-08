@@ -36,6 +36,7 @@
   --r-md: 14px;
   --r-sm: 10px;
 
+  --nav: 78px;
   --rail-l: 268px;
   --rail-r: 380px;
   --ease: cubic-bezier(.22,.61,.36,1);
@@ -92,37 +93,8 @@ html, body {
   z-index: 2;
   height: 100%;
   display: grid;
-  grid-template-rows: 52px 1fr;
+  grid-template-columns: var(--nav) minmax(0, 1fr);
 }
-
-header.top {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 0 18px;
-  border-bottom: 1px solid var(--hairline-2);
-  backdrop-filter: blur(14px);
-  background: linear-gradient(180deg, rgba(8,7,10,.72), rgba(8,7,10,.28));
-}
-
-.brand { display: flex; align-items: center; gap: 10px; }
-.brand .glyph {
-  width: 22px; height: 26px; position: relative; flex: none;
-}
-.brand .glyph svg { width: 100%; height: 100%; display: block; }
-.brand .name {
-  font-family: var(--serif);
-  font-size: 16px;
-  letter-spacing: .06em;
-  color: var(--ink);
-}
-.brand .sub {
-  font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase;
-  color: var(--ink-3); margin-left: 4px; padding-left: 10px;
-  border-left: 1px solid var(--hairline);
-}
-
-.top .spacer { flex: 1; }
 
 /* micro action — the Khora uppercase letterspaced control */
 .micro {
@@ -803,7 +775,7 @@ aside.insights {
 body.exploring { overflow: hidden; }
 
 #graph {
-  position: fixed; inset: 0; z-index: 50;
+  position: fixed; inset: 0 0 0 var(--nav); z-index: 50;
   background: radial-gradient(130% 100% at 50% 50%, rgba(9,8,11,.965), rgba(4,3,6,.995));
   backdrop-filter: blur(14px);
   animation: fade .32s var(--ease);
@@ -1452,3 +1424,91 @@ body.dim3 .gx-top, body.dim3 .gx-trail { right: 0; }
   font-family: var(--serif); font-size: 15px; line-height: 1.5; color: var(--ink); margin: 0 0 6px;
 }
 .place-result .sub { font-size: 12px; line-height: 1.65; color: var(--ink-3); margin: 0 0 16px; }
+
+/* ============================================================
+   The side navigation
+
+   Split by ownership, after Zillow's product nav: the rail holds
+   what accumulates across the journal, and anything scoped to a
+   single note stays with the note. That is what lets the active
+   state mean something precise.
+   ============================================================ */
+nav.sidenav {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 16px; padding: 14px 0 18px;
+  border-right: 1px solid var(--hairline-2);
+  background: linear-gradient(180deg, rgba(8,7,10,.6), rgba(8,7,10,.3));
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+
+.nav-brand { width: 22px; height: 26px; flex: none; display: block; }
+.nav-brand svg { width: 100%; height: 100%; display: block; }
+
+.nav-new {
+  width: 40px; height: 40px; flex: none;
+  display: grid; place-items: center;
+  border: 1px solid var(--hairline); border-radius: var(--r-sm);
+  background: var(--glass-2); color: var(--ink-2); cursor: pointer;
+  transition: color .18s var(--ease), background .18s var(--ease), border-color .18s var(--ease);
+}
+.nav-new svg { width: 18px; height: 18px; }
+.nav-new:hover {
+  color: var(--ink); background: rgba(255,255,255,.1);
+  border-color: rgba(255,255,255,.24);
+}
+
+.nav-rule { width: 30px; height: 1px; background: var(--hairline); flex: none; }
+
+/* 56 tall on a 72px pitch — gap 16 plus height 56 — after the reference.
+   The target is as wide as its widest label rather than as its 40px pill,
+   so 'Explore' is not left hanging outside the thing you can click. */
+.nav-item {
+  width: 56px; height: 56px; flex: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 5px; border: 0; background: none; cursor: pointer;
+  border-radius: var(--r-sm); color: var(--ink-3);
+  font-family: var(--sans); font-weight: 700;
+  transition: color .18s var(--ease);
+}
+.nav-item svg { width: 24px; height: 24px; flex: none; }
+/* .1em, not the .18em of .micro: 'Determinism'-length words overflow 78px */
+.nav-item .nav-lab {
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  line-height: 1; white-space: nowrap;
+}
+.nav-item:hover { color: var(--ink-2); }
+
+/* the active pill sits behind the icon, not the whole target */
+.nav-item::before {
+  content: ''; position: absolute; width: 40px; height: 32px;
+  border-radius: var(--pill); background: transparent;
+  transition: background .2s var(--ease);
+}
+.nav-item { position: relative; }
+.nav-item.on { color: var(--ink); }
+.nav-item.on::before { background: var(--glass-2); }
+.nav-item.on svg { color: var(--stance); }
+.nav-item > * { position: relative; }
+
+/* the Reading rail keeps its own collapse control */
+.ins-collapse {
+  width: 22px; height: 22px; flex: none; display: grid; place-items: center;
+  border: 0; background: none; cursor: pointer; color: var(--ink-4);
+  border-radius: var(--r-sm); transition: color .18s var(--ease), background .18s var(--ease);
+}
+.ins-collapse svg { width: 14px; height: 14px; }
+.ins-collapse:hover { color: var(--ink-2); background: var(--glass-2); }
+.body.insights-closed .ins-collapse svg { transform: scaleX(-1); }
+
+/* Collapsing takes the panel's column to zero width, which would clip away
+   the one control that brings it back. Closed, the chevron hangs off the
+   panel's edge while the rest of the panel stays hidden behind it. */
+.body.insights-closed aside.insights { position: relative; overflow: visible; }
+.body.insights-closed aside.insights > * { visibility: hidden; }
+.body.insights-closed .ins-collapse {
+  visibility: visible; position: absolute; top: 16px; right: 8px;
+  color: var(--ink-3);
+}
+
+.doc-meta .spacer { flex: 1; }
