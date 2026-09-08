@@ -1259,9 +1259,13 @@ each group, and still nothing that writes a score from prose."
 - Test: `.verify/shelf.mjs`
 
 **Interfaces:**
-- Consumes: `setView`, `renderShelf` from Task 3; `LIB.shelf(insights)` from
-  `library.js`; `ENGINE.analyze(text)` from `engine.js`; `Notes.all()` from
-  `store.js`; `openRoom(workId)` from `app.js`.
+- Consumes: `setView`, `renderShelf` from Task 3; `ENGINE.analyze(text)` from
+  `engine.js`; `Notes.all()` from `store.js`; `openRoom(workId)` from
+  `app.js`; and `LIB.shelf(insights)` from `library.js:483`, which returns
+  work records already sorted by `raisedBy.length` descending, each shaped
+  `{ id, title, author, era?, section?, raisedBy: [{key,label,category,note}], sections: [] }`.
+  Note that a record's own `raisedBy` holds the insights that raised the
+  work, not the notes — hence the separate `notesFor` map below.
 - Produces: nothing other tasks consume.
 
 - [ ] **Step 1: Write the failing test**
@@ -1349,17 +1353,28 @@ if (back) {
     () => !document.getElementById('shelf-view').hidden));
 }
 
-// editing a note changes the shelf: the cache must invalidate
-const before = (await page.$$('#shelf-view .work')).length;
+// The cache must invalidate on an edit. With a stale cache the shelf would
+// come back byte-identical after a real change of subject, so compare the
+// rendered markup rather than only the count.
+const beforeHtml = await page.innerHTML('#shelf-view');
 await page.click('#btn-rail');
 await page.waitForTimeout(300);
-await page.fill('#body-input', B + ' I keep coming back to the same pattern and part of me wonders whether the whole thing is pointless and always was.');
+await page.fill('#body-input', B + ' I keep coming back to the same pattern and part of me wonders whether the whole thing is pointless and always was, whether any of it means anything at all.');
 await page.waitForTimeout(1600);
 await page.click('#btn-shelf');
 await page.waitForTimeout(700);
-const after = (await page.$$('#shelf-view .work')).length;
-check('editing a note re-reads it', after !== before || true, before + ' then ' + after);
-check('the shelf did not go empty after an edit', after > 0);
+const afterHtml = await page.innerHTML('#shelf-view');
+check('editing a note re-reads it', afterHtml !== beforeHtml);
+check('the shelf did not go empty after an edit',
+  (await page.$$('#shelf-view .work')).length > 0);
+
+// and the other half of the cache contract: unchanged notes render the same
+await page.click('#btn-rail');
+await page.waitForTimeout(250);
+await page.click('#btn-shelf');
+await page.waitForTimeout(700);
+check('an unchanged journal renders the same shelf',
+  (await page.innerHTML('#shelf-view')) === afterHtml);
 
 if (problems.length) problems.forEach(p => check(p, false));
 console.log(`\n${pass} passed, ${fail} failed, ${problems.length} runtime issues`);
@@ -1394,25 +1409,25 @@ Replace the `renderShelf` stub in `assets/js/app.js`:
   }
 
   function journalShelf() {
-    const all = Notes.all();
     const insights = [];
-    const raisedBy = {};             // workId -> Set of note titles
+    // Not named raisedBy: a shelf record already has a raisedBy field, and it
+    // holds the insights that raised the work, not the notes they came from.
+    const notesFor = {};             // workId -> Set of note titles
 
-    all.forEach(n => {
-      const a = analysisOf(n);
+    Notes.all().forEach(n => {
       // the open note is live, so prefer the analysis already in hand
-      const use = n.id === activeId && analysis ? analysis : a;
+      const use = n.id === activeId && analysis ? analysis : analysisOf(n);
       (use.insights || []).forEach(i => insights.push(i));
       LIB.shelf(use.insights || []).forEach(w => {
-        (raisedBy[w.id] = raisedBy[w.id] || new Set()).add(n.title || 'Untitled');
+        (notesFor[w.id] = notesFor[w.id] || new Set()).add(n.title || 'Untitled');
       });
     });
 
-    return { shelf: LIB.shelf(insights), raisedBy };
+    return { shelf: LIB.shelf(insights), notesFor };
   }
 
   function renderShelf() {
-    const { shelf: works, raisedBy } = journalShelf();
+    const { shelf: works, notesFor } = journalShelf();
 
     if (!works.length) {
       el.shelfView.innerHTML = `<div class="jview-empty">
@@ -1429,8 +1444,10 @@ Replace the `renderShelf` stub in `assets/js/app.js`:
           ones near the top are the arguments you keep walking back into.</p>
       </div>
       ${works.map(w => {
-        const notes = [...(raisedBy[w.id] || [])];
-        return `<article class="work" data-work="${esc(w.id)}" data-weight="${w.weight || w.hits || 0}">
+        const notes = [...(notesFor[w.id] || [])];
+        // LIB.shelf already sorts by raisedBy.length descending; the attribute
+        // exposes that weight so the ordering is assertable from a test.
+        return `<article class="work" data-work="${esc(w.id)}" data-weight="${w.raisedBy.length}">
           <h4>${esc(w.title)}</h4>
           <div class="byline">${esc(w.author)}${w.era ? ' · ' + esc(w.era) : ''}</div>
           ${notes.length ? `<div class="raised">Raised by ${notes.slice(0, 3).map(esc).join(', ')}${
