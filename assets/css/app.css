@@ -1541,10 +1541,12 @@ nav.sidenav {
 
 /* the active pill sits behind the icon, not the whole target — so it is
    narrower than the target and has to be centred deliberately */
+/* Same 40×40 square as .nav-new, not a shorter pill — the active fill
+   was reading as a small oval behind the icon. */
 .nav-item::before {
-  content: ''; position: absolute; width: 40px; height: 32px;
+  content: ''; position: absolute; width: 40px; height: 40px;
   left: 50%; top: 50%; transform: translate(-50%, -50%);
-  border-radius: var(--pill); background: transparent;
+  border-radius: var(--r-sm); background: transparent;
   transition: background .2s var(--ease);
 }
 .nav-item { position: relative; }
