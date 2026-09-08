@@ -112,6 +112,22 @@ check('earlier crumbs keep their identity when one is appended',
   (await stamps()).slice(0, kept.length).join('|') === kept.join('|'));
 check('the live crumb is the newly appended visit', await current() === d);
 
+check('Save as Pathway is enabled after a descent', await page.evaluate(
+  () => !document.getElementById('gx-save-path').disabled));
+
+const beforeDrop = await stamp();
+const mid = afterNew[2];
+await page.evaluate(id => {
+  document.querySelector(`#gx-trail .gx-crumb[data-goto="${id}"] .gx-crumb-x`).click();
+}, mid);
+await page.waitForTimeout(150);
+const afterDrop = await crumbs();
+check('deleting a middle crumb keeps the others',
+  afterDrop.join('|') === afterNew.filter(id => id !== mid).join('|'),
+  afterDrop.join(' → '));
+check('deleting a crumb does not rebuild the remaining ones',
+  (await stamps()).join('|') === beforeDrop.filter((_, i) => afterNew[i] !== mid).join('|'));
+
 if (problems.length) problems.forEach(p => check(p, false));
 console.log(`\n${pass} passed, ${fail} failed, ${problems.length} runtime issues`);
 await browser.close();

@@ -3,7 +3,7 @@
    ============================================================ */
 
 (function () {
-  const { Notes, Prompts, Prefs, Share, Saved, Attach, Belief } = window.PalinodeStore;
+  const { Notes, Prompts, Prefs, Share, Saved, Attach, Belief, Pathways } = window.PalinodeStore;
   const BEL = window.PalinodeBeliefs;
   const BSCORE = window.PalinodeBeliefScore;
   const SPECUI = window.PalinodeSpectrumUI;
@@ -154,13 +154,21 @@
     if (!n) return;
     pendingForget = id;
     const label = (n.title || '').trim() || 'Untitled';
+    $('#forget-title').textContent = 'Delete this note?';
     $('#forget-lede').textContent = '“' + label + '” will be removed from this device. This cannot be undone.';
+    $('#forget-scrim').dataset.kind = 'note';
+    $('#forget-scrim').dataset.id = id;
     $('#forget-scrim').classList.add('on');
   }
 
   function closeForget() {
     pendingForget = null;
-    $('#forget-scrim').classList.remove('on');
+    const scrim = $('#forget-scrim');
+    scrim.dataset.kind = '';
+    scrim.dataset.id = '';
+    $('#forget-title').textContent = 'Delete this note?';
+    $('#forget-lede').textContent = 'This cannot be undone.';
+    scrim.classList.remove('on');
   }
 
   function forgetNote(id) {
@@ -190,8 +198,19 @@
 
   $('#forget-cancel').addEventListener('click', closeForget);
   $('#forget-confirm').addEventListener('click', () => {
+    const kind = $('#forget-scrim').dataset.kind;
+    const extra = $('#forget-scrim').dataset.id;
     const id = pendingForget;
     closeForget();
+    if (kind === 'pathway' && extra) {
+      Pathways.remove(extra);
+      if (window.PalinodePathways) PalinodePathways.refresh();
+      if (window.PalinodePathways && PalinodePathways.isWalkOpen && PalinodePathways.isWalkOpen())
+        PalinodePathways.closeWalk({ toList: true });
+      renderComposer();
+      toast('Pathway deleted.');
+      return;
+    }
     if (id) forgetNote(id);
   });
   $('#forget-scrim').addEventListener('click', e => {
@@ -260,8 +279,15 @@
     el.promptCard.classList.toggle('engaged', on);
   }
 
+  function closePathways() {
+    if (!window.PalinodePathways) return;
+    PalinodePathways.hideList();
+    PalinodePathways.closeWalk({ toList: false });
+  }
+
   function newNote() {
     closeExplore();
+    closePathways();
     el.body.classList.remove('show-insights', 'show-rail');
     syncNav('write');
     const n = Notes.create({});
@@ -950,6 +976,7 @@
     $$('.nav-item').forEach(b => b.classList.remove('on'));
     const id = which === 'insights' ? 'btn-nav-insights'
              : which === 'explore' ? 'btn-explore'
+             : which === 'pathways' ? 'btn-pathways'
              : 'btn-rail';
     const btn = document.getElementById(id);
     if (btn) btn.classList.add('on');
@@ -957,6 +984,8 @@
 
   function phoneTab() {
     if (exploring()) return 'explore';
+    if (window.PalinodePathways && (PalinodePathways.isListOpen() || PalinodePathways.isWalkOpen()))
+      return 'pathways';
     if (el.body.classList.contains('show-insights')) return 'insights';
     return 'write';
   }
@@ -1172,10 +1201,14 @@
     if (analysis.stats.words < 12) { toast('Write a little first — the graph grows out of the note.'); return; }
     persist();
     cancelOffer();
+    closePathways();
     el.body.classList.remove('show-insights', 'show-rail');
     await window.PalinodeGraph.open({
       note: Notes.get(activeId),
       analysis,
+      onSavePathway: steps => {
+        if (window.PalinodePathways) PalinodePathways.offerSave(steps, { noteId: activeId });
+      },
       onClose: () => { if (phone()) syncNav('write'); },
       onSaveChange: renderComposer,
       onOpenNote: noteId => {
@@ -1211,6 +1244,8 @@
     if (!activeId) return;
     const saved = Saved.all(activeId);
     const atts  = Attach.all(activeId);
+    const note = Notes.get(activeId);
+    const paths = ((note && note.pathwayIds) || []).map(id => Pathways.get(id)).filter(Boolean);
 
     // saved concepts and works, as chips on the note
     $('#saved-strip').hidden = !saved.length;
@@ -1220,7 +1255,14 @@
         <span class="x" data-unsave="${esc(x.id)}" title="Remove">×</span>
       </span>`).join('');
 
-    const n = saved.length + atts.length;
+    $('#pathway-strip').hidden = !paths.length;
+    $('#pathway-strip').innerHTML = paths.map(p => `
+      <span class="saved-chip" data-pathway="${esc(p.id)}">
+        ${orb('resonance', 'sm')}<span class="t">${esc(p.title || 'Untitled pathway')}</span>
+        <span class="x" data-unpath="${esc(p.id)}" title="Unlink">×</span>
+      </span>`).join('');
+
+    const n = saved.length + atts.length + paths.length;
     $('#composer-count').textContent = n
       ? n + (n === 1 ? ' thing attached' : ' things attached')
       : 'Nothing attached';
@@ -1330,6 +1372,27 @@
     toast('Removed.');
   });
 
+  $('#pathway-strip').addEventListener('click', e => {
+    const un = e.target.closest('[data-unpath]');
+    if (un) {
+      Pathways.unlinkNote(un.dataset.unpath, activeId);
+      renderComposer();
+      return;
+    }
+    const chip = e.target.closest('[data-pathway]');
+    if (chip && window.PalinodePathways) {
+      closeExplore();
+      el.body.classList.remove('show-insights', 'show-rail');
+      PalinodePathways.openWalk(chip.dataset.pathway);
+      syncNav('pathways');
+    }
+  });
+
+  $('#btn-add-path').addEventListener('click', () => {
+    if (!activeId) { toast('Open a note first.'); return; }
+    if (window.PalinodePathways) PalinodePathways.offerAttach(activeId);
+  });
+
   $('#saved-strip').addEventListener('click', e => {
     const un = e.target.closest('[data-unsave]');
     if (un) {
@@ -1418,8 +1481,9 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
   $('#btn-rail').addEventListener('click', () => {
     if (phone()) {
       const tab = phoneTab();
-      if (tab === 'insights' || tab === 'explore') {
+      if (tab === 'insights' || tab === 'explore' || tab === 'pathways') {
         closeExplore();
+        closePathways();
         el.body.classList.remove('show-insights', 'show-rail');
         syncNav('write');
         return;
@@ -1432,6 +1496,7 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
   });
   $('#btn-nav-insights').addEventListener('click', () => {
     closeExplore();
+    closePathways();
     el.body.classList.remove('show-rail');
     if (el.body.classList.contains('show-insights')) {
       el.body.classList.remove('show-insights');
@@ -1444,11 +1509,31 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
   $('#btn-insights').addEventListener('click', () => {
     el.body.classList.toggle(phone() ? 'show-insights' : 'insights-closed');
   });
+  $('#btn-pathways').addEventListener('click', () => {
+    if (window.PalinodePathways && (PalinodePathways.isListOpen() || PalinodePathways.isWalkOpen())) {
+      closePathways();
+      syncNav(phone() ? 'write' : 'write');
+      return;
+    }
+    closeExplore();
+    el.body.classList.remove('show-insights', 'show-rail');
+    if (window.PalinodePathways) PalinodePathways.showList();
+    syncNav('pathways');
+  });
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       el.scrim.classList.remove('on');
+      $('#path-save-scrim').classList.remove('on');
+      $('#path-pick-scrim').classList.remove('on');
       closeForget();
+      if (window.PalinodePathways && PalinodePathways.isWalkOpen()) {
+        PalinodePathways.closeWalk({ toList: true });
+        syncNav('pathways');
+      } else if (window.PalinodePathways && PalinodePathways.isListOpen()) {
+        PalinodePathways.hideList();
+        syncNav('write');
+      }
     }
     if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); persist(); toast('Saved.'); }
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); run(false); }
@@ -1565,6 +1650,17 @@ Everyone always says the grind is just what it takes. Maybe. I notice that I onl
 
 What I actually want is for someone to see how hard it has been. That is a smaller thing than I have been pretending it is.`
     }]);
+
+    if (window.PalinodePathways) {
+      PalinodePathways.onChange = () => { renderComposer(); renderList(); };
+      PalinodePathways.onOpenNote = id => {
+        closeExplore();
+        closePathways();
+        openNote(id);
+        syncNav('write');
+      };
+    }
+    $('#path-close').addEventListener('click', () => syncNav('write'));
 
     renderPrompt();
     renderList();

@@ -959,15 +959,28 @@ body.exploring { overflow: hidden; }
   font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-4);
   padding-left: 12px; border-left: 1px solid var(--hairline);
 }
-
-.gx-trail {
-  position: absolute; top: 54px; left: 22px; right: calc(var(--rail-r) + 22px);
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+.gx-conn {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
+  cursor: pointer; padding-left: 12px; border-left: 1px solid var(--hairline);
 }
+.gx-conn[hidden] { display: none; }
+.gx-conn input { accent-color: var(--resonance); }
+
+.gx-trail-row {
+  position: absolute; top: 54px; left: 22px; right: calc(var(--rail-r) + 22px);
+  display: flex; align-items: center; gap: 10px;
+}
+.gx-trail {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  flex: 1; min-width: 0;
+}
+#gx-save-path { flex: none; white-space: nowrap; }
 .gx-crumb {
+  position: relative;
   display: inline-flex; align-items: center; gap: 6px;
   background: rgba(10,9,13,.8); border: 1px solid var(--hairline);
-  border-radius: var(--pill); padding: 4px 11px 4px 6px; cursor: pointer;
+  border-radius: var(--pill); padding: 4px 22px 4px 6px; cursor: pointer;
   font-family: var(--sans); font-size: 10.5px; color: var(--ink-3);
   transition: all .18s var(--ease); max-width: 190px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -976,6 +989,19 @@ body.exploring { overflow: hidden; }
 .gx-crumb.on { color: var(--ink); border-color: rgba(255,255,255,.28); }
 .gx-crumb.ahead { opacity: .55; }
 .gx-crumb-sep { color: var(--ink-4); font-size: 10px; }
+.gx-crumb-x {
+  position: absolute; top: 50%; right: 3px; transform: translateY(-50%);
+  width: 16px; height: 16px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(6,5,8,.82); color: var(--ink-2); font-size: 11px; line-height: 1;
+  display: grid; place-items: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .16s var(--ease), background .16s var(--ease), color .16s var(--ease);
+}
+.gx-crumb:hover .gx-crumb-x { opacity: 1; pointer-events: auto; }
+.gx-crumb-x:hover { color: #fff; background: rgba(229,72,77,.85); }
+@media (hover: none) {
+  .gx-crumb-x { opacity: 1; pointer-events: auto; }
+}
 
 .gx-zoom {
   position: absolute; bottom: 22px; left: 22px;
@@ -1062,7 +1088,7 @@ body.exploring { overflow: hidden; }
 
 @media (max-width: 900px) {
   .gx-panel { width: 100%; top: auto; height: 44%; border-left: 0; border-top: 1px solid var(--hairline); }
-  .gx-top, .gx-trail { right: 0; }
+  .gx-top, .gx-trail-row { right: 0; }
 }
 
 /* ============================================================
@@ -1288,7 +1314,95 @@ body.dim3 .gx-zoom { display: none; }
 /* ---------- 3D: the side sheet gives way to an in-context card ---------- */
 body.dim3 .gx-panel { display: none; }
 body.dim3 #gx-3d { inset: 0; }
-body.dim3 .gx-top, body.dim3 .gx-trail { right: 0; }
+body.dim3 .gx-top, body.dim3 .gx-trail-row { right: 0; }
+
+/* ============================================================
+   Pathways — library and linear walk
+   ============================================================ */
+
+#pathways, #pathway-walk {
+  position: fixed; inset: 0 0 0 var(--nav); z-index: 48;
+  background: radial-gradient(130% 100% at 50% 50%, rgba(9,8,11,.965), rgba(4,3,6,.995));
+  display: flex; flex-direction: column;
+  padding: 22px 28px 28px;
+}
+#pathways[hidden], #pathway-walk[hidden] { display: none; }
+.path-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 22px;
+}
+.path-title {
+  flex: 1; min-width: 0;
+  background: none; border: 0; border-bottom: 1px solid transparent;
+  font-family: var(--serif); font-size: 20px; font-weight: 500; color: var(--ink);
+  padding: 4px 0;
+}
+.path-title:focus { outline: none; border-bottom-color: var(--hairline); }
+.path-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.path-card {
+  position: relative;
+  text-align: left; width: 100%;
+  background: var(--glass-2); border: 1px solid var(--hairline);
+  border-radius: var(--r-md); padding: 14px 36px 14px 16px; cursor: pointer;
+  color: inherit;
+}
+.path-card:hover { background: var(--glass-3); }
+.path-card h4 {
+  margin: 0 0 6px; font-family: var(--serif); font-weight: 500;
+  font-size: 16px; color: var(--ink);
+}
+.path-card p { margin: 0; font-size: 11px; color: var(--ink-3); letter-spacing: .04em; }
+.path-card .forget {
+  position: absolute; top: 10px; right: 10px;
+  width: 22px; height: 22px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(6,5,8,.82); color: var(--ink-2); font-size: 13px;
+  display: grid; place-items: center;
+  opacity: 0; pointer-events: none;
+}
+.path-card:hover .forget { opacity: 1; pointer-events: auto; }
+.path-card .forget:hover { color: #fff; background: rgba(229,72,77,.85); }
+@media (hover: none) {
+  .path-card .forget { opacity: 1; pointer-events: auto; }
+}
+.path-empty { color: var(--ink-3); font-size: 14px; line-height: 1.7; max-width: 420px; padding: 24px 4px; }
+
+.walk-body { flex: 1; overflow-y: auto; max-width: 640px; padding-bottom: 18px; }
+.walk-body .gx-kicker { margin-bottom: 12px; }
+.walk-body h3 {
+  font-family: var(--serif); font-size: 28px; font-weight: 500; line-height: 1.28;
+  margin: 0 0 12px; color: var(--ink);
+}
+.walk-body .gx-question, .walk-body .gx-lede { margin: 0 0 16px; }
+.walk-body .walk-media { max-width: 100%; border-radius: var(--r-md); margin: 8px 0 16px; display: block; }
+.walk-notes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.walk-add { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.walk-link { margin-bottom: 12px; }
+.walk-picker {
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 200px; overflow-y: auto; margin-bottom: 12px;
+}
+.walk-picker button {
+  text-align: left; background: var(--glass-2); border: 1px solid var(--hairline);
+  border-radius: var(--r-sm); padding: 8px 12px; color: var(--ink-2); cursor: pointer;
+}
+.walk-picker button:hover { color: var(--ink); background: var(--glass-3); }
+.walk-nav {
+  display: flex; align-items: center; gap: 14px;
+  padding-top: 10px; border-top: 1px solid var(--hairline-2);
+}
+#walk-pos { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.path-name {
+  width: 100%; box-sizing: border-box;
+  background: rgba(0,0,0,.45); border: 1px solid var(--hairline);
+  border-radius: var(--r-sm); padding: 10px 12px; margin-bottom: 14px;
+  color: var(--ink); font-family: var(--serif); font-size: 16px;
+}
+.path-pick-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; max-height: 280px; overflow-y: auto; }
+.path-pick-list button {
+  text-align: left; background: var(--glass-2); border: 1px solid var(--hairline);
+  border-radius: var(--r-sm); padding: 10px 12px; color: var(--ink-2); cursor: pointer;
+}
+.path-pick-list button:hover { color: var(--ink); }
+#path-save-scrim, #path-pick-scrim { z-index: 70; }
 
 .gx-hud {
   position: absolute; left: 0; top: 0;
@@ -1622,7 +1736,7 @@ nav.sidenav {
     transition: transform .22s var(--ease);
   }
   html.nav-hidden nav.sidenav { transform: translateY(100%); }
-  .nav-brand, .nav-rule, #btn-shelf, #btn-profile { display: none; }
+  .nav-brand, .nav-rule, #btn-profile { display: none; }
   #btn-nav-insights { display: flex; }
   .nav-lab-d { display: none; }
   .nav-lab-m { display: inline; }
@@ -1631,5 +1745,17 @@ nav.sidenav {
   nav.sidenav .nav-new { width: 40px; height: 40px; flex: none; }
   #graph { inset: 0 0 var(--bar) 0; }
   #dropzone { display: none; }
-  #gx-trail { display: none; }
+  #pathways, #pathway-walk { inset: 0 0 var(--bar) 0; }
+  .gx-trail-row {
+    right: 12px; left: 12px;
+    flex-wrap: nowrap;
+  }
+  .gx-trail {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  .gx-crumb { max-width: 148px; flex: none; }
+  #gx-save-path { font-size: 9px; padding: 4px 8px; }
 }

@@ -95,6 +95,7 @@
   let selected = null;
   let trail = [];
   let trailCursor = -1;
+  let connectionsOn = false;
   let sim = null;
   let view = { s: 1, tx: 0, ty: 0 };
   let root = null, elEdges = null, elNodes = null, elPanel = null, elTrail = null;
@@ -347,7 +348,7 @@
 
   const REST = { detected: 220, kin: 190, cites: 165, 'read-by': 195, tradition: 250, within: 205,
                  holds: 150, 'held-by': 150, 'also-wrote': 235,
-                 'sits-on': 210, touches: 200, branch: 240 };
+                 'sits-on': 210, touches: 200, branch: 240, path: 210 };
 
   // Effective radius. A labelled node occupies a pill roughly as wide as its
   // text, so it has to shoulder more room than a bare orb.
@@ -871,7 +872,12 @@
     const orb = document.createElement('span');
     orb.className = 'orb sm';
     orb.style.setProperty('--c', `var(--${n.category})`);
-    btn.append(orb, document.createTextNode(n.label));
+    const kill = document.createElement('span');
+    kill.className = 'gx-crumb-x';
+    kill.dataset.drop = id;
+    kill.title = 'Remove from trail';
+    kill.textContent = '×';
+    btn.append(orb, document.createTextNode(n.label), kill);
     return btn;
   }
 
@@ -906,6 +912,65 @@
     appendCrumb(id);
     trailCursor = trail.length - 1;
     markTrail();
+    syncSaveBtn();
+  }
+
+  function syncSaveBtn() {
+    const btn = document.getElementById('gx-save-path');
+    if (btn) btn.disabled = trail.length === 0;
+  }
+
+  function dropTrail(id) {
+    const at = trail.indexOf(id);
+    if (at < 0 || !elTrail) return;
+    const crumbs = [...elTrail.querySelectorAll('.gx-crumb')];
+    const btn = crumbs[at];
+    if (btn) {
+      const prev = btn.previousElementSibling;
+      const next = btn.nextElementSibling;
+      if (prev && prev.classList.contains('gx-crumb-sep')) prev.remove();
+      else if (next && next.classList.contains('gx-crumb-sep')) next.remove();
+      btn.remove();
+    }
+    trail.splice(at, 1);
+    if (!trail.length) {
+      trailCursor = -1;
+      markTrail();
+      syncSaveBtn();
+      notify();
+      return;
+    }
+    if (trailCursor === at) {
+      trailCursor = Math.max(0, at - 1);
+      const stay = trail[trailCursor];
+      const n = nodes.get(stay);
+      selected = stay;
+      markDirty();
+      if (n) { nodes.forEach(x => { x.focusHold = false; }); n.focusHold = true; detail(stay); centreOn(n); }
+    } else if (trailCursor > at) {
+      trailCursor -= 1;
+    }
+    markTrail();
+    syncSaveBtn();
+    notify();
+  }
+
+  function trailSteps() {
+    return trail.map(id => {
+      const n = nodes.get(id);
+      if (!n) return null;
+      const step = {
+        id: n.type === 'note' && ctx && ctx.note ? nid(ctx.note.id) : n.id,
+        type: n.type === 'note' ? 'note-other' : n.type,
+        ref: n.type === 'note' && ctx && ctx.note ? ctx.note.id : n.ref,
+        label: n.label || label(n),
+        category: n.category || category(n),
+        sub: kicker(n)
+      };
+      if (n.type === 'note' && ctx && ctx.note) step.noteId = ctx.note.id;
+      if (n.type === 'note-other') step.noteId = n.ref;
+      return step;
+    }).filter(Boolean);
   }
 
   /* ================= interaction ================= */
@@ -922,12 +987,13 @@
     nodes.forEach(x => { x.focusHold = false; });
     n.focusHold = true;
 
-    const added = expand(n, n.type === 'tradition' || n.type === 'spectrum' ? 7 : 9);
+    const grow = !(ctx && ctx.mode === 'pathway' && !connectionsOn);
+    const added = grow ? expand(n, n.type === 'tradition' || n.type === 'spectrum' ? 7 : 9) : 0;
     pushTrail(id);
     detail(id);
     centreOn(n);
     notify();
-    if (added === 0 && n.type !== 'note') toast('Everything this leads to is already on the canvas.');
+    if (grow && added === 0 && n.type !== 'note') toast('Everything this leads to is already on the canvas.');
   }
 
   const listeners = [];
@@ -977,7 +1043,9 @@
   /* ================= open / close ================= */
 
   async function open(context) {
-    ctx = context;
+    ctx = context || {};
+    if (!ctx.analysis) ctx.analysis = { concepts: [], insights: [], leans: [], stats: { words: 0 } };
+    if (!ctx.note) ctx.note = { id: '', title: '', body: '', attachments: [] };
     nodes = new Map(); edges = []; trail = []; trailCursor = -1; selected = null; hoverId = null;
     nodeEls.clear(); edgeEls.clear(); dirty = true; lastScale = -1;
     view = { s: 1, tx: 0, ty: 0 };
@@ -995,11 +1063,25 @@
 
     await buildJournalIndex();
 
+    connectionsOn = !!(ctx.mode === 'pathway' && ctx.connections);
+    if (ctx.mode === 'pathway' && ctx.pathway) seedPathway(ctx.pathway);
+    else seedNoteField();
+
+    applyChrome();
+    sim = { alpha: 1 };
+    for (let i = 0; i < 420; i++) tick();
+    sim.alpha = 0.5;
+
+    paint();
+    requestAnimationFrame(loop);
+    nodes.forEach(n => { if (n.type === 'media') resolveThumb(n); });
+    syncSaveBtn();
+  }
+
+  function seedNoteField() {
     const note = addNode({ id: NID.note, type: 'note', ref: 'note', px: 0, py: 0, depth: 0 });
     note.x = 0; note.y = 0;
     note.label = label(note); note.category = 'resonance'; note.state = 'open';
-
-    // seed: the note's own concepts, then one ring beyond each of them
     expand(note, 40);
     [...nodes.values()].filter(n => n.type === 'concept').forEach(c => {
       c.inNote = true;
@@ -1007,17 +1089,87 @@
     });
     [...nodes.values()].filter(n => n.type === 'concept').slice(0, 8)
       .forEach(c => { expand(c, 5); c.state = 'open'; });
-
-    sim = { alpha: 1 };
-    for (let i = 0; i < 420; i++) tick();     // settle before first paint
-    sim.alpha = 0.5;
-
     selected = NID.note;
     pushTrail(NID.note);
     detail(NID.note);
-    paint();
-    requestAnimationFrame(loop);
-    nodes.forEach(n => { if (n.type === 'media') resolveThumb(n); });
+  }
+
+  function seedPathway(pathway) {
+    (pathway.attachments || []).forEach(att => {
+      ATT_OF[att.id] = { att, noteId: att.noteId || null };
+    });
+    const steps = pathway.steps || [];
+    let prevId = null;
+    const ids = [];
+    steps.forEach((s, i) => {
+      const isNote = s.type === 'note' || s.type === 'note-other';
+      const noteId = isNote ? (s.noteId || (s.ref && s.ref !== 'note' ? s.ref : null)) : null;
+      const id = isNote && noteId ? nid(noteId) : (s.id === 'note' && noteId ? nid(noteId) : s.id);
+      const type = isNote ? 'note-other' : s.type;
+      const ref = isNote ? noteId : s.ref;
+      const node = addNode({
+        id, type, ref,
+        px: (i - Math.max(0, steps.length - 1) / 2) * 240,
+        py: 0, depth: 0, spawnR: 0
+      });
+      node.x = (i - Math.max(0, steps.length - 1) / 2) * 240;
+      node.y = 0;
+      node.label = s.label || label(node);
+      node.category = s.category || category(node);
+      node.state = 'open';
+      if (prevId) addEdge(prevId, node.id, 'path');
+      prevId = node.id;
+      ids.push(node.id);
+    });
+    ids.forEach(id => pushTrail(id));
+    if (ids.length) {
+      trailCursor = 0;
+      selected = ids[0];
+      markTrail();
+      const n = nodes.get(selected);
+      if (n) { n.focusHold = true; detail(selected); }
+    }
+    if (connectionsOn) ids.forEach(id => { const n = nodes.get(id); if (n) expand(n, 7); });
+  }
+
+  function applyChrome() {
+    const title = document.getElementById('gx-title-text');
+    const hint = document.getElementById('gx-hint');
+    const conn = document.getElementById('gx-conn');
+    const path = ctx && ctx.mode === 'pathway' && ctx.pathway;
+    if (title) title.textContent = path ? (path.title || 'Pathway') : 'Exploring';
+    if (conn) conn.hidden = !path;
+    if (hint) {
+      hint.hidden = !!path;
+      if (!path) hint.textContent = dim === '3'
+        ? 'Click a world to centre it · click empty space to go back · drag to orbit'
+        : 'Click any orb to open it and grow the field';
+    }
+    const box = document.getElementById('gx-conn-toggle');
+    if (box) box.checked = connectionsOn;
+  }
+
+  function setConnections(on) {
+    connectionsOn = !!on;
+    const box = document.getElementById('gx-conn-toggle');
+    if (box) box.checked = connectionsOn;
+    if (!root || !ctx || ctx.mode !== 'pathway') return;
+    if (connectionsOn) {
+      trail.forEach(id => { const n = nodes.get(id); if (n) expand(n, 7); });
+      kick(0.5);
+    } else {
+      const keep = new Set(trail);
+      [...nodes.keys()].forEach(id => {
+        if (keep.has(id)) return;
+        nodes.delete(id);
+        const el = nodeEls.get(id);
+        if (el) { el.remove(); nodeEls.delete(id); }
+      });
+      edges = edges.filter(e => keep.has(e.a) && keep.has(e.b));
+      markDirty();
+      kick(0.35);
+    }
+    notify();
   }
 
   function close() {
@@ -1051,12 +1203,12 @@
         return;
       }
       flat.hidden = true; deep.hidden = false;
-      hint.textContent = 'Click a world to centre it · click empty space to go back · drag to orbit';
+      if (hint && !hint.hidden) hint.textContent = 'Click a world to centre it · click empty space to go back · drag to orbit';
       window.PalinodeGraph3D.mount(deep);
       window.PalinodeGraph3D.resize();
     } else {
       deep.hidden = true; flat.hidden = false;
-      hint.textContent = 'Click any orb to open it and grow the field';
+      if (hint && !hint.hidden) hint.textContent = 'Click any orb to open it and grow the field';
       window.PalinodeGraph3D.unmount();
       markDirty();
       kick(0.3);
@@ -1122,6 +1274,13 @@
 
     // panel and trail actions
     host.addEventListener('click', e => {
+      const drop = e.target.closest('[data-drop]');
+      if (drop) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropTrail(drop.dataset.drop);
+        return;
+      }
       const goto = e.target.closest('[data-goto]');
       if (goto) {
         const id = goto.dataset.goto;
@@ -1169,6 +1328,13 @@
     });
 
     document.getElementById('gx-close').addEventListener('click', () => { close(); if (ctx.onClose) ctx.onClose(); });
+    const savePath = document.getElementById('gx-save-path');
+    if (savePath) savePath.addEventListener('click', () => {
+      if (!trail.length) return;
+      if (ctx.onSavePathway) ctx.onSavePathway(trailSteps());
+    });
+    const connToggle = document.getElementById('gx-conn-toggle');
+    if (connToggle) connToggle.addEventListener('change', e => setConnections(e.target.checked));
     document.getElementById('gx-in').addEventListener('click',  () => { view.s = Math.min(2.4, view.s * 1.25); });
     document.getElementById('gx-out').addEventListener('click', () => { view.s = Math.max(0.4, view.s / 1.25); });
     document.getElementById('gx-fit').addEventListener('click', () => {
@@ -1192,6 +1358,7 @@
 
   window.PalinodeGraph = {
     open, close, isOpen: () => !!root,
+    trailSteps, setConnections,
 
     // Called after an item is answered elsewhere: the mark on every
     // spectrum node has moved, so the panel and the 3D card must be re-read.
@@ -1212,6 +1379,7 @@
       all: () => nodes,
       trail: () => trail.slice(),
       trailIndex: () => trailCursor,
+      dropTrail,
       label: n => label(n),
       category: n => category(n),
       kicker: n => kicker(n),

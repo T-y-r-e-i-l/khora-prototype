@@ -22,6 +22,7 @@
 
   const blank = () => ({
     notes: [],
+    pathways: [],
     prompt: { date: null, deck: [], cursor: 0, skips: 0, written: [] },
     prefs: { filters: { resonance:true, tension:true, clarity:true, stance:true, lineage:true }, dismissed: {} },
     // Only answered items live here. Scores are never stored — they are
@@ -37,6 +38,8 @@
       const next = Object.assign(blank(), parsed);
       // Saves written before the belief instrument existed have no such key.
       next.belief = Object.assign(blank().belief, parsed.belief || {});
+      next.pathways = parsed.pathways || [];
+      (next.notes || []).forEach(n => { if (!n.pathwayIds) n.pathwayIds = []; });
       return next;
     } catch (e) { return blank(); }
   }
@@ -78,7 +81,8 @@
         shared: false,
         concepts: [],
         saved: [],
-        attachments: []
+        attachments: [],
+        pathwayIds: []
       };
       state.notes.unshift(note);
       save();
@@ -92,7 +96,9 @@
       return n;
     },
     remove(id) {
-      state.notes = state.notes.filter(n => n.id !== id);
+      const n = Notes.get(id);
+      if (n) (n.pathwayIds || []).slice().forEach(pid => detachNote(pid, id, true));
+      state.notes = state.notes.filter(x => x.id !== id);
       save();
     },
     search(q) {
@@ -232,6 +238,143 @@
     }
   };
 
+  /* ---------- pathways: a curated walk through worlds ----------
+     Steps are snapshots of graph nodes. A note and a pathway name
+     each other, so either side can find the relationship.        */
+
+  function noteIdFromStep(step) {
+    if (!step) return null;
+    if (step.type === 'note' || step.type === 'note-other')
+      return step.noteId || (step.ref && step.ref !== 'note' ? step.ref : null);
+    return null;
+  }
+
+  function attachNote(pathwayId, noteId) {
+    const p = state.pathways.find(x => x.id === pathwayId);
+    const n = Notes.get(noteId);
+    if (!p || !n) return;
+    p.noteIds = p.noteIds || [];
+    n.pathwayIds = n.pathwayIds || [];
+    if (!p.noteIds.includes(noteId)) p.noteIds.push(noteId);
+    if (!n.pathwayIds.includes(pathwayId)) n.pathwayIds.push(pathwayId);
+  }
+
+  function detachNote(pathwayId, noteId, dropSteps) {
+    const p = state.pathways.find(x => x.id === pathwayId);
+    const n = Notes.get(noteId);
+    if (p) {
+      p.noteIds = (p.noteIds || []).filter(id => id !== noteId);
+      if (dropSteps) p.steps = (p.steps || []).filter(s => noteIdFromStep(s) !== noteId);
+      p.updated = Date.now();
+    }
+    if (n) n.pathwayIds = (n.pathwayIds || []).filter(id => id !== pathwayId);
+  }
+
+  const Pathways = {
+    all() { return state.pathways.slice().sort((a, b) => b.updated - a.updated); },
+    get(id) { return state.pathways.find(p => p.id === id) || null; },
+
+    create(seed = {}) {
+      const now = Date.now();
+      const rec = {
+        id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+        title: seed.title || '',
+        created: now,
+        updated: now,
+        steps: (seed.steps || []).map(s => Object.assign({}, s)),
+        noteIds: (seed.noteIds || []).slice(),
+        attachments: (seed.attachments || []).slice()
+      };
+      state.pathways.unshift(rec);
+      rec.noteIds.forEach(nid => attachNote(rec.id, nid));
+      rec.steps.forEach(s => {
+        const nid = noteIdFromStep(s);
+        if (nid) attachNote(rec.id, nid);
+      });
+      save();
+      return rec;
+    },
+
+    update(id, patch) {
+      const p = Pathways.get(id);
+      if (!p) return null;
+      Object.assign(p, patch, { updated: Date.now() });
+      save();
+      return p;
+    },
+
+    remove(id) {
+      const p = Pathways.get(id);
+      if (!p) return;
+      (p.noteIds || []).slice().forEach(nid => detachNote(id, nid));
+      (p.attachments || []).forEach(a => {
+        if (a.kind && a.kind !== 'link' && window.PalinodeMedia)
+          window.PalinodeMedia.del(a.id);
+      });
+      state.pathways = state.pathways.filter(x => x.id !== id);
+      save();
+    },
+
+    linkNote(pathwayId, noteId) {
+      attachNote(pathwayId, noteId);
+      const p = Pathways.get(pathwayId);
+      if (p) p.updated = Date.now();
+      save();
+    },
+
+    unlinkNote(pathwayId, noteId) {
+      detachNote(pathwayId, noteId);
+      save();
+    },
+
+    addStep(pathwayId, step, after) {
+      const p = Pathways.get(pathwayId);
+      if (!p) return null;
+      const s = Object.assign({}, step);
+      if (after == null || after >= p.steps.length) p.steps.push(s);
+      else p.steps.splice(after + 1, 0, s);
+      const nid = noteIdFromStep(s);
+      if (nid) attachNote(pathwayId, nid);
+      p.updated = Date.now();
+      save();
+      return s;
+    },
+
+    removeStep(pathwayId, stepId) {
+      const p = Pathways.get(pathwayId);
+      if (!p) return;
+      const gone = p.steps.find(s => s.id === stepId);
+      p.steps = p.steps.filter(s => s.id !== stepId);
+      if (gone) {
+        const nid = noteIdFromStep(gone);
+        if (nid && !p.steps.some(s => noteIdFromStep(s) === nid))
+          detachNote(pathwayId, nid);
+      }
+      p.updated = Date.now();
+      save();
+    },
+
+    addAttachment(pathwayId, att) {
+      const p = Pathways.get(pathwayId);
+      if (!p) return null;
+      const rec = Object.assign({ id: 'a' + uid(), at: Date.now() }, att);
+      p.attachments = p.attachments || [];
+      p.attachments.push(rec);
+      p.updated = Date.now();
+      save();
+      return rec;
+    },
+
+    removeAttachment(pathwayId, attId) {
+      const p = Pathways.get(pathwayId);
+      if (!p) return;
+      p.attachments = (p.attachments || []).filter(x => x.id !== attId);
+      p.steps = (p.steps || []).filter(s => s.ref !== attId && s.id !== attId);
+      p.updated = Date.now();
+      save();
+    }
+  };
+
   /* ---------- belief profile: answers in, scores derived ----------
      The journal mark on a spectrum moves only through `answer`. Prose
      never reaches this store — a note can lean, and leaning is not
@@ -351,7 +494,7 @@
   };
 
   window.PalinodeStore = {
-    Notes, Prompts, Prefs, Share, Saved, Attach, Belief,
+    Notes, Prompts, Prefs, Share, Saved, Attach, Belief, Pathways,
     usingMemory: () => usingMemory,
     exportAll: () => JSON.stringify(state, null, 2),
     seedIfEmpty(samples) {

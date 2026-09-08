@@ -76,7 +76,7 @@ check('the body starts at the top now', geo.bodyTop === 0, geo.bodyTop + 'px');
 // the DOM contract Tasks 3 and 6 consume: these exact ids, carrying these
 // exact data-views, in this order. A typo in either would ship green
 // against a bare count, so name them.
-const CONTRACT = 'btn-rail:write,btn-explore:explore,btn-shelf:shelf,btn-profile:profile';
+const CONTRACT = 'btn-rail:write,btn-explore:explore,btn-pathways:pathways,btn-profile:profile';
 const actual = geo.items.map(i => i.id + ':' + i.view).join(',');
 check('four destinations', geo.items.length === 4,
   geo.items.map(i => i.id).join(','));
@@ -113,24 +113,36 @@ const viewState = () => page.evaluate(() => {
   return JSON.stringify({
     empty: shown('empty-state'), editor: shown('editor-wrap'),
     graph: shown('graph'), reading: shown('reading-room'),
+    pathways: shown('pathways'),
     body: document.getElementById('body').className,
     active: [...document.querySelectorAll('.nav-item.on')].map(e => e.id).join(',')
   });
 });
 
-// Shelf and Profile are inert until the next task. If a click starts doing
-// something, that has to fail here rather than ship green.
 const restState = await viewState();
 const errsBefore = problems.length;
-await page.click('#btn-shelf');
+await page.click('#btn-pathways');
 await page.waitForTimeout(300);
+check('Pathways opens the library', await page.evaluate(
+  () => !document.getElementById('pathways').hidden));
+const afterPath = await viewState();
+check('Pathways marks itself active', JSON.parse(afterPath).active.includes('btn-pathways'),
+  JSON.parse(afterPath).active);
 await page.click('#btn-profile');
 await page.waitForTimeout(300);
-const afterInert = await viewState();
-check('Shelf and Profile change nothing yet',
-  afterInert === restState && problems.length === errsBefore,
-  afterInert === restState ? problems.length - errsBefore + ' new page errors'
-                           : afterInert);
+const afterProfile = await viewState();
+check('Profile is still inert',
+  afterProfile === afterPath && problems.length === errsBefore,
+  afterProfile === afterPath ? problems.length - errsBefore + ' new page errors'
+                             : afterProfile);
+await page.click('#btn-pathways');
+await page.waitForTimeout(200);
+check('Pathways closes from the same button', await page.evaluate(
+  () => document.getElementById('pathways').hidden));
+const afterClose = await viewState();
+check('closing Pathways restores Write',
+  JSON.parse(afterClose).active === 'btn-rail' || JSON.parse(restState).empty === JSON.parse(afterClose).empty,
+  JSON.parse(afterClose).active);
 
 /* The suite creates a note further down, but the app opens on a bare draft,
    so the collapse has to survive that state too. */

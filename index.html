@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/app.css?v=12">
+<link rel="stylesheet" href="assets/css/app.css?v=13">
 </head>
 <body>
 
@@ -59,12 +59,14 @@
       <span class="nav-lab">Explore</span>
     </button>
 
-    <button class="nav-item" id="btn-shelf" data-view="shelf">
+    <button class="nav-item" id="btn-pathways" data-view="pathways">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M5 19V5h4v14zM11 19V5h3v14zM16 19l2.6-13.7 1.4.3L17.4 19z"
-              stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        <circle cx="5" cy="12" r="2.1" fill="currentColor"/>
+        <circle cx="12" cy="12" r="2.1" fill="currentColor"/>
+        <circle cx="19" cy="12" r="2.1" fill="currentColor"/>
+        <path d="M7.2 12h2.6M14.2 12h2.6" stroke="currentColor" stroke-width="1.4"/>
       </svg>
-      <span class="nav-lab">Shelf</span>
+      <span class="nav-lab">Pathways</span>
     </button>
 
     <button class="nav-item" id="btn-profile" data-view="profile">
@@ -146,6 +148,7 @@
               <span class="spacer"></span>
               <button class="ghost" id="btn-media">Add media</button>
               <button class="ghost" id="btn-link">Add link</button>
+              <button class="ghost" id="btn-add-path">Add to pathway</button>
             </div>
 
             <form class="link-form" id="link-form" hidden>
@@ -156,6 +159,7 @@
             </form>
 
             <div class="saved-strip" id="saved-strip" hidden></div>
+            <div class="saved-strip" id="pathway-strip" hidden></div>
             <div class="attach-grid" id="attach-grid"></div>
             <div class="dropzone" id="dropzone">Drop photos, video or audio here</div>
           </section>
@@ -253,8 +257,11 @@
     <div class="gx-top">
       <div class="gx-title">
         <span class="orb sm" style="--c:var(--resonance)"></span>
-        <b>Exploring</b>
+        <b id="gx-title-text">Exploring</b>
         <span class="gx-hint" id="gx-hint">Click any orb to open it and grow the field</span>
+        <label class="gx-conn" id="gx-conn" hidden>
+          <input type="checkbox" id="gx-conn-toggle"> Connections
+        </label>
       </div>
       <div class="seg dim-seg" id="gx-dim">
         <button class="seg-btn on" data-dim="2">2D</button>
@@ -262,7 +269,10 @@
       </div>
       <button class="micro" id="gx-close">Close</button>
     </div>
-    <div id="gx-trail" class="gx-trail"></div>
+    <div class="gx-trail-row">
+      <div id="gx-trail" class="gx-trail"></div>
+      <button class="micro" id="gx-save-path" type="button" disabled>Save as Pathway</button>
+    </div>
     <div class="gx-zoom">
       <button class="micro" id="gx-out">−</button>
       <button class="micro" id="gx-fit">Fit</button>
@@ -273,6 +283,75 @@
   <aside id="gx-panel" class="gx-panel">
     <div class="gx-panel-body"></div>
   </aside>
+</div>
+
+<!-- pathways library -->
+<div id="pathways" hidden>
+  <div class="path-head">
+    <div class="gx-title">
+      <span class="orb sm" style="--c:var(--resonance)"></span>
+      <b>Pathways</b>
+    </div>
+    <button class="micro" id="path-close" type="button">Close</button>
+  </div>
+  <div id="path-list" class="path-list"></div>
+</div>
+
+<!-- linear walk -->
+<div id="pathway-walk" hidden>
+  <div class="path-head">
+    <input class="path-title" id="walk-title" placeholder="Untitled pathway" autocomplete="off">
+    <span class="spacer"></span>
+    <button class="ghost" id="walk-explore" type="button">Open in Explore</button>
+    <button class="micro" id="walk-close" type="button">Close</button>
+  </div>
+  <div class="walk-body" id="walk-body"></div>
+  <div class="walk-notes" id="walk-notes"></div>
+  <div class="walk-add">
+    <button class="ghost" id="walk-add-note" type="button">Add note</button>
+    <button class="ghost" id="walk-add-media" type="button">Add media</button>
+    <button class="ghost" id="walk-add-link" type="button">Add link</button>
+  </div>
+  <form class="link-form walk-link" id="walk-link-form" hidden>
+    <input type="url" id="walk-link-url" placeholder="https://…" required>
+    <input type="text" id="walk-link-title" placeholder="Title (optional)">
+    <button class="ghost solid" type="submit">Add</button>
+    <button class="ghost" type="button" id="walk-link-cancel">Cancel</button>
+  </form>
+  <div class="walk-picker" id="walk-picker" hidden></div>
+  <div class="walk-nav">
+    <button class="ghost" id="walk-prev" type="button">Prev</button>
+    <span id="walk-pos">1 / 1</span>
+    <button class="ghost" id="walk-next" type="button">Next</button>
+  </div>
+</div>
+<input type="file" id="path-file" multiple hidden
+       accept="image/*,video/*,audio/*,.pdf,.txt,.md">
+
+<div class="scrim" id="path-save-scrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="path-save-title">
+    <h3 id="path-save-title">Save as Pathway</h3>
+    <p class="lede">A pathway is this trail, in this order, so someone else can walk it.</p>
+    <input class="path-name" id="path-save-name" placeholder="Untitled pathway" autocomplete="off">
+    <label class="opt" id="path-save-note-opt" hidden>
+      <input type="checkbox" id="path-save-note" checked> Add to this note
+    </label>
+    <div class="modal-actions">
+      <button class="ghost" type="button" id="path-save-cancel">Cancel</button>
+      <button class="ghost solid" type="button" id="path-save-confirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="path-pick-scrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="path-pick-title">
+    <h3 id="path-pick-title">Add to pathway</h3>
+    <div id="path-pick-list" class="path-pick-list"></div>
+    <div class="modal-actions">
+      <button class="ghost" type="button" id="path-pick-new">New empty pathway</button>
+      <button class="ghost" type="button" id="path-pick-cancel">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <!-- share modal -->
@@ -328,6 +407,7 @@
 <script src="assets/vendor/three.min.js"></script>
 <script src="assets/js/graph.js"></script>
 <script src="assets/js/graph3d.js"></script>
+<script src="assets/js/pathways.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>

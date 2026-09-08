@@ -45,7 +45,7 @@ const bar = await page.evaluate(() => {
     bottom: Math.round(window.innerHeight - r.bottom),
     height: Math.round(r.height), items,
     brandShown: shown(document.querySelector('.nav-brand')),
-    shelfShown: shown(document.getElementById('btn-shelf')),
+    pathwaysShown: shown(document.getElementById('btn-pathways')),
     profileShown: shown(document.getElementById('btn-profile')),
     insightsShown: shown(document.getElementById('btn-nav-insights')),
     writeShown: shown(document.getElementById('btn-rail')),
@@ -63,7 +63,7 @@ check('visible items share one row',
 check('items are ordered left to right', bar.items.every((it, k) =>
   k === 0 || it.left > bar.items[k - 1].left), bar.items.map(i => i.id + '@' + i.left).join(','));
 check('the brand is hidden on a phone', !bar.brandShown);
-check('Shelf is off the bar', !bar.shelfShown);
+check('Pathways is on the bar', bar.pathwaysShown);
 check('Profile is off the bar', !bar.profileShown);
 check('Write is on the bar', bar.writeShown);
 check('Insights is on the bar', bar.insightsShown);
@@ -161,8 +161,10 @@ check('Explore opens the graph above the bar', exp.graphBottom <= exp.navTop + 1
 check('2D/3D stays in the graph chrome', exp.dimVisible);
 check('the bar stays clickable over Explore', exp.hitsNav);
 check('Explore marks itself active', exp.on === 'btn-explore', exp.on);
-check('the trail is off a phone', await page.evaluate(
-  () => getComputedStyle(document.getElementById('gx-trail')).display === 'none'));
+check('the trail is on a phone', await page.evaluate(
+  () => getComputedStyle(document.getElementById('gx-trail')).display !== 'none'));
+check('Save as Pathway sits with the trail', await page.evaluate(
+  () => getComputedStyle(document.getElementById('gx-save-path')).display !== 'none'));
 
 await page.click('#gx-dim [data-dim="3"]');
 await page.waitForTimeout(400);
