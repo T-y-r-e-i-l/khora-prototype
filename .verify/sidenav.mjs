@@ -45,14 +45,19 @@ if (!hasRail) await finish();
 const geo = await page.evaluate(() => {
   const nav = document.querySelector('nav.sidenav');
   const r = nav.getBoundingClientRect();
-  const items = [...nav.querySelectorAll('.nav-item')].map(el => {
+  const items = [...nav.querySelectorAll('.nav-item')]
+    .filter(el => getComputedStyle(el).display !== 'none')
+    .map(el => {
     const b = el.getBoundingClientRect();
     return { id: el.id, view: el.dataset.view || '',
              w: Math.round(b.width), h: Math.round(b.height), top: Math.round(b.top) };
   });
   // a label may hang outside its own 56px target and still be perfectly
   // legible; what would actually cut it off is the 78px rail
-  const labelFits = [...nav.querySelectorAll('.nav-lab')].map(lab => {
+  const labelFits = [...nav.querySelectorAll('.nav-lab')].filter(lab => {
+    const item = lab.closest('.nav-item');
+    return item && getComputedStyle(item).display !== 'none';
+  }).map(lab => {
     const b = lab.getBoundingClientRect();
     return { text: lab.textContent,
              out: Math.round(Math.max(r.left - b.left, b.right - r.right)) };
