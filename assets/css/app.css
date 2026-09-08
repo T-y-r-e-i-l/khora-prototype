@@ -246,6 +246,7 @@ main.centre { display: flex; flex-direction: column; min-height: 0; overflow-y: 
   padding-bottom: 16px; border-bottom: 1px solid var(--hairline-2);
 }
 .doc-meta .live { display: flex; align-items: center; gap: 6px; }
+.doc-meta .spacer { flex: 1; }
 .pulse {
   width: 6px; height: 6px; border-radius: 50%; background: var(--resonance);
   box-shadow: 0 0 0 0 rgba(246,162,68,.6);
@@ -322,6 +323,7 @@ aside.insights {
 }
 .ins-head { padding: 16px 18px 0; }
 .ins-head .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.ins-head .row .spacer { flex: 1; }
 .ins-head h3 {
   margin: 0; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); font-weight: 600;
 }
@@ -606,8 +608,10 @@ aside.insights {
 @media (max-width: 900px) {
   .body, .body.rail-closed, .body.insights-closed { grid-template-columns: 1fr; }
   aside.rail, aside.insights { display: none; }
-  .body.show-rail aside.rail { display: flex; position: absolute; inset: 52px auto 0 0; width: 280px; z-index: 20; }
-  .body.show-insights aside.insights { display: flex; position: absolute; inset: 52px 0 0 auto; width: 340px; z-index: 20; }
+  /* These resolve against #app, not .body, so the Library clears the rail
+     itself and neither overlay reserves a gap for a top bar any more. */
+  .body.show-rail aside.rail { display: flex; position: absolute; inset: 0 auto 0 var(--nav); width: 280px; z-index: 20; }
+  .body.show-insights aside.insights { display: flex; position: absolute; inset: 0 0 0 auto; width: 340px; z-index: 20; }
 }
 
 /* ============================================================
@@ -1479,9 +1483,11 @@ nav.sidenav {
 }
 .nav-item:hover { color: var(--ink-2); }
 
-/* the active pill sits behind the icon, not the whole target */
+/* the active pill sits behind the icon, not the whole target — so it is
+   narrower than the target and has to be centred deliberately */
 .nav-item::before {
   content: ''; position: absolute; width: 40px; height: 32px;
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
   border-radius: var(--pill); background: transparent;
   transition: background .2s var(--ease);
 }
@@ -1510,5 +1516,3 @@ nav.sidenav {
   visibility: visible; position: absolute; top: 16px; right: 8px;
   color: var(--ink-3);
 }
-
-.doc-meta .spacer { flex: 1; }

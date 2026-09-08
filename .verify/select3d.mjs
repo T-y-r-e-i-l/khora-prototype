@@ -103,10 +103,10 @@ check('connections arrive behind the centre', mid && mid.orbitOpacity < mid.cent
 
 // stepping back up the trail animates too
 await page.evaluate(() => { window.__samples = []; window.__sampling = true; });
-// empty space ascends — 30px into the graph, which now begins after the rail
-const navW = await page.evaluate(
-  () => document.querySelector('nav.sidenav').getBoundingClientRect().width);
-await page.mouse.click(navW + 30, 700);
+// empty space ascends — 30px inside the graph, wherever the graph starts
+const graphLeft = await page.evaluate(
+  () => document.getElementById('graph').getBoundingClientRect().left);
+await page.mouse.click(graphLeft + 30, 700);
 await page.waitForTimeout(1100);
 await page.evaluate(() => { window.__sampling = false; });
 const s2 = await page.evaluate(() => window.__samples);
