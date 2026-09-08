@@ -1316,8 +1316,8 @@
         return;
       }
       if (kind === 'open-note') { if (ctx.onOpenNote) ctx.onOpenNote(act.dataset.ref); return; }
-      if (kind === 'write') { ctx.onWrite(CONCEPT[act.dataset.ref]); return; }
-      if (kind === 'read')  { ctx.onRead(act.dataset.ref); return; }
+      if (kind === 'write') { if (ctx.onWrite) ctx.onWrite(CONCEPT[act.dataset.ref]); return; }
+      if (kind === 'read')  { if (ctx.onRead) ctx.onRead(act.dataset.ref); return; }
     });
 
     // ---- 2D / 3D ----

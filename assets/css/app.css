@@ -1347,6 +1347,7 @@ body.dim3 .gx-top, body.dim3 .gx-trail-row { right: 0; }
   margin: 0 0 12px; color: var(--ink);
 }
 .feed-item .gx-question, .feed-item .gx-lede { margin: 0 0 16px; }
+.feed-item .gx-act { margin: 0 0 8px; }
 .feed-item .walk-media { max-width: 100%; border-radius: var(--r-md); margin: 8px 0 16px; display: block; }
 .walk-notes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .walk-notes:empty { display: none; }

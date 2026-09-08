@@ -928,6 +928,8 @@
       if (window.PalinodeGraph && window.PalinodeGraph.refreshBeliefs) {
         window.PalinodeGraph.refreshBeliefs();
       }
+      if (window.PalinodePathways && PalinodePathways.refreshWalk)
+        PalinodePathways.refreshWalk();
       if (entry) renderPlaceResult(entry);
       else closePlace();
       return;
@@ -1677,6 +1679,24 @@ What I actually want is for someone to see how hard it has been. That is a small
         closeExplore();
         closePathways();
         openNote(id);
+        syncNav('write');
+      };
+      PalinodePathways.onWrite = concept => {
+        if (!concept) return;
+        closeExplore();
+        closePathways();
+        const n = Notes.create({ promptText: concept.turn, title: '' });
+        openNote(n.id);
+        renderList();
+        el.input.focus();
+        syncNav('write');
+        toast('New note, opened on ' + concept.label + '.');
+      };
+      PalinodePathways.onPlace = axisId => openPlace(axisId, 'pathway');
+      PalinodePathways.onRead = workId => {
+        closeExplore();
+        closePathways();
+        openWork(workId);
         syncNav('write');
       };
     }

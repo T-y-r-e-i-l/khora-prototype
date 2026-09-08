@@ -7,7 +7,7 @@
    ============================================================ */
 
 (function () {
-  const { Notes, Pathways } = window.PalinodeStore;
+  const { Notes, Pathways, Belief } = window.PalinodeStore;
   const Media = window.PalinodeMedia;
   const { CONCEPTS, TRADITIONS } = window.PalinodeCorpus;
   const LIB = window.PalinodeLibrary;
@@ -265,6 +265,46 @@
     el.hidden = !open;
   }
 
+  function stepActs(step) {
+    if (step.type === 'concept' && CONCEPT[step.ref]) {
+      return `<div class="gx-act">
+        <button class="ghost solid" type="button" data-act="write" data-ref="${esc(step.ref)}">Write on this</button>
+      </div>`;
+    }
+    if (step.type === 'spectrum' && BEL.spectrum(step.ref)) {
+      const placed = Belief.score(step.ref);
+      return `<div class="gx-act">
+        <button class="ghost solid" type="button" data-act="place" data-ref="${esc(step.ref)}">${
+          placed ? 'Answer another' : 'Place yourself'}</button>
+      </div>`;
+    }
+    if (step.type === 'work') {
+      return `<div class="gx-act">
+        <button class="ghost solid" type="button" data-act="read" data-ref="${esc(step.ref)}">Open in the Reading Room</button>
+      </div>`;
+    }
+    if (step.type === 'note' || step.type === 'note-other') {
+      const id = step.noteId || step.ref;
+      if (!id || !Notes.get(id)) return '';
+      return `<div class="gx-act">
+        <button class="ghost solid" type="button" data-act="open-note" data-ref="${esc(id)}">Open this note</button>
+      </div>`;
+    }
+    return '';
+  }
+
+  function fireAct(kind, ref) {
+    const api = window.PalinodePathways;
+    if (kind === 'write') {
+      const c = CONCEPT[ref];
+      if (c && api.onWrite) api.onWrite(c);
+      return;
+    }
+    if (kind === 'place' && api.onPlace) { api.onPlace(ref); return; }
+    if (kind === 'read' && api.onRead) { api.onRead(ref); return; }
+    if (kind === 'open-note' && api.onOpenNote) api.onOpenNote(ref);
+  }
+
   function stepHTML(step, pathway) {
     const orb = `<span class="orb sm" style="--c:var(--${esc(step.category || 'resonance')})"></span>`;
     if (step.type === 'concept') {
@@ -272,26 +312,30 @@
       const trad = c ? (TRADITIONS[c.tradition] || '') : (step.sub || '');
       return `<div class="gx-kicker">${orb}${esc(trad)}</div>
         <h3>${esc((c && c.label) || step.label)}</h3>
-        <p class="gx-question">${esc((c && c.turn) || '')}</p>`;
+        <p class="gx-question">${esc((c && c.turn) || '')}</p>
+        ${stepActs(step)}`;
     }
     if (step.type === 'work') {
       let w = {};
       try { w = LIB.resolve(step.ref) || {}; } catch (e) { w = {}; }
       return `<div class="gx-kicker">${orb}${esc(w.author || step.sub || '')}</div>
         <h3>${esc(w.title || step.label)}</h3>
-        <p class="gx-lede">${esc(w.gist || '')}</p>`;
+        <p class="gx-lede">${esc(w.gist || '')}</p>
+        ${stepActs(step)}`;
     }
     if (step.type === 'note' || step.type === 'note-other') {
       const n = Notes.get(step.noteId || step.ref);
       return `<div class="gx-kicker">${orb}Note</div>
         <h3>${esc((n && n.title) || step.label || 'Untitled')}</h3>
-        <p class="gx-lede">${esc((n && n.body) || '')}</p>`;
+        <p class="gx-lede">${esc((n && n.body) || '')}</p>
+        ${stepActs(step)}`;
     }
     if (step.type === 'spectrum') {
       const s = (BEL.SPECTRA || []).find(x => x.id === step.ref);
       return `<div class="gx-kicker">${orb}${esc((s && s.branch) || 'Spectrum')}</div>
         <h3>${esc((s && s.title) || step.label)}</h3>
-        <p class="gx-lede">${esc(s ? (s.left + ' · ' + s.right) : '')}</p>`;
+        <p class="gx-lede">${esc(s ? (s.left + ' · ' + s.right) : '')}</p>
+        ${stepActs(step)}`;
     }
     if (step.type === 'tradition') {
       return `<div class="gx-kicker">${orb}Tradition</div><h3>${esc(step.label)}</h3>`;
@@ -404,12 +448,22 @@
     scrim.classList.add('on');
   }
 
+  function graphActs() {
+    const api = window.PalinodePathways;
+    return {
+      onPlace: axisId => { if (api.onPlace) api.onPlace(axisId); },
+      onWrite: concept => { if (api.onWrite) api.onWrite(concept); },
+      onRead: workId => { if (api.onRead) api.onRead(workId); },
+      onOpenNote: noteId => { if (api.onOpenNote) api.onOpenNote(noteId); }
+    };
+  }
+
   function openExplore() {
     const p = current();
     if (!p || !window.PalinodeGraph) return;
     const noteId = (p.noteIds || [])[0];
     const note = noteId ? Notes.get(noteId) : null;
-    window.PalinodeGraph.open({
+    window.PalinodeGraph.open(Object.assign({
       mode: 'pathway',
       pathway: p,
       connections: false,
@@ -417,7 +471,7 @@
       analysis: { concepts: [], insights: [], leans: [], stats: { words: 0 } },
       onClose: () => { if (walkId) openWalk(walkId, walkCursor); },
       onSavePathway: steps => offerSave(steps, { noteId: note && note.id })
-    });
+    }, graphActs()));
   }
 
   function offerAttach(noteId) {
@@ -474,6 +528,11 @@
       if (p && walkCursor < p.steps.length - 1) focusStep(walkCursor + 1);
     });
     $('#walk-explore').addEventListener('click', openExplore);
+    $('#walk-feed').addEventListener('click', e => {
+      const act = e.target.closest('[data-act]');
+      if (!act) return;
+      fireAct(act.dataset.act, act.dataset.ref);
+    });
     $('#walk-title').addEventListener('change', () => {
       if (walkId) { Pathways.update(walkId, { title: $('#walk-title').value.trim() }); notify(); }
     });
@@ -612,7 +671,11 @@
     offerSave, showList, hideList, enter, leave, openWalk, closeWalk,
     isListOpen, isWalkOpen, refresh: renderList,
     offerAttach, askForgetPath,
+    refreshWalk: () => { if (walkId) renderWalk(); },
     onChange: null,
-    onOpenNote: null
+    onOpenNote: null,
+    onWrite: null,
+    onPlace: null,
+    onRead: null
   };
 })();

@@ -145,6 +145,34 @@ check('a link chip shows the url', await page.evaluate(() => {
 check('the tray still lists the walk', await page.evaluate(
   () => /A short walk/.test(document.getElementById('path-list').textContent)));
 
+check('a concept step offers Write on this', await page.evaluate(
+  () => !!document.querySelector('#walk-feed [data-act="write"]')));
+
+await page.evaluate(() => {
+  const p = window.PalinodeStore.Pathways.all()[0];
+  window.PalinodeStore.Pathways.addStep(p.id, {
+    id: 's:individualism-collectivism',
+    type: 'spectrum',
+    ref: 'individualism-collectivism',
+    label: 'Individualism vs Collectivism',
+    category: 'stance'
+  });
+  window.PalinodePathways.refreshWalk();
+});
+await page.waitForTimeout(80);
+check('a spectrum step offers Place yourself', await page.evaluate(
+  () => /Place yourself/.test(
+    (document.querySelector('#walk-feed [data-act="place"]') || {}).textContent || '')));
+await page.click('#walk-feed [data-act="place"]');
+await page.waitForTimeout(150);
+check('Place yourself opens the placement overlay', await page.evaluate(
+  () => document.getElementById('place-scrim').classList.contains('on')));
+await page.click('#place-scrim [data-act="close"]');
+await page.waitForTimeout(80);
+check('closing Place stays on the pathway', await page.evaluate(
+  () => !document.getElementById('pathway-wrap').hidden
+    && document.getElementById('body').classList.contains('pathways-mode')));
+
 await page.click('#walk-explore');
 await page.waitForSelector('#graph:not([hidden])');
 await page.waitForTimeout(400);
@@ -170,6 +198,27 @@ check('Show Connections sits left of 2D/3D', await page.evaluate(() => {
   return conn.getBoundingClientRect().right <= dim.getBoundingClientRect().left + 1;
 }));
 check('the pathway graph shows only curated nodes', graph.extras === 0, graph.extras + ' extras');
+
+const conceptId = await page.evaluate(() => {
+  const all = window.PalinodeGraph.model.all();
+  for (const [id, n] of all) if (n.type === 'concept') return id;
+  return null;
+});
+check('the pathway graph has a concept to write on', !!conceptId);
+if (conceptId) {
+  await page.evaluate(id => window.PalinodeGraph.model.select(id), conceptId);
+  await page.waitForTimeout(200);
+  check('the concept panel still offers Write on this', await page.evaluate(
+    () => !!document.querySelector('#gx-panel [data-act="write"]')));
+  await page.click('#gx-panel [data-act="write"]');
+  await page.waitForTimeout(250);
+  check('Write from the pathway leaves for a new note', await page.evaluate(() => {
+    const wrap = document.getElementById('editor-wrap');
+    return wrap && !wrap.hidden
+      && !document.getElementById('body').classList.contains('pathways-mode')
+      && document.getElementById('graph').hidden;
+  }));
+}
 
 if (problems.length) problems.forEach(p => check(p, false));
 console.log(`\n${pass} passed, ${fail} failed, ${problems.length} runtime issues`);
