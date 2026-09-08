@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palinode — write, and be read back</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<!-- ambient field -->
+<div id="field"><span></span><span></span><span></span><span></span><span></span></div>
+<div id="vignette"></div>
+
+<div id="app">
+
+  <header class="top">
+    <div class="brand">
+      <span class="glyph">
+        <svg viewBox="0 0 22 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M11 1L20.5 7v12L11 25 1.5 19V7L11 1z" stroke="rgba(255,255,255,.55)" stroke-width="1.1"/>
+          <path d="M11 5.5v15" stroke="rgba(246,162,68,.9)" stroke-width="1.1"/>
+          <circle cx="11" cy="13" r="3.4" stroke="rgba(255,255,255,.75)" stroke-width="1.1"/>
+        </svg>
+      </span>
+      <span class="name">Palinode</span>
+      <span class="sub">Philosophical Reader</span>
+    </div>
+
+    <span class="spacer"></span>
+
+    <button class="micro" id="btn-rail">Notes</button>
+    <button class="micro" id="btn-new">New note</button>
+    <button class="micro" id="btn-explore">Explore</button>
+    <button class="micro" id="btn-share">Share</button>
+    <button class="micro" id="btn-insights">Insights</button>
+  </header>
+
+  <div class="body" id="body">
+
+    <!-- ============ left rail ============ -->
+    <aside class="rail">
+      <div class="rail-head">
+        <div class="rail-title">Library</div>
+        <div class="search">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+            <circle cx="6" cy="6" r="4.4" stroke="rgba(255,255,255,.42)" stroke-width="1.2"/>
+            <path d="M9.4 9.4L12.5 12.5" stroke="rgba(255,255,255,.42)" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          <input id="q" type="search" placeholder="Search notes and concepts…" autocomplete="off">
+        </div>
+      </div>
+      <div class="note-list" id="note-list"></div>
+      <div class="rail-foot">
+        <button class="micro" id="btn-reset-day" title="Development helper: rolls the day forward so the skip allowance can be tested">Reset today</button>
+      </div>
+    </aside>
+
+    <!-- ============ centre ============ -->
+    <main class="centre">
+      <div class="centre-inner" id="centre-inner">
+
+        <!-- daily prompt -->
+        <section class="prompt-card" id="prompt-card">
+          <div class="prompt-kicker">
+            <span class="orb sm" style="--c:var(--resonance)"></span>
+            <span id="prompt-kicker-text">Today’s prompt</span>
+          </div>
+          <p class="prompt-text" id="prompt-text"></p>
+          <p class="prompt-source" id="prompt-source"></p>
+          <div class="prompt-actions">
+            <button class="ghost solid" id="btn-write">Write on this</button>
+            <button class="ghost" id="btn-skip">Skip</button>
+            <span class="skip-track">
+              <span class="skip-label" id="skip-label">3 skips left</span>
+              <span class="skip-pip" data-i="0"></span>
+              <span class="skip-pip" data-i="1"></span>
+              <span class="skip-pip" data-i="2"></span>
+            </span>
+          </div>
+        </section>
+
+        <!-- editor -->
+        <section id="editor-wrap" hidden>
+          <input class="title-input" id="title" placeholder="Untitled" autocomplete="off">
+          <div class="doc-meta">
+            <span id="meta-date"></span>
+            <span id="meta-words">0 words</span>
+            <span class="live"><i class="pulse" id="pulse"></i><span id="meta-state">Idle</span></span>
+          </div>
+          <div class="editor-stack">
+            <div class="mirror" id="mirror" aria-hidden="true"></div>
+            <textarea id="body-input" spellcheck="true"
+              placeholder="Begin anywhere. Palinode reads as you write — for the traditions your thinking is already inside, and for the places where it strains."></textarea>
+          </div>
+
+          <!-- the note as a container -->
+          <section class="composer" id="composer">
+            <div class="composer-bar">
+              <span class="composer-lab" id="composer-count">Nothing attached</span>
+              <span class="spacer"></span>
+              <button class="ghost" id="btn-media">Add media</button>
+              <button class="ghost" id="btn-link">Add link</button>
+            </div>
+
+            <form class="link-form" id="link-form" hidden>
+              <input type="url" id="link-url" placeholder="https://…" required>
+              <input type="text" id="link-title" placeholder="Title (optional)">
+              <button class="ghost solid" type="submit">Add</button>
+              <button class="ghost" type="button" id="link-cancel">Cancel</button>
+            </form>
+
+            <div class="saved-strip" id="saved-strip" hidden></div>
+            <div class="attach-grid" id="attach-grid"></div>
+            <div class="dropzone" id="dropzone">Drop photos, video or audio here</div>
+          </section>
+        </section>
+
+        <input type="file" id="file-input" multiple hidden
+               accept="image/*,video/*,audio/*,.pdf,.txt,.md">
+
+        <!-- empty state -->
+        <section class="empty-state" id="empty-state">
+          <h2>Nothing open</h2>
+          <p>Take today’s prompt, or start a blank note. Everything you write stays on this device until you choose to share it.</p>
+          <button class="ghost solid" id="btn-new-2">Start a note</button>
+        </section>
+
+        <!-- reading room -->
+        <section id="reading-room" hidden></section>
+
+      </div>
+    </main>
+
+    <!-- ============ right rail ============ -->
+    <aside class="insights">
+      <div class="ins-head">
+        <div class="row">
+          <h3>Reading</h3>
+          <span class="micro" id="engine-name" style="cursor:default"></span>
+        </div>
+
+        <div class="seg" id="seg">
+          <button class="seg-btn on" data-tab="insights">Insights<span class="seg-n" id="n-insights"></span></button>
+          <button class="seg-btn" data-tab="readings">Readings<span class="seg-n" id="n-readings"></span></button>
+          <button class="seg-btn" data-tab="beliefs">Beliefs<span class="seg-n" id="n-beliefs"></span></button>
+        </div>
+
+        <!-- narrow screens get the same three choices as a native picker,
+             which is one tap instead of three cramped targets -->
+        <select class="seg-select" id="seg-select" aria-label="Reading panel">
+          <option value="insights">Insights</option>
+          <option value="readings">Readings</option>
+          <option value="beliefs">Beliefs</option>
+        </select>
+
+        <div class="score" id="score">
+          <div class="ring">
+            <svg width="62" height="62">
+              <circle cx="31" cy="31" r="26" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="3"/>
+              <circle id="ring-arc" cx="31" cy="31" r="26" fill="none" stroke="url(#g)" stroke-width="3"
+                      stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="163.4"/>
+              <defs>
+                <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#F6A244"/>
+                  <stop offset="100%" stop-color="#5EC7C0"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="val" id="ring-val">—</div>
+          </div>
+          <div class="bars" id="bars"></div>
+        </div>
+
+        <div class="constellation" id="constellation"></div>
+
+        <div class="filters" id="filters"></div>
+      </div>
+
+      <div class="ins-list" id="ins-list"></div>
+      <div class="ins-list" id="readings-list" hidden></div>
+      <div class="ins-list" id="beliefs-list" hidden></div>
+    </aside>
+
+  </div>
+</div>
+
+<!-- shared, read-only view -->
+<div id="shared-view" style="display:none; position:relative; z-index:2; height:100%; overflow-y:auto;"></div>
+
+<!-- exploration graph -->
+<div id="graph" hidden>
+  <div id="gx-canvas">
+    <svg id="gx-edges"></svg>
+    <div id="gx-nodes"></div>
+  </div>
+  <div id="gx-3d" hidden></div>
+
+  <div id="gx-chrome">
+    <div class="gx-top">
+      <div class="gx-title">
+        <span class="orb sm" style="--c:var(--resonance)"></span>
+        <b>Exploring</b>
+        <span class="gx-hint" id="gx-hint">Click any orb to open it and grow the field</span>
+      </div>
+      <div class="seg dim-seg" id="gx-dim">
+        <button class="seg-btn on" data-dim="2">2D</button>
+        <button class="seg-btn" data-dim="3">3D</button>
+      </div>
+      <button class="micro" id="gx-close">Close</button>
+    </div>
+    <div id="gx-trail" class="gx-trail"></div>
+    <div class="gx-zoom">
+      <button class="micro" id="gx-out">−</button>
+      <button class="micro" id="gx-fit">Fit</button>
+      <button class="micro" id="gx-in">+</button>
+    </div>
+  </div>
+
+  <aside id="gx-panel" class="gx-panel">
+    <div class="gx-panel-body"></div>
+  </aside>
+</div>
+
+<!-- share modal -->
+<div class="scrim" id="scrim">
+  <div class="modal">
+    <h3>Share this note</h3>
+    <p class="lede">The link carries the note itself — nothing is uploaded to a server. Anyone with it can read, but not edit.</p>
+    <div class="link-box">
+      <input id="share-link" readonly>
+      <button class="ghost solid" id="btn-copy">Copy</button>
+    </div>
+    <label class="opt"><input type="checkbox" id="opt-analysis" checked> Include the philosophical reading alongside the text</label>
+    <label class="opt"><input type="checkbox" id="opt-prompt" checked> Include the prompt that started it</label>
+    <label class="opt"><input type="checkbox" id="opt-links" checked> Include external links</label>
+    <label class="opt"><input type="checkbox" id="opt-saved" checked> Include what you saved to this note</label>
+
+    <div class="manifest" id="manifest"></div>
+
+    <div class="modal-actions">
+      <button class="ghost" id="btn-export">Export with media</button>
+      <button class="ghost" id="btn-close-modal">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- place-yourself overlay: one authored item, reached from a note or the graph -->
+<div class="scrim" id="place-scrim">
+  <div class="modal place-modal" id="place-modal"></div>
+</div>
+
+<div id="toast"></div>
+
+<script src="assets/js/corpus.js"></script>
+<script src="assets/js/prompts.js"></script>
+<script src="assets/js/media.js"></script>
+<script src="assets/js/library.js"></script>
+<script src="assets/js/beliefs.js"></script>
+<script src="assets/js/belief-score.js"></script>
+<script src="assets/js/engine.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/vendor/three.min.js"></script>
+<script src="assets/js/graph.js"></script>
+<script src="assets/js/graph3d.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

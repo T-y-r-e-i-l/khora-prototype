@@ -1,0 +1,6 @@
+.DS_Store
+
+# Screenshots from verification runs and working sessions. Regenerable by
+# re-running the scripts in .verify, and heavy enough to dominate the repo.
+Claude outputs/
+.verify/**/*.png
