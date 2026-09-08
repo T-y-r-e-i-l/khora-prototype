@@ -796,7 +796,22 @@
         ${more}`;
     }
 
-    elPanel.querySelector('.gx-panel-body').innerHTML = body;
+    const host = elPanel.querySelector('.gx-panel-body');
+    host.innerHTML = body;
+    reveal(host);
+  }
+
+  // The panel arrives top to bottom rather than all at once: each band gets
+  // its position in the reading order, and the stylesheet turns that into a
+  // delay. Rows inside a list count as their own bands, so a long "where
+  // this leads" feed cascades instead of landing as a block. The index is
+  // capped so a deep panel still finishes promptly.
+  const REVEAL_CAP = 14;
+  function reveal(host) {
+    // querySelectorAll yields document order, which is the order we want
+    host.querySelectorAll(':scope > *, .gx-more-row').forEach((el, i) => {
+      el.style.setProperty('--i', Math.min(i, REVEAL_CAP));
+    });
   }
 
   // Second-degree suggestions, so a node whose immediate neighbours are all

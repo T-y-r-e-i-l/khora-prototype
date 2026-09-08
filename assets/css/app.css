@@ -927,7 +927,22 @@ body.exploring { overflow: hidden; }
   overflow-y: auto; padding: 24px 22px 40px;
 }
 .gx-panel[hidden] { display: none; }
-.gx-panel .gx-panel-body { animation: fade .28s var(--ease); }
+/* The panel reveals top to bottom. graph.js stamps each band with its place
+   in the reading order as --i; the delay is derived from that, so the eye
+   follows the content down instead of receiving all of it at once. */
+@keyframes gx-band { from { opacity: 0; transform: translateY(-4px); } }
+
+.gx-panel .gx-panel-body > *,
+.gx-panel .gx-more-row {
+  animation: gx-band .3s var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 26ms);
+}
+
+/* Someone who has asked for less motion gets the content, not the cascade. */
+@media (prefers-reduced-motion: reduce) {
+  .gx-panel .gx-panel-body > *,
+  .gx-panel .gx-more-row { animation: none; }
+}
 
 .gx-kicker {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
