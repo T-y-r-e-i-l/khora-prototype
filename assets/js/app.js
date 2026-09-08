@@ -878,6 +878,40 @@
   function cancelOffer() { clearTimeout(offerTimer); offerTimer = null; }
 
   const exploring = () => !!(window.PalinodeGraph && window.PalinodeGraph.isOpen());
+  const phone = () => window.innerWidth <= 900;
+
+  function closeExplore() {
+    if (exploring()) window.PalinodeGraph.close();
+  }
+
+  function syncNav(which) {
+    $$('.nav-item').forEach(b => b.classList.remove('on'));
+    const id = which === 'insights' ? 'btn-nav-insights'
+             : which === 'explore' ? 'btn-explore'
+             : 'btn-rail';
+    const btn = document.getElementById(id);
+    if (btn) btn.classList.add('on');
+  }
+
+  function phoneTab() {
+    if (exploring()) return 'explore';
+    if (el.body.classList.contains('show-insights')) return 'insights';
+    return 'write';
+  }
+
+  function syncKeyboardNav() {
+    if (!phone()) {
+      document.documentElement.classList.remove('nav-hidden');
+      return;
+    }
+    const vv = window.visualViewport;
+    const kbUp = !!(vv && (window.innerHeight - vv.height > 80));
+    document.documentElement.classList.toggle('nav-hidden', kbUp);
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncKeyboardNav);
+    window.visualViewport.addEventListener('scroll', syncKeyboardNav);
+  }
 
   function considerOffer() {
     cancelOffer();
@@ -1076,10 +1110,11 @@
     if (analysis.stats.words < 12) { toast('Write a little first — the graph grows out of the note.'); return; }
     persist();
     cancelOffer();
+    el.body.classList.remove('show-insights', 'show-rail');
     await window.PalinodeGraph.open({
       note: Notes.get(activeId),
       analysis,
-      onClose: () => {},
+      onClose: () => { if (phone()) syncNav('write'); },
       onSaveChange: renderComposer,
       onOpenNote: noteId => {
         window.PalinodeGraph.close();
@@ -1101,6 +1136,7 @@
         toast('New note, opened on ' + concept.label + '.');
       }
     });
+    if (phone()) syncNav('explore');
   }
   $('#btn-explore').addEventListener('click', explore);
   el.constel.addEventListener('click', explore);      // the mini map is a door
@@ -1318,10 +1354,33 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
   /* ================= layout toggles ================= */
 
   $('#btn-rail').addEventListener('click', () => {
-    el.body.classList.toggle(window.innerWidth <= 900 ? 'show-rail' : 'rail-closed');
+    if (phone()) {
+      const tab = phoneTab();
+      if (tab === 'insights' || tab === 'explore') {
+        closeExplore();
+        el.body.classList.remove('show-insights', 'show-rail');
+        syncNav('write');
+        return;
+      }
+      el.body.classList.toggle('show-rail');
+      syncNav('write');
+      return;
+    }
+    el.body.classList.toggle('rail-closed');
+  });
+  $('#btn-nav-insights').addEventListener('click', () => {
+    closeExplore();
+    el.body.classList.remove('show-rail');
+    if (el.body.classList.contains('show-insights')) {
+      el.body.classList.remove('show-insights');
+      syncNav('write');
+      return;
+    }
+    el.body.classList.add('show-insights');
+    syncNav('insights');
   });
   $('#btn-insights').addEventListener('click', () => {
-    el.body.classList.toggle(window.innerWidth <= 900 ? 'show-insights' : 'insights-closed');
+    el.body.classList.toggle(phone() ? 'show-insights' : 'insights-closed');
   });
 
   document.addEventListener('keydown', e => {

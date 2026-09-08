@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Palinode — write, and be read back</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/app.css?v=4">
+<link rel="stylesheet" href="assets/css/app.css?v=5">
 </head>
 <body>
 
@@ -39,7 +39,15 @@
         <path d="M5 4h11l3 3v13H5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
         <path d="M8 10h8M8 14h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
       </svg>
-      <span class="nav-lab">Notes</span>
+      <span class="nav-lab"><span class="nav-lab-d">Notes</span><span class="nav-lab-m">Write</span></span>
+    </button>
+
+    <button class="nav-item" id="btn-nav-insights" data-view="insights">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 4h12v16H6z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M9 8h6M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <span class="nav-lab">Insights</span>
     </button>
 
     <button class="nav-item" id="btn-explore" data-view="explore">
