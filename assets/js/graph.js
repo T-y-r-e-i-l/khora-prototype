@@ -22,6 +22,7 @@
   const Media  = window.PalinodeMedia;
   const BEL    = window.PalinodeBeliefs;
   const BSCORE = window.PalinodeBeliefScore;
+  const SPECUI = window.PalinodeSpectrumUI;
 
   /* ================= indexes ================= */
 
@@ -547,30 +548,8 @@
      same thing out here: dashed is this passage leaning, solid is where
      answered items have placed the journal. */
 
-  const clampN = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-  const pct = d => ((clampN(d, -1, 1) + 1) / 2) * 100;
-
-  function specTrack(axis, opts) {
-    const args = axis.arguments.map(a =>
-      `<i class="spec-arg" style="left:${pct(a.position)}%" data-name="${escapeHtml(a.name)}"
-          title="${escapeHtml(a.name)} — ${escapeHtml(a.capsule)}"></i>`).join('');
-    const marks = [
-      opts.placed != null
-        ? `<i class="spec-mark placed" style="left:${pct(opts.placed)}%"
-              title="Your journal mark, from ${opts.placedN} answered item${opts.placedN === 1 ? '' : 's'}"></i>` : '',
-      opts.tentative != null
-        ? `<i class="spec-mark tentative" style="left:${pct(opts.tentative)}%"
-              title="Where this passage leans — tentative, and it does not move your journal"></i>` : ''
-    ].join('');
-    return `<div class="spec-track"><span class="spec-band"></span>${args}${marks}</div>`;
-  }
-
-  function specPoles(axis, side) {
-    return `<div class="spec-poles">
-      <i class="${side < 0 ? 'lean' : ''}">${escapeHtml(axis.left)}</i>
-      <i class="${side > 0 ? 'lean' : ''}">${escapeHtml(axis.right)}</i>
-    </div>`;
-  }
+  const specTrack = (axis, opts) => SPECUI.track(axis, opts);
+  const specPoles = (axis, side) => SPECUI.poles(axis, side);
 
   function specLine(axisId, lean, placed) {
     const axis = AXIS[axisId];

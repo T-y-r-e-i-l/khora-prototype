@@ -6,6 +6,7 @@
   const { Notes, Prompts, Prefs, Share, Saved, Attach, Belief } = window.PalinodeStore;
   const BEL = window.PalinodeBeliefs;
   const BSCORE = window.PalinodeBeliefScore;
+  const SPECUI = window.PalinodeSpectrumUI;
   const Media = window.PalinodeMedia;
   const CATS = window.PalinodeEngine.categories;
 
@@ -530,27 +531,10 @@
   const clampN = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
   const pct = delta => ((clampN(delta, -1, 1) + 1) / 2) * 100;
 
-  function specTrack(axis, opts) {
-    const args = axis.arguments.map(a =>
-      `<i class="spec-arg" style="left:${pct(a.position)}%" data-name="${esc(a.name)}"
-          title="${esc(a.name)} — ${esc(a.capsule)}"></i>`).join('');
-    const marks = [
-      opts.placed != null
-        ? `<i class="spec-mark placed" style="left:${pct(opts.placed)}%"
-              title="Your journal mark, from ${opts.placedN} answered item${opts.placedN === 1 ? '' : 's'}"></i>` : '',
-      opts.tentative != null
-        ? `<i class="spec-mark tentative" style="left:${pct(opts.tentative)}%"
-              title="Where this passage leans — tentative, and it does not move your journal"></i>` : ''
-    ].join('');
-    return `<div class="spec-track"><span class="spec-band"></span>${args}${marks}</div>`;
-  }
-
-  function specPoles(axis, side) {
-    return `<div class="spec-poles">
-      <i class="${side < 0 ? 'lean' : ''}">${esc(axis.left)}</i>
-      <i class="${side > 0 ? 'lean' : ''}">${esc(axis.right)}</i>
-    </div>`;
-  }
+  // One renderer for the continuum, shared with the graph panel and the
+  // profile, so the dashed and solid marks cannot drift apart.
+  const specTrack = (axis, opts) => SPECUI.track(axis, opts);
+  const specPoles = (axis, side) => SPECUI.poles(axis, side);
 
   // Named company for a position: "near Spinoza, away from Sartre".
   function company(axisId, at) {
