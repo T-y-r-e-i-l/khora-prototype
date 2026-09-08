@@ -31,7 +31,8 @@ Measured from zillow.com on 2026-09-07:
 | Property | Value |
 |---|---|
 | Rail width | 78px |
-| Item target | 40 × 56px |
+| Item target | 56 × 56px (was measured as 40 wide; see note) |
+| Active pill | 40 × 32px |
 | Item pitch | 72px |
 | Icon | 24px |
 | Label | 10px, weight 400, below the icon |

@@ -23,8 +23,14 @@ step, no bundler, no ES modules.
 - No build step. Classic `<script>` tags, no ES modules, no `fetch`. `file://`
   must work completely, media and all.
 - New globals follow the existing pattern: `(function(){ ... window.PalinodeX = {...}; })()`.
-- Rail geometry, copied from the spec: `--nav: 78px`, item target 40 × 56px,
+- Rail geometry: `--nav: 78px`, item target 56 × 56px, active pill 40 × 32px,
   item pitch 72px, icon 24px, label 10px.
+  (Corrected during Task 2. The spec's original "item target 40 × 56" conflated
+  the pill's width with the target's: the label `Explore` measures 52.1px at
+  10px/`.1em`, so a 40px target clips it and the spec's own no-clipping
+  requirement could not be met at any letter-spacing. The pill — the only part
+  that renders — stays 40px, so nothing visible changed; only the hit target
+  grew, which is strictly better. Asserted in `.verify/sidenav.mjs`.)
 - Rail label tracking is `.1em`, not the `.18em` used by `.micro`, because
   `Determinism`-length words overflow 78px at the wider tracking.
 - **Preserve these element IDs when moving controls**: `#btn-new`,
@@ -887,9 +893,21 @@ at lines 1248-1253:
     el.body.classList.toggle(window.innerWidth <= 900 ? 'show-rail' : 'rail-closed');
   });
 
+  // The chevron is a two-state control, so it has to say which state it is
+  // about to put you in. Task 2 left it announcing "Hide the reading" in both.
   $('#btn-insights').addEventListener('click', () => {
     el.body.classList.toggle(window.innerWidth <= 900 ? 'show-insights' : 'insights-closed');
+    labelChevron();
   });
+
+  function labelChevron() {
+    const closed = el.body.classList.contains('insights-closed');
+    const b = $('#btn-insights');
+    b.setAttribute('aria-expanded', String(!closed));
+    b.setAttribute('aria-label', closed ? 'Show the reading' : 'Hide the reading');
+    b.title = closed ? 'Show the reading' : 'Hide the reading';
+  }
+  labelChevron();
 
   $('#btn-shelf').addEventListener('click', () => {
     if (exploring()) closeGraph();
@@ -1514,11 +1532,41 @@ so analyses are cached per note and redone only when the text changes."
 
 **Files:**
 - Modify: `assets/css/app.css:634-639` (the 900px block) and the `.sidenav` block
+- Modify: `index.html` (`.doc-meta`, for the narrow-screen Reading control)
 - Test: `.verify/nav-mobile.mjs`
 
 **Interfaces:**
 - Consumes: the `nav.sidenav` markup from Task 2.
 - Produces: nothing other tasks consume.
+
+**Also fix here — a regression Task 2 introduced.** Task 2 moved `#btn-insights`
+inside `aside.insights`, and this media block sets
+`aside.rail, aside.insights { display: none }`. The only control that can
+reveal the Reading panel is now inside the panel it reveals, so on a narrow
+screen the reading is unreachable. `#btn-rail` does not have this problem
+because it lives in the rail, which has no `display: none` at any width.
+
+Resolve it the way the ownership split already implies: the Reading panel
+belongs to the note, so its narrow-screen control belongs on the note, beside
+Share. Add to `.doc-meta` in `index.html`, after `#btn-share`:
+
+```html
+            <button class="micro" id="btn-reading">Reading</button>
+```
+
+Give it the same listener behaviour as the chevron by adding `#btn-reading` to
+the existing `#btn-insights` handler's selector in `app.js` — do not write a
+second handler — and hide it above 900px, since the chevron serves there:
+
+```css
+#btn-reading { display: none; }
+@media (max-width: 900px) { #btn-reading { display: inline-flex; } }
+```
+
+`.verify/nav-mobile.mjs` must assert reachability both ways: that the Reading
+panel can be opened and closed at 390px, and that `#btn-insights` alone would
+not have sufficed. No other suite runs below 1440px, so this suite is the only
+thing standing between that deadlock and a future reintroduction.
 
 - [ ] **Step 1: Write the failing test**
 
