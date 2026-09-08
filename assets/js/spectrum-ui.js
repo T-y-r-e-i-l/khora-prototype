@@ -38,5 +38,5 @@
     </div>`;
   }
 
-  window.PalinodeSpectrumUI = { track, poles, pct };
+  window.PalinodeSpectrumUI = { track, poles };
 })();

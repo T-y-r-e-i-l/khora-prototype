@@ -17,18 +17,34 @@ const problems = [];
 page.on('pageerror', e => problems.push('pageerror: ' + e.message));
 await page.goto('http://localhost:8765/index.html', { waitUntil: 'networkidle' });
 
-check('the renderer is global', await page.evaluate(
+const finish = async () => {
+  if (problems.length) problems.forEach(p => check(p, false));
+  console.log(`\n${pass} passed, ${fail} failed, ${problems.length} runtime issues`);
+  await browser.close();
+  process.exit(fail ? 1 : 0);
+};
+
+const hasRenderer = await page.evaluate(
   () => !!window.PalinodeSpectrumUI &&
         typeof window.PalinodeSpectrumUI.track === 'function' &&
-        typeof window.PalinodeSpectrumUI.poles === 'function'));
+        typeof window.PalinodeSpectrumUI.poles === 'function');
+check('the renderer is global', hasRenderer);
+// Everything below renders through it, so without it there is nothing to ask.
+if (!hasRenderer) await finish();
 
 const out = await page.evaluate(() => {
+  const UI = window.PalinodeSpectrumUI;
   const axis = window.PalinodeBeliefs.SPECTRA[0];
   return {
-    bare:  window.PalinodeSpectrumUI.track(axis, { tentative: null, placed: null, placedN: 0 }),
-    both:  window.PalinodeSpectrumUI.track(axis, { tentative: -0.5, placed: 0.5, placedN: 3 }),
-    one:   window.PalinodeSpectrumUI.track(axis, { tentative: null, placed: 0.2, placedN: 1 }),
-    poles: window.PalinodeSpectrumUI.poles(axis, -1),
+    bare:  UI.track(axis, { tentative: null, placed: null, placedN: 0 }),
+    both:  UI.track(axis, { tentative: -0.5, placed: 0.5, placedN: 3 }),
+    one:   UI.track(axis, { tentative: null, placed: 0.2, placedN: 1 }),
+    over:  UI.track(axis, { tentative: null, placed: 5, placedN: 1 }),
+    under: UI.track(axis, { tentative: null, placed: -5, placedN: 1 }),
+    poles: UI.poles(axis, -1),
+    mid:   UI.poles(axis, 0),
+    // SPECTRA is fixed data, so hostile text has to be injected over a copy.
+    unsafe: UI.poles(Object.assign({}, axis, { left: '<b>"x"&y</b>' }), -1),
     left:  axis.left
   };
 });
@@ -45,8 +61,22 @@ check('one answered item reads singular', /1 answered item"/.test(out.one));
 check('three answered items read plural', /3 answered items/.test(out.both));
 check('poles name both ends', out.poles.includes(out.left));
 check('the leaning pole is marked', /class="lean"/.test(out.poles));
+check('a split lean marks neither end', !/class="lean"/.test(out.mid));
 
-if (problems.length) problems.forEach(p => check(p, false));
-console.log(`\n${pass} passed, ${fail} failed, ${problems.length} runtime issues`);
-await browser.close();
-process.exit(fail ? 1 : 0);
+check('pole text is escaped, never passed through',
+  out.unsafe.includes('&lt;b&gt;&quot;x&quot;&amp;y&lt;/b&gt;') && !out.unsafe.includes('<b>'));
+
+check('a delta past the right end clamps to the end',
+  out.over.includes('class="spec-mark placed" style="left:100%"'));
+check('a delta past the left end clamps to the end',
+  out.under.includes('class="spec-mark placed" style="left:0%"'));
+
+// Whichever mark comes last paints on top, and where the two coincide the
+// tentative one must not hide the placement it is not allowed to move.
+const iPlaced = out.both.indexOf('spec-mark placed');
+const iTentative = out.both.indexOf('spec-mark tentative');
+check('the placed mark is drawn before the tentative one',
+  iPlaced >= 0 && iTentative >= 0 && iPlaced < iTentative,
+  `placed at ${iPlaced}, tentative at ${iTentative}`);
+
+await finish();
