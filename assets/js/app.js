@@ -528,9 +528,6 @@
 
   const TENTATIVE_SHOWN = 6;
 
-  const clampN = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
-  const pct = delta => ((clampN(delta, -1, 1) + 1) / 2) * 100;
-
   // One renderer for the continuum, shared with the graph panel and the
   // profile, so the dashed and solid marks cannot drift apart.
   const specTrack = (axis, opts) => SPECUI.track(axis, opts);
