@@ -114,6 +114,12 @@ check('the live crumb is the newly appended visit', await current() === d);
 
 check('Save as Pathway is enabled after a descent', await page.evaluate(
   () => !document.getElementById('gx-save-path').disabled));
+check('Save as Pathway sits left of the first crumb', await page.evaluate(() => {
+  const btn = document.getElementById('gx-save-path').getBoundingClientRect();
+  const crumb = document.querySelector('#gx-trail .gx-crumb');
+  if (!crumb) return false;
+  return btn.right <= crumb.getBoundingClientRect().left + 1;
+}));
 
 const beforeDrop = await stamp();
 const mid = afterNew[2];

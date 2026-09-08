@@ -113,7 +113,8 @@ const viewState = () => page.evaluate(() => {
   return JSON.stringify({
     empty: shown('empty-state'), editor: shown('editor-wrap'),
     graph: shown('graph'), reading: shown('reading-room'),
-    pathways: shown('pathways'),
+    pathPage: shown('pathway-wrap') || shown('path-empty'),
+    pathMode: document.getElementById('body').classList.contains('pathways-mode'),
     body: document.getElementById('body').className,
     active: [...document.querySelectorAll('.nav-item.on')].map(e => e.id).join(',')
   });
@@ -123,8 +124,15 @@ const restState = await viewState();
 const errsBefore = problems.length;
 await page.click('#btn-pathways');
 await page.waitForTimeout(300);
-check('Pathways opens the library', await page.evaluate(
-  () => !document.getElementById('pathways').hidden));
+check('Pathways opens the page', await page.evaluate(() => {
+  const body = document.getElementById('body');
+  const empty = document.getElementById('path-empty');
+  return body.classList.contains('pathways-mode')
+    && empty && !empty.hidden
+    && document.getElementById('graph').hidden;
+}));
+check('Pathways is not an overlay', await page.evaluate(
+  () => !document.getElementById('pathways')));
 const afterPath = await viewState();
 check('Pathways marks itself active', JSON.parse(afterPath).active.includes('btn-pathways'),
   JSON.parse(afterPath).active);
@@ -137,12 +145,13 @@ check('Profile is still inert',
                              : afterProfile);
 await page.click('#btn-pathways');
 await page.waitForTimeout(200);
-check('Pathways closes from the same button', await page.evaluate(
-  () => document.getElementById('pathways').hidden));
-const afterClose = await viewState();
-check('closing Pathways restores Write',
-  JSON.parse(afterClose).active === 'btn-rail' || JSON.parse(restState).empty === JSON.parse(afterClose).empty,
-  JSON.parse(afterClose).active);
+check('Pathways stays the page', await page.evaluate(
+  () => document.getElementById('body').classList.contains('pathways-mode')));
+await page.click('#btn-rail');
+await page.waitForTimeout(200);
+check('Write leaves Pathways', await page.evaluate(
+  () => !document.getElementById('body').classList.contains('pathways-mode')
+    && (document.querySelector('nav.sidenav .nav-item.on') || {}).id === 'btn-rail'));
 
 /* The suite creates a note further down, but the app opens on a bare draft,
    so the collapse has to survive that state too. */

@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/app.css?v=13">
+<link rel="stylesheet" href="assets/css/app.css?v=21">
 </head>
 <body>
 
@@ -104,7 +104,7 @@
       </section>
 
       <div class="rail-head">
-        <div class="rail-title">Library</div>
+        <div class="rail-title" id="rail-title">Library</div>
         <div class="search">
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
             <circle cx="6" cy="6" r="4.4" stroke="rgba(255,255,255,.42)" stroke-width="1.2"/>
@@ -115,6 +115,7 @@
       </div>
 
       <div class="note-list" id="note-list"></div>
+      <div class="note-list" id="path-list" hidden></div>
       <button class="rail-new" id="btn-new-list">New note</button>
       <div class="rail-foot">
         <button class="micro" id="btn-reset-day" title="Development helper: rolls the day forward so the skip allowance can be tested">Reset today</button>
@@ -168,11 +169,64 @@
         <input type="file" id="file-input" multiple hidden
                accept="image/*,video/*,audio/*,.pdf,.txt,.md">
 
+        <!-- pathway document -->
+        <section id="pathway-wrap" hidden>
+          <input class="title-input" id="walk-title" placeholder="Untitled pathway" autocomplete="off">
+          <div class="doc-meta">
+            <span id="walk-date"></span>
+            <span id="walk-steps">0 steps</span>
+            <span class="spacer"></span>
+            <button class="ghost" id="walk-explore" type="button">Open in Explore</button>
+          </div>
+          <div class="walk-feed" id="walk-feed"></div>
+          <div class="walk-notes" id="walk-notes"></div>
+          <div class="walk-peek" id="walk-peek" hidden></div>
+          <div class="walk-nav">
+            <button class="ghost" id="walk-prev" type="button">Prev</button>
+            <span id="walk-pos">1 / 1</span>
+            <button class="ghost" id="walk-next" type="button">Next</button>
+          </div>
+          <div class="walk-add">
+            <button class="ghost" id="walk-add-note" type="button">Add note</button>
+            <button class="ghost" id="walk-add-media" type="button">Add media</button>
+            <button class="ghost" id="walk-add-link" type="button">Add link</button>
+          </div>
+          <div class="walk-panel" id="walk-note-panel" hidden>
+            <div class="walk-panel-head">
+              <span>Your notes</span>
+              <button class="ghost" id="walk-note-done" type="button">Done</button>
+            </div>
+            <div class="walk-picker" id="walk-picker"></div>
+          </div>
+          <div class="walk-panel" id="walk-media-panel" hidden>
+            <div class="walk-panel-head">
+              <span>Add media</span>
+              <button class="ghost" id="walk-media-done" type="button">Done</button>
+            </div>
+            <p class="gx-lede">Photos, video, or audio stay on this device.</p>
+            <button class="ghost solid" id="walk-media-choose" type="button">Choose files</button>
+          </div>
+          <form class="link-form walk-link" id="walk-link-form" hidden>
+            <input type="url" id="walk-link-url" placeholder="https://…" required>
+            <input type="text" id="walk-link-title" placeholder="Title (optional)">
+            <button class="ghost solid" type="submit">Add</button>
+            <button class="ghost" type="button" id="walk-link-cancel">Cancel</button>
+          </form>
+        </section>
+
+        <input type="file" id="path-file" multiple hidden
+               accept="image/*,video/*,audio/*,.pdf,.txt,.md">
+
         <!-- empty state -->
         <section class="empty-state" id="empty-state">
           <h2>Nothing open</h2>
           <p>Take today’s prompt, or start a blank note. Everything you write stays on this device until you choose to share it.</p>
           <button class="ghost solid" id="btn-new-2">Start a note</button>
+        </section>
+
+        <section class="empty-state" id="path-empty" hidden>
+          <h2>Nothing open</h2>
+          <p id="path-empty-copy">No pathways yet. Explore a note, trim the trail, and save it.</p>
         </section>
 
         <!-- reading room -->
@@ -259,10 +313,10 @@
         <span class="orb sm" style="--c:var(--resonance)"></span>
         <b id="gx-title-text">Exploring</b>
         <span class="gx-hint" id="gx-hint">Click any orb to open it and grow the field</span>
-        <label class="gx-conn" id="gx-conn" hidden>
-          <input type="checkbox" id="gx-conn-toggle"> Connections
-        </label>
       </div>
+      <label class="gx-conn" id="gx-conn" hidden>
+        <input type="checkbox" id="gx-conn-toggle"> Show Connections
+      </label>
       <div class="seg dim-seg" id="gx-dim">
         <button class="seg-btn on" data-dim="2">2D</button>
         <button class="seg-btn" data-dim="3">3D</button>
@@ -270,8 +324,8 @@
       <button class="micro" id="gx-close">Close</button>
     </div>
     <div class="gx-trail-row">
-      <div id="gx-trail" class="gx-trail"></div>
       <button class="micro" id="gx-save-path" type="button" disabled>Save as Pathway</button>
+      <div id="gx-trail" class="gx-trail"></div>
     </div>
     <div class="gx-zoom">
       <button class="micro" id="gx-out">−</button>
@@ -284,49 +338,6 @@
     <div class="gx-panel-body"></div>
   </aside>
 </div>
-
-<!-- pathways library -->
-<div id="pathways" hidden>
-  <div class="path-head">
-    <div class="gx-title">
-      <span class="orb sm" style="--c:var(--resonance)"></span>
-      <b>Pathways</b>
-    </div>
-    <button class="micro" id="path-close" type="button">Close</button>
-  </div>
-  <div id="path-list" class="path-list"></div>
-</div>
-
-<!-- linear walk -->
-<div id="pathway-walk" hidden>
-  <div class="path-head">
-    <input class="path-title" id="walk-title" placeholder="Untitled pathway" autocomplete="off">
-    <span class="spacer"></span>
-    <button class="ghost" id="walk-explore" type="button">Open in Explore</button>
-    <button class="micro" id="walk-close" type="button">Close</button>
-  </div>
-  <div class="walk-body" id="walk-body"></div>
-  <div class="walk-notes" id="walk-notes"></div>
-  <div class="walk-add">
-    <button class="ghost" id="walk-add-note" type="button">Add note</button>
-    <button class="ghost" id="walk-add-media" type="button">Add media</button>
-    <button class="ghost" id="walk-add-link" type="button">Add link</button>
-  </div>
-  <form class="link-form walk-link" id="walk-link-form" hidden>
-    <input type="url" id="walk-link-url" placeholder="https://…" required>
-    <input type="text" id="walk-link-title" placeholder="Title (optional)">
-    <button class="ghost solid" type="submit">Add</button>
-    <button class="ghost" type="button" id="walk-link-cancel">Cancel</button>
-  </form>
-  <div class="walk-picker" id="walk-picker" hidden></div>
-  <div class="walk-nav">
-    <button class="ghost" id="walk-prev" type="button">Prev</button>
-    <span id="walk-pos">1 / 1</span>
-    <button class="ghost" id="walk-next" type="button">Next</button>
-  </div>
-</div>
-<input type="file" id="path-file" multiple hidden
-       accept="image/*,video/*,audio/*,.pdf,.txt,.md">
 
 <div class="scrim" id="path-save-scrim">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="path-save-title">
@@ -407,7 +418,7 @@
 <script src="assets/vendor/three.min.js"></script>
 <script src="assets/js/graph.js"></script>
 <script src="assets/js/graph3d.js"></script>
-<script src="assets/js/pathways.js"></script>
-<script src="assets/js/app.js"></script>
+<script src="assets/js/pathways.js?v=21"></script>
+<script src="assets/js/app.js?v=21"></script>
 </body>
 </html>

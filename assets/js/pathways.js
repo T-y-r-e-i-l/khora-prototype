@@ -2,8 +2,8 @@
    Palinode — Pathways
 
    A pathway is a curated walk: the trail you kept, in that
-   order. The library lists them; the reader steps through one
-   at a time; Explore can open the same walk as a focused graph.
+   order. The left tray lists them; the centre is a feed of
+   every step. Explore can open the same walk as a focused graph.
    ============================================================ */
 
 (function () {
@@ -43,17 +43,85 @@
       window.PalinodePathways.onChange();
   }
 
-  function showList() {
-    $('#pathway-walk').hidden = true;
-    walkId = null;
-    renderList();
-    $('#pathways').hidden = false;
+  function bodyEl() { return document.getElementById('body'); }
+
+  function hideWriteCentre() {
+    const ed = $('#editor-wrap');
+    const empty = $('#empty-state');
+    const read = $('#reading-room');
+    if (ed) ed.hidden = true;
+    if (empty) { empty.hidden = true; empty.style.display = 'none'; }
+    if (read) read.hidden = true;
   }
 
-  function hideList() { $('#pathways').hidden = true; }
+  function showFeed() {
+    const wrap = $('#pathway-wrap');
+    const pe = $('#path-empty');
+    if (wrap) wrap.hidden = false;
+    if (pe) pe.hidden = true;
+  }
 
-  function isListOpen() { return !$('#pathways').hidden; }
-  function isWalkOpen() { return !$('#pathway-walk').hidden; }
+  function showPathEmpty() {
+    const wrap = $('#pathway-wrap');
+    const pe = $('#path-empty');
+    if (wrap) wrap.hidden = true;
+    if (pe) {
+      pe.hidden = false;
+      const copy = $('#path-empty-copy');
+      if (copy) copy.textContent = Pathways.all().length
+        ? 'Pick a pathway from the tray.'
+        : 'No pathways yet. Explore a note, trim the trail, and save it.';
+    }
+  }
+
+  let insightsWasClosed = false;
+
+  function enter() {
+    const body = bodyEl();
+    if (body) {
+      if (!body.classList.contains('pathways-mode'))
+        insightsWasClosed = body.classList.contains('insights-closed');
+      body.classList.add('pathways-mode', 'insights-closed');
+      body.classList.remove('show-insights');
+    }
+    const title = $('#rail-title');
+    if (title) title.textContent = 'Pathways';
+    const list = $('#path-list');
+    if (list) list.hidden = false;
+    hideWriteCentre();
+    renderList();
+    if (walkId && Pathways.get(walkId)) { showFeed(); renderWalk(); }
+    else showPathEmpty();
+  }
+
+  function leave() {
+    walkId = null;
+    const wrap = $('#pathway-wrap');
+    const pe = $('#path-empty');
+    const list = $('#path-list');
+    if (wrap) wrap.hidden = true;
+    if (pe) pe.hidden = true;
+    if (list) list.hidden = true;
+    const body = bodyEl();
+    if (body) {
+      body.classList.remove('pathways-mode');
+      if (!insightsWasClosed) body.classList.remove('insights-closed');
+    }
+    const title = $('#rail-title');
+    if (title) title.textContent = 'Library';
+  }
+
+  function showList() { enter(); }
+  function hideList() { leave(); }
+
+  function isListOpen() {
+    const body = bodyEl();
+    return !!(body && body.classList.contains('pathways-mode'));
+  }
+  function isWalkOpen() {
+    const wrap = $('#pathway-wrap');
+    return !!(wrap && !wrap.hidden);
+  }
 
   function renderList() {
     const list = $('#path-list');
@@ -64,11 +132,11 @@
       return;
     }
     list.innerHTML = all.map(p => `
-      <button class="path-card" data-open="${esc(p.id)}" type="button">
+      <div class="note-item ${p.id === walkId ? 'active' : ''}" data-open="${esc(p.id)}">
         <h4>${esc(p.title || 'Untitled pathway')}</h4>
         <p>${p.steps.length} step${p.steps.length === 1 ? '' : 's'} · ${fmt(p.updated)}</p>
-        <span class="forget" data-forget-path="${esc(p.id)}" title="Delete pathway">×</span>
-      </button>`).join('');
+        <button class="forget" data-forget-path="${esc(p.id)}" title="Delete pathway">×</button>
+      </div>`).join('');
   }
 
   function offerSave(steps, opts = {}) {
@@ -103,43 +171,98 @@
   function openWalk(id, at) {
     const p = Pathways.get(id);
     if (!p) return;
-    hideList();
     walkId = id;
     walkCursor = Math.max(0, Math.min(Math.max(0, p.steps.length - 1), at || 0));
-    $('#pathway-walk').hidden = false;
+    enter();
+    showFeed();
     $('#walk-title').value = p.title || '';
     renderWalk();
+    const body = bodyEl();
+    if (body) body.classList.remove('show-rail');
+    focusStep(walkCursor, false);
   }
 
   function closeWalk(opts) {
-    $('#pathway-walk').hidden = true;
     walkId = null;
-    if (!opts || opts.toList !== false) showList();
+    if (opts && opts.toList === false) leave();
+    else {
+      enter();
+      showPathEmpty();
+      renderList();
+    }
   }
 
   function current() { return walkId ? Pathways.get(walkId) : null; }
 
   function renderWalk() {
     const p = current();
-    if (!p) return;
+    const feed = $('#walk-feed');
+    if (!p || !feed) return;
     const steps = p.steps || [];
+    $('#walk-title').value = p.title || '';
+    const date = $('#walk-date');
+    const count = $('#walk-steps');
+    if (date) date.textContent = fmt(p.updated);
+    if (count) count.textContent = steps.length + (steps.length === 1 ? ' step' : ' steps');
     if (!steps.length) {
-      $('#walk-body').innerHTML = '<p class="gx-lede">This pathway has no steps yet. Add a note or media, or save a trail from Explore.</p>';
+      feed.innerHTML = '<p class="gx-lede">This pathway has no steps yet. Add a note or media, or save a trail from Explore.</p>';
       $('#walk-pos').textContent = '0 / 0';
       $('#walk-prev').disabled = true;
       $('#walk-next').disabled = true;
     } else {
       if (walkCursor >= steps.length) walkCursor = steps.length - 1;
-      const step = steps[walkCursor];
-      $('#walk-body').innerHTML = stepHTML(step, p);
-      fillMedia($('#walk-body'));
+      feed.innerHTML = steps.map((step, i) =>
+        `<article class="feed-item${i === walkCursor ? ' on' : ''}" data-step="${i}">${stepHTML(step, p)}</article>`
+      ).join('');
+      fillMedia(feed);
       $('#walk-pos').textContent = (walkCursor + 1) + ' / ' + steps.length;
       $('#walk-prev').disabled = walkCursor <= 0;
       $('#walk-next').disabled = walkCursor >= steps.length - 1;
     }
-    renderLinked(p);
-    $('#walk-picker').hidden = true;
-    $('#walk-link-form').hidden = true;
+    renderShelf(p);
+    closeAddPanels();
+    closePeek();
+    renderList();
+  }
+
+  function focusStep(i, scroll) {
+    const p = current();
+    const feed = $('#walk-feed');
+    if (!p || !feed || !p.steps.length) return;
+    walkCursor = Math.max(0, Math.min(p.steps.length - 1, i));
+    $$('#walk-feed .feed-item').forEach(el =>
+      el.classList.toggle('on', Number(el.dataset.step) === walkCursor));
+    $('#walk-pos').textContent = (walkCursor + 1) + ' / ' + p.steps.length;
+    $('#walk-prev').disabled = walkCursor <= 0;
+    $('#walk-next').disabled = walkCursor >= p.steps.length - 1;
+    if (scroll !== false) {
+      const item = feed.querySelector(`.feed-item[data-step="${walkCursor}"]`);
+      if (item) item.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function closeAddPanels() {
+    const note = $('#walk-note-panel');
+    const media = $('#walk-media-panel');
+    const link = $('#walk-link-form');
+    if (note) note.hidden = true;
+    if (media) media.hidden = true;
+    if (link) link.hidden = true;
+  }
+
+  function closePeek() {
+    const peek = $('#walk-peek');
+    if (!peek) return;
+    peek.hidden = true;
+    peek.innerHTML = '';
+  }
+
+  function togglePanel(id) {
+    const el = $(id);
+    if (!el) return;
+    const open = el.hidden;
+    closeAddPanels();
+    el.hidden = !open;
   }
 
   function stepHTML(step, pathway) {
@@ -212,14 +335,60 @@
     }
   }
 
-  function renderLinked(p) {
+  function renderShelf(p) {
     const box = $('#walk-notes');
+    if (!box) return;
     const notes = (p.noteIds || []).map(id => Notes.get(id)).filter(Boolean);
-    box.innerHTML = notes.map(n => `
-      <span class="saved-chip" data-open-note="${esc(n.id)}">
-        <span class="t">${esc(n.title || 'Untitled')}</span>
-        <span class="x" data-unlink="${esc(n.id)}" title="Unlink">×</span>
-      </span>`).join('');
+    const atts = p.attachments || [];
+    const chips = notes.map(n => ({
+      kind: 'note', id: n.id, label: n.title || 'Untitled', drop: 'unlink'
+    })).concat(atts.map(a => ({
+      kind: a.kind === 'link' ? 'link' : 'media',
+      id: a.id,
+      label: a.kind === 'link' ? (a.title || a.url || 'Link') : (a.name || 'File'),
+      drop: 'drop-att'
+    })));
+    box.innerHTML = chips.map(c => `
+      <button class="saved-chip" type="button" data-view="${esc(c.kind)}" data-id="${esc(c.id)}">
+        <span class="t">${esc(c.label)}</span>
+        <span class="x" data-${c.drop}="${esc(c.id)}" title="Remove">×</span>
+      </button>`).join('');
+  }
+
+  function peekItem(kind, id) {
+    const peek = $('#walk-peek');
+    const p = current();
+    if (!peek || !p) return;
+    let html = '';
+    if (kind === 'note') {
+      const n = Notes.get(id);
+      if (!n) return;
+      html = `<div class="walk-peek-head"><span class="k">Note</span>
+        <button class="ghost" type="button" data-peek-close>Close</button></div>
+        <h3>${esc(n.title || 'Untitled')}</h3>
+        <p class="gx-lede">${esc(n.body || 'Empty note')}</p>`;
+    } else {
+      const att = (p.attachments || []).find(a => a.id === id) || findAtt({ ref: id }, p);
+      if (!att) return;
+      if (att.kind === 'link') {
+        html = `<div class="walk-peek-head"><span class="k">Link</span>
+          <button class="ghost" type="button" data-peek-close>Close</button></div>
+          <h3>${esc(att.title || att.url)}</h3>
+          <p class="gx-lede"><a href="${esc(att.url)}" target="_blank" rel="noopener">${esc(att.url)}</a></p>`;
+      } else {
+        const name = att.name || 'File';
+        let body = `<p class="gx-lede">${esc(name)}</p>`;
+        if (att.kind === 'image') body = `<img class="walk-media" data-src="${esc(att.id)}" alt="${esc(name)}">`;
+        else if (att.kind === 'video') body = `<video class="walk-media" data-src="${esc(att.id)}" controls preload="metadata"></video>`;
+        else if (att.kind === 'audio') body = `<audio data-src="${esc(att.id)}" controls preload="metadata"></audio>`;
+        html = `<div class="walk-peek-head"><span class="k">Media</span>
+          <button class="ghost" type="button" data-peek-close>Close</button></div>
+          <h3>${esc(name)}</h3>${body}`;
+      }
+    }
+    peek.innerHTML = html;
+    peek.hidden = false;
+    fillMedia(peek);
   }
 
   function askForgetPath(id) {
@@ -283,7 +452,9 @@
     if (walkId === pathwayId) renderWalk();
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function bind() {
+    if (bind.done) return;
+    bind.done = true;
     const list = $('#path-list');
     if (list) list.addEventListener('click', e => {
       const kill = e.target.closest('[data-forget-path]');
@@ -297,12 +468,10 @@
       if (card) openWalk(card.dataset.open);
     });
 
-    $('#path-close').addEventListener('click', hideList);
-    $('#walk-close').addEventListener('click', () => closeWalk({ toList: true }));
-    $('#walk-prev').addEventListener('click', () => { if (walkCursor > 0) { walkCursor--; renderWalk(); } });
+    $('#walk-prev').addEventListener('click', () => { if (walkCursor > 0) focusStep(walkCursor - 1); });
     $('#walk-next').addEventListener('click', () => {
       const p = current();
-      if (p && walkCursor < p.steps.length - 1) { walkCursor++; renderWalk(); }
+      if (p && walkCursor < p.steps.length - 1) focusStep(walkCursor + 1);
     });
     $('#walk-explore').addEventListener('click', openExplore);
     $('#walk-title').addEventListener('change', () => {
@@ -317,19 +486,31 @@
         renderWalk();
         return;
       }
-      const open = e.target.closest('[data-open-note]');
-      if (open && typeof window.PalinodePathways.onOpenNote === 'function')
-        window.PalinodePathways.onOpenNote(open.dataset.openNote);
+      const drop = e.target.closest('[data-drop-att]');
+      if (drop && walkId) {
+        Pathways.removeAttachment(walkId, drop.dataset.dropAtt);
+        notify();
+        renderWalk();
+        return;
+      }
+      const chip = e.target.closest('[data-view]');
+      if (chip) peekItem(chip.dataset.view, chip.dataset.id);
+    });
+    $('#walk-peek').addEventListener('click', e => {
+      if (e.target.closest('[data-peek-close]')) closePeek();
     });
 
     $('#walk-add-note').addEventListener('click', () => {
-      const box = $('#walk-picker');
+      const panel = $('#walk-note-panel');
+      const opening = panel.hidden;
+      togglePanel('#walk-note-panel');
+      if (!opening) return;
       const notes = Notes.all();
-      box.hidden = !box.hidden;
-      box.innerHTML = notes.length
+      $('#walk-picker').innerHTML = notes.length
         ? notes.map(n => `<button type="button" data-add-note="${esc(n.id)}">${esc(n.title || 'Untitled')}</button>`).join('')
         : '<p class="gx-lede">No notes yet.</p>';
     });
+    $('#walk-note-done').addEventListener('click', closeAddPanels);
     $('#walk-picker').addEventListener('click', e => {
       const b = e.target.closest('[data-add-note]');
       if (!b || !walkId) return;
@@ -344,7 +525,9 @@
       renderWalk();
     });
 
-    $('#walk-add-media').addEventListener('click', () => $('#path-file').click());
+    $('#walk-add-media').addEventListener('click', () => togglePanel('#walk-media-panel'));
+    $('#walk-media-done').addEventListener('click', closeAddPanels);
+    $('#walk-media-choose').addEventListener('click', () => $('#path-file').click());
     $('#path-file').addEventListener('change', async e => {
       const files = Array.from(e.target.files || []);
       e.target.value = '';
@@ -368,10 +551,11 @@
 
     $('#walk-add-link').addEventListener('click', () => {
       const f = $('#walk-link-form');
-      f.hidden = !f.hidden;
-      if (!f.hidden) $('#walk-link-url').focus();
+      const opening = f.hidden;
+      togglePanel('#walk-link-form');
+      if (opening) $('#walk-link-url').focus();
     });
-    $('#walk-link-cancel').addEventListener('click', () => { $('#walk-link-form').hidden = true; });
+    $('#walk-link-cancel').addEventListener('click', closeAddPanels);
     $('#walk-link-form').addEventListener('submit', e => {
       e.preventDefault();
       if (!walkId) return;
@@ -419,10 +603,13 @@
     $('#path-pick-scrim').addEventListener('click', e => {
       if (e.target === $('#path-pick-scrim')) $('#path-pick-scrim').classList.remove('on');
     });
-  });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
 
   window.PalinodePathways = {
-    offerSave, showList, hideList, openWalk, closeWalk,
+    offerSave, showList, hideList, enter, leave, openWalk, closeWalk,
     isListOpen, isWalkOpen, refresh: renderList,
     offerAttach, askForgetPath,
     onChange: null,

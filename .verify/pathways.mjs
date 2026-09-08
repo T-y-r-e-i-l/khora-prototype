@@ -59,16 +59,24 @@ await page.waitForTimeout(250);
 check('the library lists the saved walk', await page.evaluate(
   () => /A short walk/.test(document.getElementById('path-list').textContent)));
 
-await page.click('.path-card[data-open]');
-await page.waitForSelector('#pathway-walk:not([hidden])');
+await page.click('#path-list .note-item[data-open]');
+await page.waitForSelector('#pathway-wrap:not([hidden])');
+check('the feed has a block per step', await page.evaluate(
+  () => document.querySelectorAll('#walk-feed .feed-item').length >= 2));
 const firstPos = await page.textContent('#walk-pos');
 check('the walk opens on the first step', /^1 \//.test(firstPos.trim()), firstPos);
 
-const before = await page.textContent('#walk-body h3');
+const before = await page.evaluate(() => {
+  const on = document.querySelector('#walk-feed .feed-item.on h3');
+  return on ? on.textContent : '';
+});
 await page.click('#walk-next');
 await page.waitForTimeout(150);
-const after = await page.textContent('#walk-body h3');
-check('Next changes the step', after !== before, before + ' → ' + after);
+const after = await page.evaluate(() => {
+  const on = document.querySelector('#walk-feed .feed-item.on h3');
+  return on ? on.textContent : '';
+});
+check('Next jumps to the next feed item', after !== before, before + ' → ' + after);
 
 const lenBefore = await page.evaluate(() => window.PalinodeStore.Pathways.all()[0].steps.length);
 await page.click('#walk-add-note');
@@ -83,14 +91,60 @@ check('a journal note can be added as a step', added);
 await page.waitForTimeout(150);
 const lenAfter = await page.evaluate(() => window.PalinodeStore.Pathways.all()[0].steps.length);
 check('adding a note lengthens the walk', lenAfter === lenBefore + 1, lenBefore + ' → ' + lenAfter);
+check('the added note is on the shelf', await page.evaluate(
+  () => !!document.querySelector('#walk-notes [data-view="note"]')));
 
-await page.click('#walk-close');
+await page.click('#walk-add-note');
+await page.waitForTimeout(80);
+check('Add note opens a panel', await page.evaluate(
+  () => !document.getElementById('walk-note-panel').hidden));
+await page.click('#walk-note-done');
+check('Done collapses the note panel', await page.evaluate(
+  () => document.getElementById('walk-note-panel').hidden));
+
+await page.click('#walk-add-media');
+check('Add media opens a panel', await page.evaluate(
+  () => !document.getElementById('walk-media-panel').hidden));
+await page.click('#walk-media-done');
+check('Done collapses the media panel', await page.evaluate(
+  () => document.getElementById('walk-media-panel').hidden));
+
+await page.click('#walk-add-link');
+check('Add link opens the form', await page.evaluate(
+  () => !document.getElementById('walk-link-form').hidden));
+await page.fill('#walk-link-url', 'https://example.com/grain');
+await page.fill('#walk-link-title', 'The grain');
+await page.click('#walk-link-form button[type="submit"]');
 await page.waitForTimeout(150);
-check('Close returns to the library', await page.evaluate(
-  () => !document.getElementById('pathways').hidden && document.getElementById('pathway-walk').hidden));
+check('a link appears on the shelf', await page.evaluate(
+  () => /The grain/.test(document.getElementById('walk-notes').textContent)));
 
-await page.click('.path-card[data-open]');
-await page.waitForSelector('#pathway-walk:not([hidden])');
+await page.click('#walk-add-link');
+check('Add link opens again', await page.evaluate(
+  () => !document.getElementById('walk-link-form').hidden));
+await page.click('#walk-link-cancel');
+check('Cancel collapses the link form', await page.evaluate(
+  () => document.getElementById('walk-link-form').hidden));
+
+await page.click('#walk-notes [data-view="note"]');
+check('a note chip opens a peek without leaving the walk', await page.evaluate(() => {
+  const peek = document.getElementById('walk-peek');
+  return !peek.hidden && /I had no choice/.test(peek.textContent)
+    && !document.getElementById('pathway-wrap').hidden;
+}));
+await page.click('#walk-peek [data-peek-close]');
+check('Close collapses the peek', await page.evaluate(
+  () => document.getElementById('walk-peek').hidden));
+
+await page.click('#walk-notes [data-view="link"]');
+check('a link chip shows the url', await page.evaluate(() => {
+  const peek = document.getElementById('walk-peek');
+  return !peek.hidden && /example.com/.test(peek.textContent);
+}));
+
+check('the tray still lists the walk', await page.evaluate(
+  () => /A short walk/.test(document.getElementById('path-list').textContent)));
+
 await page.click('#walk-explore');
 await page.waitForSelector('#graph:not([hidden])');
 await page.waitForTimeout(400);
@@ -106,7 +160,15 @@ const graph = await page.evaluate(() => {
   };
 });
 check('Open in Explore uses the pathway title', graph.title === 'A short walk', graph.title);
-check('Connections starts hidden off', graph.connHidden === false && graph.connOn === false);
+check('Show Connections starts hidden off', graph.connHidden === false && graph.connOn === false);
+check('Show Connections sits left of 2D/3D', await page.evaluate(() => {
+  const conn = document.getElementById('gx-conn');
+  const dim = document.getElementById('gx-dim');
+  if (!conn || conn.hidden || !dim) return false;
+  const label = conn.textContent.replace(/\s+/g, ' ').trim();
+  if (label !== 'Show Connections') return false;
+  return conn.getBoundingClientRect().right <= dim.getBoundingClientRect().left + 1;
+}));
 check('the pathway graph shows only curated nodes', graph.extras === 0, graph.extras + ' extras');
 
 if (problems.length) problems.forEach(p => check(p, false));

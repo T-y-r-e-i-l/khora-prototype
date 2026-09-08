@@ -236,6 +236,13 @@ aside.rail .skip-track { margin-left: 0; }
 
 .rail-foot { padding: 12px 16px; border-top: 1px solid var(--hairline-2); }
 
+.body.pathways-mode #prompt-card,
+.body.pathways-mode #btn-new-list,
+.body.pathways-mode .rail-head .search,
+.body.pathways-mode .rail-foot,
+.body.pathways-mode #note-list { display: none; }
+.body.pathways-mode #path-list { display: block; }
+
 /* ---------- centre: prompt + editor ---------------------------- */
 main.centre { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
 .centre-inner { width: 100%; max-width: 760px; margin: 0 auto; padding: 26px 40px 120px; }
@@ -961,8 +968,9 @@ body.exploring { overflow: hidden; }
 }
 .gx-conn {
   display: inline-flex; align-items: center; gap: 7px;
-  font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
-  cursor: pointer; padding-left: 12px; border-left: 1px solid var(--hairline);
+  flex: none; white-space: nowrap;
+  font-size: 10.5px; letter-spacing: .02em; color: var(--ink-3);
+  cursor: pointer;
 }
 .gx-conn[hidden] { display: none; }
 .gx-conn input { accent-color: var(--resonance); }
@@ -975,7 +983,7 @@ body.exploring { overflow: hidden; }
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
   flex: 1; min-width: 0;
 }
-#gx-save-path { flex: none; white-space: nowrap; }
+#gx-save-path { flex: none; align-self: flex-start; white-space: nowrap; }
 .gx-crumb {
   position: relative;
   display: inline-flex; align-items: center; gap: 6px;
@@ -1122,7 +1130,7 @@ body.exploring { overflow: hidden; }
   display: inline-flex; align-items: center; gap: 7px;
   border: 1px solid var(--hairline); background: rgba(0,0,0,.3);
   border-radius: var(--pill); padding: 5px 6px 5px 9px;
-  font-size: 11.5px; color: var(--ink-2); cursor: pointer;
+  font-family: inherit; font-size: 11.5px; color: var(--ink-2); cursor: pointer;
   transition: all .16s var(--ease);
 }
 .saved-chip:hover { color: var(--ink); border-color: rgba(255,255,255,.24); }
@@ -1317,68 +1325,71 @@ body.dim3 #gx-3d { inset: 0; }
 body.dim3 .gx-top, body.dim3 .gx-trail-row { right: 0; }
 
 /* ============================================================
-   Pathways — library and linear walk
+   Pathways — tray + note-page feed
    ============================================================ */
 
-#pathways, #pathway-walk {
-  position: fixed; inset: 0 0 0 var(--nav); z-index: 48;
-  background: radial-gradient(130% 100% at 50% 50%, rgba(9,8,11,.965), rgba(4,3,6,.995));
-  display: flex; flex-direction: column;
-  padding: 22px 28px 28px;
-}
-#pathways[hidden], #pathway-walk[hidden] { display: none; }
-.path-head {
-  display: flex; align-items: center; gap: 12px; margin-bottom: 22px;
-}
-.path-title {
-  flex: 1; min-width: 0;
-  background: none; border: 0; border-bottom: 1px solid transparent;
-  font-family: var(--serif); font-size: 20px; font-weight: 500; color: var(--ink);
-  padding: 4px 0;
-}
-.path-title:focus { outline: none; border-bottom-color: var(--hairline); }
-.path-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-.path-card {
-  position: relative;
-  text-align: left; width: 100%;
-  background: var(--glass-2); border: 1px solid var(--hairline);
-  border-radius: var(--r-md); padding: 14px 36px 14px 16px; cursor: pointer;
-  color: inherit;
-}
-.path-card:hover { background: var(--glass-3); }
-.path-card h4 {
-  margin: 0 0 6px; font-family: var(--serif); font-weight: 500;
-  font-size: 16px; color: var(--ink);
-}
-.path-card p { margin: 0; font-size: 11px; color: var(--ink-3); letter-spacing: .04em; }
-.path-card .forget {
-  position: absolute; top: 10px; right: 10px;
-  width: 22px; height: 22px; border-radius: 50%; border: 0; cursor: pointer;
-  background: rgba(6,5,8,.82); color: var(--ink-2); font-size: 13px;
-  display: grid; place-items: center;
-  opacity: 0; pointer-events: none;
-}
-.path-card:hover .forget { opacity: 1; pointer-events: auto; }
-.path-card .forget:hover { color: #fff; background: rgba(229,72,77,.85); }
-@media (hover: none) {
-  .path-card .forget { opacity: 1; pointer-events: auto; }
-}
-.path-empty { color: var(--ink-3); font-size: 14px; line-height: 1.7; max-width: 420px; padding: 24px 4px; }
+#pathway-wrap[hidden], #path-empty[hidden], #path-list[hidden] { display: none; }
+.path-empty { color: var(--ink-3); font-size: 12px; line-height: 1.6; padding: 22px 12px; }
 
-.walk-body { flex: 1; overflow-y: auto; max-width: 640px; padding-bottom: 18px; }
-.walk-body .gx-kicker { margin-bottom: 12px; }
-.walk-body h3 {
+.walk-feed { padding-bottom: 8px; }
+.feed-item {
+  padding: 4px 0 32px 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--hairline-2);
+  border-left: 2px solid transparent;
+  scroll-margin-top: 18px;
+}
+.feed-item:last-child { border-bottom: 0; margin-bottom: 0; }
+.feed-item.on { border-left-color: var(--resonance); }
+.feed-item .gx-kicker { margin-bottom: 12px; color: #fff; }
+.feed-item h3 {
   font-family: var(--serif); font-size: 28px; font-weight: 500; line-height: 1.28;
   margin: 0 0 12px; color: var(--ink);
 }
-.walk-body .gx-question, .walk-body .gx-lede { margin: 0 0 16px; }
-.walk-body .walk-media { max-width: 100%; border-radius: var(--r-md); margin: 8px 0 16px; display: block; }
+.feed-item .gx-question, .feed-item .gx-lede { margin: 0 0 16px; }
+.feed-item .walk-media { max-width: 100%; border-radius: var(--r-md); margin: 8px 0 16px; display: block; }
 .walk-notes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.walk-notes:empty { display: none; }
 .walk-add { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .walk-link { margin-bottom: 12px; }
+.walk-panel {
+  border: 1px solid var(--hairline);
+  background: rgba(0,0,0,.28);
+  border-radius: var(--r-md);
+  padding: 12px 14px 14px;
+  margin-bottom: 12px;
+}
+.walk-panel[hidden], .walk-peek[hidden], .walk-picker[hidden] { display: none; }
+.walk-panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 10px;
+  font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
+}
+.walk-panel .gx-lede { margin: 0 0 12px; }
+.walk-peek {
+  border: 1px solid var(--hairline);
+  background: rgba(0,0,0,.35);
+  border-radius: var(--r-md);
+  padding: 14px 16px 16px;
+  margin-bottom: 12px;
+  max-height: 280px; overflow-y: auto;
+}
+.walk-peek-head {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.walk-peek-head .k {
+  flex: 1;
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-4);
+}
+.walk-peek h3 {
+  font-family: var(--serif); font-size: 20px; font-weight: 500;
+  margin: 0 0 10px; color: var(--ink);
+}
+.walk-peek .gx-lede { margin: 0; }
+.walk-peek .walk-media { max-width: 100%; border-radius: var(--r-md); margin: 4px 0 0; display: block; }
 .walk-picker {
   display: flex; flex-direction: column; gap: 4px;
-  max-height: 200px; overflow-y: auto; margin-bottom: 12px;
+  max-height: 200px; overflow-y: auto;
 }
 .walk-picker button {
   text-align: left; background: var(--glass-2); border: 1px solid var(--hairline);
@@ -1387,7 +1398,16 @@ body.dim3 .gx-top, body.dim3 .gx-trail-row { right: 0; }
 .walk-picker button:hover { color: var(--ink); background: var(--glass-3); }
 .walk-nav {
   display: flex; align-items: center; gap: 14px;
-  padding-top: 10px; border-top: 1px solid var(--hairline-2);
+  position: sticky; bottom: 0;
+  padding: 12px 0 4px;
+  margin-top: 8px;
+  border-top: 1px solid var(--hairline-2);
+  background: linear-gradient(180deg, transparent, rgba(6,5,8,.92) 28%);
+}
+@media (max-width: 900px) {
+  .walk-nav {
+    bottom: calc(var(--bar) + env(safe-area-inset-bottom, 0px));
+  }
 }
 #walk-pos { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
 .path-name {
@@ -1745,7 +1765,6 @@ nav.sidenav {
   nav.sidenav .nav-new { width: 40px; height: 40px; flex: none; }
   #graph { inset: 0 0 var(--bar) 0; }
   #dropzone { display: none; }
-  #pathways, #pathway-walk { inset: 0 0 var(--bar) 0; }
   .gx-trail-row {
     right: 12px; left: 12px;
     flex-wrap: nowrap;

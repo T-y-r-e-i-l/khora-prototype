@@ -165,6 +165,12 @@ check('the trail is on a phone', await page.evaluate(
   () => getComputedStyle(document.getElementById('gx-trail')).display !== 'none'));
 check('Save as Pathway sits with the trail', await page.evaluate(
   () => getComputedStyle(document.getElementById('gx-save-path')).display !== 'none'));
+check('Save as Pathway sits left of the first crumb', await page.evaluate(() => {
+  const btn = document.getElementById('gx-save-path').getBoundingClientRect();
+  const crumb = document.querySelector('#gx-trail .gx-crumb');
+  if (!crumb) return false;
+  return btn.right <= crumb.getBoundingClientRect().left + 1;
+}));
 
 await page.click('#gx-dim [data-dim="3"]');
 await page.waitForTimeout(400);
@@ -217,5 +223,24 @@ check('New note leaves Explore for the editor', fromExplore.graph);
 check('that note is also untitled', fromExplore.title === '',
   JSON.stringify(fromExplore.title));
 check('and Write is the view again', fromExplore.on === 'btn-rail', fromExplore.on);
+
+await page.click('#btn-pathways');
+await page.waitForTimeout(250);
+const pathPage = await page.evaluate(() => {
+  const empty = document.getElementById('path-empty');
+  const wrap = document.getElementById('pathway-wrap');
+  const pageEl = (!empty.hidden && empty) || (!wrap.hidden && wrap);
+  const nav = document.querySelector('nav.sidenav').getBoundingClientRect();
+  const r = pageEl ? pageEl.getBoundingClientRect() : { bottom: 0 };
+  return {
+    mode: document.getElementById('body').classList.contains('pathways-mode'),
+    overlay: !!document.getElementById('pathways'),
+    fixed: pageEl ? getComputedStyle(pageEl).position === 'fixed' : true,
+    bottom: Math.round(r.bottom), navTop: Math.round(nav.top)
+  };
+});
+check('Pathways is a page, not an overlay', pathPage.mode && !pathPage.overlay && !pathPage.fixed);
+check('the pathway page sits above the bar', pathPage.bottom <= pathPage.navTop + 1,
+  pathPage.bottom + ' vs bar at ' + pathPage.navTop);
 
 await finish();

@@ -281,8 +281,15 @@
 
   function closePathways() {
     if (!window.PalinodePathways) return;
-    PalinodePathways.hideList();
-    PalinodePathways.closeWalk({ toList: false });
+    PalinodePathways.leave();
+    el.empty.hidden = false;
+    if (activeId) {
+      el.editorWrap.hidden = false;
+      el.empty.style.display = 'none';
+    } else {
+      el.editorWrap.hidden = true;
+      el.empty.style.display = '';
+    }
   }
 
   function newNote() {
@@ -1383,6 +1390,7 @@
     if (chip && window.PalinodePathways) {
       closeExplore();
       el.body.classList.remove('show-insights', 'show-rail');
+      PalinodePathways.enter();
       PalinodePathways.openWalk(chip.dataset.pathway);
       syncNav('pathways');
     }
@@ -1492,6 +1500,11 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
       syncNav('write');
       return;
     }
+    if (window.PalinodePathways && PalinodePathways.isListOpen()) {
+      closePathways();
+      syncNav('write');
+      return;
+    }
     el.body.classList.toggle('rail-closed');
   });
   $('#btn-nav-insights').addEventListener('click', () => {
@@ -1510,14 +1523,16 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
     el.body.classList.toggle(phone() ? 'show-insights' : 'insights-closed');
   });
   $('#btn-pathways').addEventListener('click', () => {
-    if (window.PalinodePathways && (PalinodePathways.isListOpen() || PalinodePathways.isWalkOpen())) {
-      closePathways();
-      syncNav(phone() ? 'write' : 'write');
+    if (window.PalinodePathways && PalinodePathways.isListOpen()) {
+      if (phone()) el.body.classList.toggle('show-rail');
+      syncNav('pathways');
       return;
     }
     closeExplore();
-    el.body.classList.remove('show-insights', 'show-rail');
-    if (window.PalinodePathways) PalinodePathways.showList();
+    el.body.classList.remove('show-insights');
+    if (window.PalinodePathways) PalinodePathways.enter();
+    if (phone() && window.PalinodePathways && !PalinodePathways.isWalkOpen())
+      el.body.classList.add('show-rail');
     syncNav('pathways');
   });
 
@@ -1530,8 +1545,9 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
       if (window.PalinodePathways && PalinodePathways.isWalkOpen()) {
         PalinodePathways.closeWalk({ toList: true });
         syncNav('pathways');
+        if (phone()) el.body.classList.add('show-rail');
       } else if (window.PalinodePathways && PalinodePathways.isListOpen()) {
-        PalinodePathways.hideList();
+        closePathways();
         syncNav('write');
       }
     }
@@ -1652,7 +1668,11 @@ What I actually want is for someone to see how hard it has been. That is a small
     }]);
 
     if (window.PalinodePathways) {
-      PalinodePathways.onChange = () => { renderComposer(); renderList(); };
+      PalinodePathways.onChange = () => {
+        renderComposer();
+        renderList();
+        PalinodePathways.refresh();
+      };
       PalinodePathways.onOpenNote = id => {
         closeExplore();
         closePathways();
@@ -1660,7 +1680,6 @@ What I actually want is for someone to see how hard it has been. That is a small
         syncNav('write');
       };
     }
-    $('#path-close').addEventListener('click', () => syncNav('write'));
 
     renderPrompt();
     renderList();
