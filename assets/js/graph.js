@@ -94,6 +94,7 @@
   let ctx = null;          // { note, analysis, onWrite, onRead, onReadingRoom }
   let selected = null;
   let trail = [];
+  let trailCursor = -1;
   let sim = null;
   let view = { s: 1, tx: 0, ty: 0 };
   let root = null, elEdges = null, elNodes = null, elPanel = null, elTrail = null;
@@ -857,20 +858,54 @@
 
   /* ================= trail ================= */
 
-  function pushTrail(id) {
-    trail = trail.filter(t => t !== id);
-    trail.push(id);
-    if (trail.length > 8) trail.shift();
-    renderTrail();
+  // The trail is the session's path, not a stack. A new world is appended.
+  // Returning to a crumb only moves the cursor, so later visits stay put
+  // and the buttons themselves are never rebuilt.
+
+  function crumbButton(id) {
+    const n = nodes.get(id);
+    if (!n) return null;
+    const btn = document.createElement('button');
+    btn.className = 'gx-crumb';
+    btn.dataset.goto = id;
+    const orb = document.createElement('span');
+    orb.className = 'orb sm';
+    orb.style.setProperty('--c', `var(--${n.category})`);
+    btn.append(orb, document.createTextNode(n.label));
+    return btn;
   }
 
-  function renderTrail() {
-    elTrail.innerHTML = trail.map(id => {
-      const n = nodes.get(id);
-      if (!n) return '';
-      return `<button class="gx-crumb" data-goto="${id}">
-        <span class="orb sm" style="--c:var(--${n.category})"></span>${escapeHtml(n.label)}</button>`;
-    }).join('<span class="gx-crumb-sep">→</span>');
+  function appendCrumb(id) {
+    if (!elTrail) return;
+    if (elTrail.querySelector('.gx-crumb')) {
+      const sep = document.createElement('span');
+      sep.className = 'gx-crumb-sep';
+      sep.textContent = '→';
+      elTrail.appendChild(sep);
+    }
+    const btn = crumbButton(id);
+    if (btn) elTrail.appendChild(btn);
+  }
+
+  function markTrail() {
+    if (!elTrail) return;
+    elTrail.querySelectorAll('.gx-crumb').forEach((el, i) => {
+      el.classList.toggle('on', i === trailCursor);
+      el.classList.toggle('ahead', i > trailCursor);
+    });
+  }
+
+  function pushTrail(id) {
+    const at = trail.indexOf(id);
+    if (at >= 0) {
+      trailCursor = at;
+      markTrail();
+      return;
+    }
+    trail.push(id);
+    appendCrumb(id);
+    trailCursor = trail.length - 1;
+    markTrail();
   }
 
   /* ================= interaction ================= */
@@ -943,7 +978,7 @@
 
   async function open(context) {
     ctx = context;
-    nodes = new Map(); edges = []; trail = []; selected = null; hoverId = null;
+    nodes = new Map(); edges = []; trail = []; trailCursor = -1; selected = null; hoverId = null;
     nodeEls.clear(); edgeEls.clear(); dirty = true; lastScale = -1;
     view = { s: 1, tx: 0, ty: 0 };
 
@@ -952,6 +987,7 @@
     elNodes = document.getElementById('gx-nodes');
     elPanel = document.getElementById('gx-panel');
     elTrail = document.getElementById('gx-trail');
+    if (elTrail) elTrail.innerHTML = '';
     root.hidden = false;
     document.body.classList.add('exploring');
     elNodes.innerHTML = ''; elEdges.innerHTML = '';
@@ -1175,6 +1211,7 @@
       node: id => nodes.get(id),
       all: () => nodes,
       trail: () => trail.slice(),
+      trailIndex: () => trailCursor,
       label: n => label(n),
       category: n => category(n),
       kicker: n => kicker(n),

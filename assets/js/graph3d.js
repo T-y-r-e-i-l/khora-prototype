@@ -231,6 +231,14 @@
     });
   }
 
+  // The path in is the crumbs before the cursor. Later visits stay on
+  // the HTML trail so you can walk forward; they are not behind you.
+  function trailBehind() {
+    const t = model.trail() || [];
+    const i = model.trailIndex ? model.trailIndex() : t.length - 1;
+    return t.slice(0, Math.max(0, i));
+  }
+
   // Same history as #gx-trail. The centre is the current node; everything
   // before it becomes a physical orb on the path in. One crumb draws nothing.
   function buildTrail(centreId) {
@@ -238,7 +246,7 @@
     trailConnector = null;
     if (!trailGroup) return;
 
-    const stack = (model.trail() || [])
+    const stack = trailBehind()
       .filter(tid => tid && tid !== centreId)
       .map(tid => model.node(tid))
       .filter(Boolean);
@@ -334,7 +342,7 @@
     // the orbit — neighbours of the current world. A node already on the
     // trail is drawn there instead, so the path does not double as a copy
     // on the equator.
-    const prior = new Set((model.trail() || []).filter(tid => tid !== id));
+    const prior = new Set(trailBehind());
     const kids = model.orbit(id, 12).filter(k => !prior.has(k.id));
     const R = 4.3 + Math.min(2.2, kids.length * 0.12);
     orbitGroup.add(orbitPath(R, hue));
@@ -627,8 +635,9 @@
 
   function ascend() {
     const t = model.trail();
-    if (t.length < 2) return;
-    model.select(t[t.length - 2]);
+    const i = model.trailIndex ? model.trailIndex() : t.length - 1;
+    if (i < 1) return;
+    model.select(t[i - 1]);
   }
 
   /* ---------- mount ---------- */

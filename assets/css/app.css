@@ -973,6 +973,8 @@ body.exploring { overflow: hidden; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .gx-crumb:hover { color: var(--ink); border-color: rgba(255,255,255,.24); }
+.gx-crumb.on { color: var(--ink); border-color: rgba(255,255,255,.28); }
+.gx-crumb.ahead { opacity: .55; }
 .gx-crumb-sep { color: var(--ink-4); font-size: 10px; }
 
 .gx-zoom {
