@@ -44,6 +44,12 @@ check('kind filter lists node types', await page.evaluate(() => {
   return !!(cat && [...cat.options].some(o => o.value === 'IDEA')
     && [...cat.options].some(o => o.value === 'PERSON'));
 }));
+check('tradition filter lists the local traditions', await page.evaluate(() => {
+  const trad = document.getElementById('gx-trad');
+  return !!(trad && [...trad.options].some(o => o.value === 'buddhist')
+    && [...trad.options].some(o => o.value === 'greek')
+    && [...trad.options].some(o => o.value === ''));
+}));
 check('the page is titled Explore', await page.evaluate(
   () => document.getElementById('gx-title-text').textContent === 'Explore'));
 check('Close is hidden on the Explore page', await page.evaluate(
@@ -92,6 +98,38 @@ await page.click('#path-pick-new');
 await page.waitForTimeout(200);
 check('a concept can start a pathway', await page.evaluate(
   () => window.PalinodeStore.Pathways.all().some(p => /Ressentiment/i.test(p.title))));
+
+await page.fill('#gx-q', '');
+await page.waitForTimeout(500);
+await page.selectOption('#gx-trad', 'buddhist');
+await page.waitForTimeout(500);
+const tradFilter = await page.evaluate(() => {
+  const { CONCEPTS } = window.PalinodeCorpus;
+  const nodes = [...document.querySelectorAll('#gx-nodes .gx-concept')];
+  const refs = nodes.map(el => {
+    const id = el.dataset.id || '';
+    return id.startsWith('c:') ? id.slice(2) : id;
+  });
+  const traditions = refs.map(ref => {
+    const c = CONCEPTS.find(x => x.id === ref);
+    return c ? c.tradition : null;
+  });
+  return {
+    count: nodes.length,
+    allBuddhist: traditions.length > 0 && traditions.every(t => t === 'buddhist'),
+    sample: traditions.slice(0, 4),
+    wrapOn: document.getElementById('gx-trad-wrap').classList.contains('on')
+  };
+});
+check('a tradition draws local concepts', tradFilter.count >= 1, tradFilter.count + ' nodes');
+check('every drawn concept matches the tradition', tradFilter.allBuddhist,
+  (tradFilter.sample || []).join(','));
+check('the tradition control marks itself active', tradFilter.wrapOn);
+
+await page.selectOption('#gx-trad', '');
+await page.waitForFunction(() => document.querySelectorAll('#gx-nodes .gx-node').length >= 1);
+check('clearing tradition returns a live field', await page.evaluate(
+  () => document.querySelectorAll('#gx-nodes .gx-node').length >= 1));
 
 await page.click('#btn-rail');
 await page.waitForFunction(() => document.getElementById('graph').hidden);

@@ -324,6 +324,7 @@ const corpus = await page.evaluate(() => {
   const zoom = document.querySelector('.gx-zoom').getBoundingClientRect();
   const dim = document.getElementById('gx-dim').getBoundingClientRect();
   const sort = document.querySelector('#gx-sort').closest('label').getBoundingClientRect();
+  const trad = document.getElementById('gx-trad-wrap').getBoundingClientRect();
   const cat = document.getElementById('gx-cat-wrap').getBoundingClientRect();
   const save = document.getElementById('gx-save-path').getBoundingClientRect();
   const chips = [...document.querySelectorAll('#gx-filters .chip')];
@@ -333,17 +334,20 @@ const corpus = await page.evaluate(() => {
     || a.bottom <= b.top || a.top >= b.bottom);
   return {
     catShown: shown(document.getElementById('gx-cat-wrap')),
+    tradShown: shown(document.getElementById('gx-trad-wrap')),
     chipShown,
     catRightOfSort: cat.left >= sort.right - 1,
+    tradBetween: trad.left >= sort.right - 1 && cat.left >= trad.right - 1,
     between: sort.left >= zoom.right - 1 && cat.right <= dim.left + 1,
     sameRow: Math.abs(sort.top - zoom.top) < 24 && Math.abs(cat.top - dim.top) < 24,
     searchW: Math.round(q.width),
     searchAboveNav: q.bottom <= nav.top + 1 && q.bottom > nav.top - 48,
-    saveClear: !overlap(save, cat)
+    saveClear: !overlap(save, cat) && !overlap(save, trad)
   };
 });
 check('sort and filter sit between Fit and 2D/3D', corpus.between && corpus.sameRow);
 check('filter sits to the right of sort', corpus.catShown && corpus.catRightOfSort);
+check('tradition sits between sort and kind', corpus.tradShown && corpus.tradBetween);
 check('category chips are off the phone chrome', !corpus.chipShown);
 check('search is 90vw', Math.abs(corpus.searchW - Math.round(390 * 0.9)) <= 2,
   corpus.searchW + 'px');

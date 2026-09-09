@@ -516,6 +516,7 @@
 
   let corpusQ = '';
   let corpusCats = new Set();
+  let corpusTradition = '';
   let corpusSort = 'name';
 
   const showLabel = n =>
@@ -1232,6 +1233,7 @@
     else if (isCorpus()) {
       corpusQ = '';
       corpusCats = new Set();
+      corpusTradition = '';
       corpusSort = 'name';
       corpusLive = false;
       syncCorpusControls();
@@ -1253,7 +1255,9 @@
     syncSaveBtn();
   }
 
-  function corpusReady() { return !!(String(corpusQ || '').trim() || corpusCats.size || corpusLive); }
+  function corpusReady() {
+    return !!(String(corpusQ || '').trim() || corpusCats.size || corpusTradition || corpusLive);
+  }
 
   const LOAD_ORB = {
     accent: '#E8853C',
@@ -1378,6 +1382,7 @@
   let corpusUsingApi = true;
 
   function corpusMatches(c) {
+    if (corpusTradition && c.tradition !== corpusTradition) return false;
     if (corpusCats.size) {
       const kind = c.node_type || (c.entity_type === 'Item' ? 'ITEM' : c.category);
       if (!corpusCats.has(kind) && !corpusCats.has(c.category)) return false;
@@ -1490,7 +1495,7 @@
     corpusUsingApi = false;
     corpusLive = false;
     const empty = document.getElementById('gx-empty');
-    if (!String(corpusQ || '').trim() && !corpusCats.size) {
+    if (!String(corpusQ || '').trim() && !corpusCats.size && !corpusTradition) {
       setGraphEmpty('msg', 'Search or filter to draw the field');
       if (elPanel) { setPanelLoading(false); elPanel.hidden = true; }
       markDirty();
@@ -1529,7 +1534,8 @@
     const gen = ++corpusGen;
     corpusUsingApi = !!(Khora && typeof fetch === 'function');
 
-    if (!corpusUsingApi) {
+    // Tradition is a local-corpus axis — live Khora nodes rarely carry it.
+    if (corpusTradition || !corpusUsingApi) {
       seedCorpusLocal();
       return;
     }
@@ -1582,6 +1588,43 @@
     }
   }
 
+  /* Lane chips in Explore get the same fixed tip as the Reading rail —
+     native title lags, and the chrome is too tight for an overflow tip. */
+  let filterTip = null;
+
+  function ensureFilterTip() {
+    if (filterTip) return filterTip;
+    filterTip = document.createElement('div');
+    filterTip.className = 'read-tip';
+    filterTip.setAttribute('role', 'tooltip');
+    filterTip.style.position = 'fixed';
+    filterTip.style.zIndex = '80';
+    filterTip.style.width = '248px';
+    filterTip.style.maxWidth = 'calc(100vw - 20px)';
+    filterTip.style.pointerEvents = 'none';
+    document.body.appendChild(filterTip);
+    return filterTip;
+  }
+
+  function hideFilterTip() {
+    if (filterTip) filterTip.classList.remove('on');
+  }
+
+  function showFilterTip(anchor, kicker, line) {
+    const tip = ensureFilterTip();
+    tip.innerHTML = `<div class="read-tip-k">${escapeHtml(kicker)}</div><p>${escapeHtml(line)}</p>`;
+    tip.classList.add('on');
+    const r = anchor.getBoundingClientRect();
+    const tw = tip.offsetWidth || 260;
+    const th = tip.offsetHeight || 80;
+    let left = r.left + (r.width - tw) / 2;
+    left = Math.max(10, Math.min(left, window.innerWidth - tw - 10));
+    let top = r.bottom + 10;
+    if (top + th > window.innerHeight - 10) top = Math.max(10, r.top - th - 10);
+    tip.style.left = Math.round(left) + 'px';
+    tip.style.top = Math.round(top) + 'px';
+  }
+
   function syncCorpusControls() {
     const search = document.getElementById('gx-search');
     const row = document.getElementById('gx-corpus-row');
@@ -1589,6 +1632,7 @@
     const q = document.getElementById('gx-q');
     const sort = document.getElementById('gx-sort');
     const cat = document.getElementById('gx-cat');
+    const trad = document.getElementById('gx-trad');
     const filters = document.getElementById('gx-filters');
     const on = isCorpus();
     if (search) search.hidden = !on;
@@ -1599,12 +1643,26 @@
     if (cat) cat.value = corpusCats.size === 1 ? [...corpusCats][0] : '';
     const catWrap = document.getElementById('gx-cat-wrap');
     if (catWrap) catWrap.classList.toggle('on', corpusCats.size === 1);
+    if (trad) {
+      if (trad.options.length <= 1) {
+        Object.keys(TRADITIONS).forEach(id => {
+          const opt = document.createElement('option');
+          opt.value = id;
+          opt.textContent = TRADITIONS[id];
+          trad.appendChild(opt);
+        });
+      }
+      if (trad.value !== corpusTradition) trad.value = corpusTradition;
+    }
+    const tradWrap = document.getElementById('gx-trad-wrap');
+    if (tradWrap) tradWrap.classList.toggle('on', !!corpusTradition);
     if (filters && on) {
       filters.innerHTML = Object.keys(CATEGORIES).map(id => {
         const cat = CATEGORIES[id];
         const pressed = corpusCats.has(id);
         const dim = corpusCats.size && !pressed;
-        return `<button type="button" class="chip${dim ? ' off' : ''}" data-cat="${id}">
+        return `<button type="button" class="chip${dim ? ' off' : ''}" data-cat="${id}"
+          aria-label="${escapeHtml(cat.label)}. ${escapeHtml(cat.blurb)}">
           <span class="orb sm" style="--c:var(--${id})"></span>${cat.label}</button>`;
       }).join('');
     }
@@ -1779,6 +1837,7 @@
 
   function close() {
     if (!root) return;
+    hideFilterTip();
     if (dim === '3' && window.PalinodeGraph3D) { window.PalinodeGraph3D.unmount(); }
     document.body.classList.remove('dim3');
     root.hidden = true;
@@ -1975,6 +2034,11 @@
     });
     const gs = document.getElementById('gx-sort');
     if (gs) gs.addEventListener('change', () => { corpusSort = gs.value; redrawCorpus(); });
+    const gt = document.getElementById('gx-trad');
+    if (gt) gt.addEventListener('change', () => {
+      corpusTradition = gt.value || '';
+      redrawCorpus();
+    });
     const gc = document.getElementById('gx-cat');
     if (gc) gc.addEventListener('change', () => {
       corpusCats = new Set();
@@ -1988,8 +2052,24 @@
       const id = chip.dataset.cat;
       if (corpusCats.has(id)) corpusCats.delete(id);
       else corpusCats.add(id);
+      hideFilterTip();
       redrawCorpus();
     });
+    if (gf) {
+      gf.addEventListener('pointerover', e => {
+        const chip = e.target.closest('[data-cat]');
+        if (!chip || !gf.contains(chip)) return;
+        const cat = CATEGORIES[chip.dataset.cat];
+        if (!cat) return;
+        showFilterTip(chip, cat.label, cat.blurb);
+      });
+      gf.addEventListener('pointerout', e => {
+        const chip = e.target.closest('[data-cat]');
+        if (!chip) return;
+        if (e.relatedTarget && chip.contains(e.relatedTarget)) return;
+        hideFilterTip();
+      });
+    }
     document.getElementById('gx-in').addEventListener('click',  () => { view.s = Math.min(2.4, view.s * 1.25); });
     document.getElementById('gx-out').addEventListener('click', () => { view.s = Math.max(0.4, view.s / 1.25); });
     document.getElementById('gx-fit').addEventListener('click', () => {
