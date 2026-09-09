@@ -58,17 +58,25 @@ await page.click('#btn-pathways');
 await page.waitForTimeout(250);
 check('the library lists the saved walk', await page.evaluate(
   () => /A short walk/.test(document.getElementById('path-list').textContent)));
-check('each card shows a constellation preview above the title', await page.evaluate(() => {
+check('the tray card is the title, not a constellation', await page.evaluate(() => {
   const card = document.querySelector('#path-list .note-item[data-open]');
-  if (!card) return false;
-  const map = card.querySelector('.constellation.path-constel');
-  const title = card.querySelector('h4');
-  if (!map || !title || map.querySelectorAll('.node').length < 2) return false;
-  return map.getBoundingClientRect().bottom <= title.getBoundingClientRect().top + 1;
+  return !!(card && card.querySelector('h4') && !card.querySelector('.path-constel'));
 }));
 
 await page.click('#path-list .note-item[data-open]');
 await page.waitForSelector('#pathway-wrap:not([hidden])');
+check('the walk constellation sits above the date', await page.evaluate(() => {
+  const map = document.getElementById('walk-constel');
+  const kicker = document.querySelector('#pathway-wrap .walk-kicker');
+  const wrap = document.getElementById('pathway-wrap');
+  if (!map || !kicker || !wrap) return false;
+  if (map.querySelectorAll('.node').length < 2) return false;
+  const mr = map.getBoundingClientRect();
+  const kr = kicker.getBoundingClientRect();
+  const wr = wrap.getBoundingClientRect();
+  return mr.bottom <= kr.top + 1
+    && Math.abs(mr.width - wr.width) <= 2;
+}));
 check('the feed has a block per step', await page.evaluate(
   () => document.querySelectorAll('#walk-feed .feed-item').length >= 2));
 const firstPos = await page.textContent('#walk-pos');
@@ -187,6 +195,16 @@ await page.evaluate(() => {
 await page.waitForTimeout(80);
 check('the field follows the selected spectrum', await page.evaluate(
   () => document.getElementById('field').dataset.mood === 'stance'));
+
+await page.click('#walk-constel');
+await page.waitForSelector('#graph:not([hidden])');
+check('clicking the constellation opens Explore', await page.evaluate(() => {
+  const g = document.getElementById('graph');
+  const title = document.getElementById('gx-title-text');
+  return !g.hidden && title.textContent === 'A short walk';
+}));
+await page.click('#gx-close');
+await page.waitForFunction(() => document.getElementById('graph').hidden);
 
 await page.click('#walk-explore');
 await page.waitForSelector('#graph:not([hidden])');

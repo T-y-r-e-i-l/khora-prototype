@@ -242,16 +242,13 @@ aside.rail .skip-track { margin-left: 0; }
   margin-top: 7px; display: flex; align-items: center; gap: 7px;
   font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-4);
 }
-#path-list .path-constel {
-  height: 168px;
-  width: calc(100% + 16px);
-  margin: 0 -4px 10px -4px;
+.path-constel {
   cursor: inherit;
   pointer-events: none;
 }
-#path-list .path-constel:hover { border-color: var(--hairline-2); }
-#path-list .path-constel::after { content: none; }
-#path-list .path-constel::before {
+.path-constel:hover { border-color: var(--hairline-2); }
+.path-constel::after { content: none; }
+.path-constel::before {
   content: '';
   position: absolute;
   inset: -20%;
@@ -265,18 +262,25 @@ aside.rail .skip-track { margin-left: 0; }
   from { transform: translate3d(0,0,0) scale(1); }
   to   { transform: translate3d(8%,-6%,0) scale(1.08); }
 }
-#path-list .path-constel .node {
-  font-size: 9.5px;
-  padding: 2px 7px 2px 3px;
-  gap: 5px;
+#pathway-wrap .path-constel {
+  width: 100%;
+  height: 280px;
+  margin: 0 0 18px;
+  pointer-events: auto;
+  cursor: pointer;
 }
-#path-list .path-constel-empty {
+#pathway-wrap .path-constel::after { content: 'Explore'; }
+#pathway-wrap .path-constel .node {
+  font-size: 12px;
+  padding: 4px 10px 4px 5px;
+  gap: 6px;
+}
+.path-constel-empty {
   position: absolute; inset: 0; display: grid; place-items: center;
   color: var(--ink-4); font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
 }
-.note-item.active .path-constel { border-color: var(--hairline); }
 @media (prefers-reduced-motion: reduce) {
-  #field span, #path-list .path-constel::before { animation: none; }
+  #field span, .path-constel::before { animation: none; }
 }
 .dot-row { display: flex; gap: 3px; }
 .mini-orb {
@@ -1415,6 +1419,18 @@ body.dim3 .gx-top, body.dim3 .gx-trail-row { right: 0; }
    ============================================================ */
 
 #pathway-wrap[hidden], #path-empty[hidden], #path-list[hidden] { display: none; }
+.walk-kicker {
+  display: flex; align-items: center; gap: 14px;
+  margin: 0 0 8px;
+  font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase;
+  color: #fff;
+}
+#pathway-wrap .title-input { margin-bottom: 12px; }
+.walk-actions {
+  margin: 0 0 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--hairline-2);
+}
 .path-empty { color: var(--ink-3); font-size: 12px; line-height: 1.6; padding: 22px 12px; }
 
 .walk-feed { padding-bottom: 8px; }

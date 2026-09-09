@@ -148,36 +148,43 @@
     return step.label || 'Step';
   }
 
-  function chipLabel(step) {
+  function chipLabel(step, max) {
+    const cap = max || 14;
     const raw = String(stepLabel(step)).replace(/\s+/g, ' ').trim();
-    return raw.length > 14 ? raw.slice(0, 13).trimEnd() + '…' : raw;
+    return raw.length > cap ? raw.slice(0, cap - 1).trimEnd() + '…' : raw;
   }
 
-  function previewConstellation(p) {
+  function previewConstellation(p, opts) {
+    const wide = !!(opts && opts.wide);
     const steps = (p.steps || []).slice(0, 7);
     const a = stepCat(steps[0] || {});
     const b = stepCat(steps[steps.length - 1] || steps[0] || {});
+    const cls = 'constellation path-constel' + (wide ? ' walk-constel' : '');
     if (!steps.length) {
-      return `<div class="constellation path-constel" style="--g1:var(--resonance);--g2:var(--lineage)" aria-hidden="true">
+      return `<div class="${cls}" style="--g1:var(--resonance);--g2:var(--lineage)" aria-hidden="true">
         <div class="path-constel-empty">No steps yet</div></div>`;
     }
     const cl = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const xLo = wide ? 12 : 26, xHi = wide ? 88 : 74;
+    const yLo = wide ? 16 : 18, yHi = wide ? 84 : 82;
+    const rx = wide ? 86 : 68, ry = wide ? 70 : 64;
     const pts = steps.map((s, i) => {
       const ang = i * 2.399963;
       const r = 0.20 + 0.30 * Math.sqrt((i + 0.6) / steps.length);
       return {
-        x: cl(50 + Math.cos(ang) * r * 68, 26, 74),
-        y: cl(50 + Math.sin(ang) * r * 64, 18, 82),
+        x: cl(50 + Math.cos(ang) * r * rx, xLo, xHi),
+        y: cl(50 + Math.sin(ang) * r * ry, yLo, yHi),
         cat: stepCat(s),
-        label: chipLabel(s)
+        label: chipLabel(s, wide ? 22 : 14)
       };
     });
     for (let pass = 0; pass < 3; pass++) {
       pts.forEach((pt, i) => {
         pts.slice(0, i).forEach(other => {
           const dx = pt.x - other.x, dy = pt.y - other.y;
-          if (Math.abs(dx) < 26 && Math.abs(dy) < 14) {
-            pt.y = cl(pt.y + (dy >= 0 ? 12 : -12), 16, 84);
+          const nx = wide ? 18 : 26, ny = wide ? 12 : 14;
+          if (Math.abs(dx) < nx && Math.abs(dy) < ny) {
+            pt.y = cl(pt.y + (dy >= 0 ? 12 : -12), yLo, yHi);
           }
         });
       });
@@ -195,8 +202,22 @@
       `<div class="node" style="left:${pt.x}%;top:${pt.y}%;animation-delay:${i * 55}ms">
         <span class="orb sm" style="--c:var(--${esc(pt.cat)})"></span>${esc(pt.label)}</div>`
     ).join('');
-    return `<div class="constellation path-constel" style="--g1:var(--${esc(a)});--g2:var(--${esc(b)})" aria-hidden="true">
+    return `<div class="${cls}" style="--g1:var(--${esc(a)});--g2:var(--${esc(b)})" aria-hidden="true">
       <svg>${lines.join('')}</svg>${nodes}</div>`;
+  }
+
+  function paintWalkConstel(p) {
+    const el = $('#walk-constel');
+    if (!el) return;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = previewConstellation(p, { wide: true });
+    const next = tmp.firstElementChild;
+    if (!next) return;
+    next.id = 'walk-constel';
+    next.setAttribute('role', 'button');
+    next.setAttribute('tabindex', '0');
+    next.setAttribute('aria-label', 'Open in Explore');
+    el.replaceWith(next);
   }
 
   function renderList() {
@@ -209,7 +230,6 @@
     }
     list.innerHTML = all.map(p => `
       <div class="note-item ${p.id === walkId ? 'active' : ''}" data-open="${esc(p.id)}">
-        ${previewConstellation(p)}
         <h4>${esc(p.title || 'Untitled pathway')}</h4>
         <p>${p.steps.length} step${p.steps.length === 1 ? '' : 's'} · ${fmt(p.updated)}</p>
         <button class="forget" data-forget-path="${esc(p.id)}" title="Delete pathway">×</button>
@@ -277,6 +297,7 @@
     if (!p || !feed) return;
     const steps = p.steps || [];
     $('#walk-title').value = p.title || '';
+    paintWalkConstel(p);
     const date = $('#walk-date');
     const count = $('#walk-steps');
     if (date) date.textContent = fmt(p.updated);
@@ -638,6 +659,16 @@
       if (p && walkCursor < p.steps.length - 1) focusStep(walkCursor + 1);
     });
     $('#walk-explore').addEventListener('click', openExplore);
+    const wrap = $('#pathway-wrap');
+    if (wrap) {
+      wrap.addEventListener('click', e => {
+        if (e.target.closest('#walk-constel')) openExplore();
+      });
+      wrap.addEventListener('keydown', e => {
+        if (!e.target.closest('#walk-constel')) return;
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openExplore(); }
+      });
+    }
     $('#walk-feed').addEventListener('click', e => {
       const act = e.target.closest('[data-act]');
       if (act) { fireAct(act.dataset.act, act.dataset.ref); return; }
