@@ -1755,8 +1755,12 @@ nav.sidenav {
   overflow: hidden;
 }
 
-.nav-brand { width: 22px; height: 26px; flex: none; display: block; }
-.nav-brand svg { width: 100%; height: 100%; display: block; }
+.nav-brand { width: 40px; height: 47px; flex: none; display: block; }
+.nav-brand img {
+  width: 100%; height: 100%; display: block;
+  object-fit: contain;
+  mix-blend-mode: screen;
+}
 
 .nav-new {
   width: 40px; height: 40px; flex: none;

@@ -99,7 +99,7 @@ check('no label is clipped by the rail', !geo.navScrolls &&
   geo.labelFits.every(l => l.out <= 0),
   geo.labelFits.map(l => l.out > 0 ? l.text + ' ' + l.out + 'px past the rail'
                                    : l.text + ' ' + -l.out + 'px clear').join(', '));
-check('the brand glyph is in the rail', await page.isVisible('nav.sidenav .nav-brand svg'));
+check('the brand glyph is in the rail', await page.isVisible('nav.sidenav .nav-brand img'));
 check('the wordmark is gone', !(await page.evaluate(
   () => /Philosophical Reader/i.test(document.querySelector('nav.sidenav').textContent))));
 
