@@ -61,6 +61,15 @@ check('the empty prompt does not cover search or filters', await page.evaluate((
     && reaches(document.querySelector('#gx-filters .chip'), '#gx-filters');
 }));
 
+await page.click('#gx-nodes .gx-concept');
+check('the first click shows a skeleton', await page.evaluate(
+  () => document.getElementById('gx-panel').classList.contains('is-loading')));
+await page.waitForSelector('#gx-panel [data-act="save"]');
+check('the skeleton yields to the loaded panel', await page.evaluate(() => {
+  const p = document.getElementById('gx-panel');
+  return !p.classList.contains('is-loading') && !!p.querySelector('[data-act="save"]');
+}));
+
 await page.click('#gx-q');
 await page.keyboard.type('ressentiment');
 await page.waitForTimeout(700);
@@ -70,7 +79,7 @@ check('the empty prompt stays hidden after a query', await page.evaluate(
   () => document.getElementById('gx-empty').hidden));
 
 await page.click('#gx-nodes .gx-concept');
-await page.waitForTimeout(150);
+await page.waitForSelector('#gx-panel [data-act="save"]');
 check('the object offers add to note and pathway', await page.evaluate(() => {
   const acts = [...document.querySelectorAll('#gx-panel [data-act]')].map(b => b.dataset.act);
   return acts.includes('save') && acts.includes('path');

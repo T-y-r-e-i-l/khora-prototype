@@ -396,6 +396,8 @@
     if (!uuid) return 0;
     if (node._liveExpand) return 0;
     node._liveExpand = true;
+    const waiting = !node._panelReady;
+    const shownAt = waiting ? performance.now() : 0;
     try {
       await Khora.expand(uuid, ['Node', 'Item'], true);
       if (node.type === 'concept') {
@@ -405,11 +407,16 @@
       }
       if (!root) return 0;
       const added = expand(node, 9);
+      node._panelReady = true;
+      if (waiting) await holdSkeleton(shownAt);
       if (selected === node.id) detail(node.id);
       notify();
       return added;
     } catch (e) {
       node._liveExpand = false;
+      node._panelReady = true;
+      if (waiting) await holdSkeleton(shownAt);
+      if (selected === node.id) detail(node.id);
       return 0;
     }
   }
@@ -684,10 +691,35 @@
 
   /* ================= detail panel ================= */
 
+  const SKEL_MIN = 280;
+  function panelPending(n) {
+    return !!(n && (n.type === 'concept' || n.type === 'work') && liveUuid(n) && !n._panelReady);
+  }
+  function reducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+  function setPanelLoading(on) {
+    if (!elPanel) return;
+    elPanel.classList.toggle('is-loading', !!on);
+    if (on) elPanel.setAttribute('aria-busy', 'true');
+    else elPanel.removeAttribute('aria-busy');
+  }
+  function holdSkeleton(shownAt) {
+    if (reducedMotion()) return Promise.resolve();
+    const wait = Math.max(0, SKEL_MIN - (performance.now() - shownAt));
+    return wait ? new Promise(r => setTimeout(r, wait)) : Promise.resolve();
+  }
+
   function detail(id) {
     const n = nodes.get(id);
-    if (!n) { elPanel.hidden = true; return; }
+    if (!n) { setPanelLoading(false); elPanel.hidden = true; return; }
     elPanel.hidden = false;
+
+    if (panelPending(n)) {
+      setPanelLoading(true);
+      return;
+    }
+    setPanelLoading(false);
 
     const orb = c => `<span class="orb sm" style="--c:var(--${c})"></span>`;
     const seen = new Set([id]);
@@ -1115,6 +1147,7 @@
     const grow = !(ctx && ctx.mode === 'pathway' && !connectionsOn);
     const added = grow ? expand(n, n.type === 'tradition' || n.type === 'spectrum' ? 7 : 9) : 0;
     pushTrail(id);
+    if (grow && panelPending(n)) setPanelLoading(true);
     detail(id);
     centreOn(n);
     notify();
@@ -1223,7 +1256,125 @@
 
   function corpusReady() { return !!(String(corpusQ || '').trim() || corpusCats.size || corpusLive); }
 
+  const LOAD_ORB = {
+    accent: '#E8853C',
+    dot: '#F4F1EA',
+    dots: [],
+    raf: 0,
+    running: false
+  };
+
+  function seedLoadDots() {
+    const dots = [];
+    for (let i = 0; i < 56; i++) {
+      const u = Math.random(), v = Math.random();
+      const theta = 2 * Math.PI * u;
+      const phi = Math.acos(2 * v - 1);
+      dots.push({
+        x: Math.sin(phi) * Math.cos(theta),
+        y: Math.sin(phi) * Math.sin(theta),
+        z: Math.cos(phi),
+        delay: Math.random(),
+        accent: Math.random() < 0.16
+      });
+    }
+    return dots;
+  }
+
+  function paintLoadOrbs(t) {
+    const canvas = document.getElementById('gx-load-orbs');
+    if (!canvas) return;
+    const css = 28;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (canvas.width !== css * dpr) {
+      canvas.width = css * dpr;
+      canvas.height = css * dpr;
+    }
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, css, css);
+    if (!LOAD_ORB.dots.length) LOAD_ORB.dots = seedLoadDots();
+    const cx = css / 2, cy = css / 2, R = 11.8, persp = 1.55, speed = 0.58;
+    const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2.1, 0, Math.PI * 2);
+    ctx.fillStyle = LOAD_ORB.accent;
+    ctx.fill();
+    const painted = LOAD_ORB.dots.map(d => {
+      const life = still ? 0.42 : ((t * speed + d.delay) % 1);
+      const burst = 1 - Math.pow(1 - life, 2.35);
+      const px = d.x * burst, py = d.y * burst, pz = d.z * burst;
+      const scale = persp / (persp + pz * 0.55);
+      return {
+        sx: cx + px * R * scale,
+        sy: cy + py * R * scale,
+        z: pz,
+        r: (d.accent ? 1.3 : 1.05) * scale * (1 - life * 0.28),
+        a: Math.max(0, (1 - life) * (0.28 + 0.72 * scale)),
+        accent: d.accent
+      };
+    }).sort((a, b) => a.z - b.z);
+    painted.forEach(p => {
+      ctx.globalAlpha = p.a;
+      ctx.beginPath();
+      ctx.arc(p.sx, p.sy, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.accent ? LOAD_ORB.accent : LOAD_ORB.dot;
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function startLoadOrbs() {
+    if (LOAD_ORB.running) return;
+    LOAD_ORB.running = true;
+    const tick = now => {
+      if (!LOAD_ORB.running) return;
+      paintLoadOrbs(now / 1000);
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      LOAD_ORB.raf = requestAnimationFrame(tick);
+    };
+    LOAD_ORB.raf = requestAnimationFrame(tick);
+  }
+
+  function stopLoadOrbs() {
+    LOAD_ORB.running = false;
+    if (LOAD_ORB.raf) cancelAnimationFrame(LOAD_ORB.raf);
+    LOAD_ORB.raf = 0;
+  }
+
+  function setGraphEmpty(mode, msg) {
+    const empty = document.getElementById('gx-empty');
+    const load = document.getElementById('gx-load');
+    const text = document.getElementById('gx-empty-msg');
+    if (!empty) return;
+    if (mode === 'hide') {
+      empty.hidden = true;
+      if (load) load.hidden = true;
+      if (text) text.hidden = true;
+      stopLoadOrbs();
+      corpusLoading = false;
+      return;
+    }
+    empty.hidden = false;
+    if (mode === 'loading') {
+      corpusLoading = true;
+      if (load) load.hidden = false;
+      if (text) text.hidden = true;
+      startLoadOrbs();
+      return;
+    }
+    corpusLoading = false;
+    stopLoadOrbs();
+    if (load) load.hidden = true;
+    if (text) {
+      text.hidden = false;
+      text.textContent = msg || '';
+    }
+  }
+
   let corpusLive = false;
+  let corpusLoading = false;
   let corpusGen = 0;
   let corpusUsingApi = true;
 
@@ -1331,7 +1482,7 @@
       pushTrail(selected);
       detail(selected);
       expandLive(nodes.get(selected));
-    } else if (elPanel) elPanel.hidden = true;
+    } else if (elPanel) { setPanelLoading(false); elPanel.hidden = true; }
     markDirty();
     kick(0.45);
   }
@@ -1341,15 +1492,12 @@
     corpusLive = false;
     const empty = document.getElementById('gx-empty');
     if (!String(corpusQ || '').trim() && !corpusCats.size) {
-      if (empty) {
-        empty.hidden = false;
-        empty.textContent = 'Search or filter to draw the field';
-      }
-      if (elPanel) elPanel.hidden = true;
+      setGraphEmpty('msg', 'Search or filter to draw the field');
+      if (elPanel) { setPanelLoading(false); elPanel.hidden = true; }
       markDirty();
       return;
     }
-    if (empty) empty.hidden = true;
+    setGraphEmpty('hide');
     const list = sortConcepts(CONCEPTS.filter(corpusMatches)).slice(0, 48);
     const placed = layoutCorpus(list);
     placed.forEach(({ c, x, y }) => {
@@ -1371,7 +1519,7 @@
       selected = cid(placed[0].c.id);
       pushTrail(selected);
       detail(selected);
-    } else if (elPanel) elPanel.hidden = true;
+    } else if (elPanel) { setPanelLoading(false); elPanel.hidden = true; }
     markDirty();
     kick(0.45);
   }
@@ -1389,9 +1537,9 @@
 
     if (empty) {
       empty.hidden = false;
-      empty.textContent = 'Loading the field…';
+      setGraphEmpty('loading');
     }
-    if (elPanel) elPanel.hidden = true;
+    if (elPanel) { setPanelLoading(false); elPanel.hidden = true; }
 
     try {
       const q = String(corpusQ || '').trim();
@@ -1422,14 +1570,11 @@
       if (gen !== corpusGen) return;
       corpusLive = true;
       if (!entities.length) {
-        if (empty) {
-          empty.hidden = false;
-          empty.textContent = q ? 'Nothing matched in Khora' : 'Search the graph to draw the field';
-        }
+        if (empty) setGraphEmpty('msg', q ? 'Nothing matched in Khora' : 'Search the graph to draw the field');
         markDirty();
         return;
       }
-      if (empty) empty.hidden = true;
+      if (empty) setGraphEmpty('hide');
       placeLive(entities, links, !!q);
     } catch (err) {
       if (gen !== corpusGen) return;
@@ -1449,7 +1594,7 @@
     const on = isCorpus();
     if (search) search.hidden = !on;
     if (row) row.hidden = !on;
-    if (empty) empty.hidden = !on || corpusReady();
+    if (!on || (corpusReady() && !corpusLoading)) setGraphEmpty('hide');
     if (q && q.value !== corpusQ) q.value = corpusQ;
     if (sort) sort.value = corpusSort;
     if (cat) cat.value = corpusCats.size === 1 ? [...corpusCats][0] : '';
@@ -1642,8 +1787,7 @@
     if (root) root.classList.remove('corpus-mode', 'page-mode');
     const closeBtn = document.getElementById('gx-close');
     if (closeBtn) closeBtn.hidden = false;
-    const empty = document.getElementById('gx-empty');
-    if (empty) empty.hidden = true;
+    setGraphEmpty('hide');
     const search = document.getElementById('gx-search');
     if (search) search.hidden = true;
     const crow = document.getElementById('gx-corpus-row');

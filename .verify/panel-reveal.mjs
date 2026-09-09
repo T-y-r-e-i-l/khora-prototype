@@ -2,6 +2,7 @@
    delayed by its place in the reading order, list rows included. */
 
 import { chromium } from '/Users/tyreil/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
+import { mockKhora } from './khora-mock.mjs';
 
 const URL = 'http://localhost:8765/index.html';
 const NOTE = `I had no choice but to stay in that job. It was out of my hands and there was nothing I could do about any of it, so I kept going. My family expects things of me and I owe them that much, even though I feel completely alone in this city where no one understands what the work costs me. Everyone should be honest about what they want, but on balance the greater good was served and it was worth it for everyone involved.`;
@@ -18,6 +19,7 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const problems = [];
 page.on('pageerror', e => problems.push('pageerror: ' + e.message));
+await mockKhora(page);
 
 await page.goto(URL, { waitUntil: 'networkidle' });
 await page.evaluate(() => localStorage.clear());
@@ -33,6 +35,7 @@ await page.waitForTimeout(900);
 
 // open a concept panel, which has the richest structure
 await page.click('#gx-nodes .gx-concept');
+await page.waitForSelector('#gx-panel [data-act]');
 await page.waitForTimeout(700);
 
 const read = () => page.evaluate(() => {
@@ -106,6 +109,7 @@ await page.screenshot({ path: '.verify/pr-settled.png' });
 // reduced motion gets the content without the cascade
 const ctx2 = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
 const p2 = await ctx2.newPage();
+await mockKhora(p2);
 await p2.goto(URL, { waitUntil: 'networkidle' });
 await p2.click('#btn-new');
 await p2.waitForSelector('#body-input', { state: 'visible' });

@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/app.css?v=48">
+<link rel="stylesheet" href="assets/css/app.css?v=50">
 </head>
 <body>
 
@@ -385,7 +385,13 @@
       </label>
       <div class="filters" id="gx-filters"></div>
     </div>
-    <div class="gx-empty" id="gx-empty" hidden>Loading the field…</div>
+    <div class="gx-empty" id="gx-empty" hidden>
+      <div class="gx-load" id="gx-load" hidden>
+        <canvas class="gx-load-orbs" id="gx-load-orbs" width="72" height="72" aria-hidden="true"></canvas>
+        <span class="gx-load-lab">loading</span>
+      </div>
+      <p class="gx-empty-msg" id="gx-empty-msg" hidden></p>
+    </div>
     <div class="gx-trail-row">
       <button class="micro" id="gx-save-path" type="button" disabled>Save as Pathway</button>
       <div id="gx-trail" class="gx-trail"></div>
@@ -398,6 +404,39 @@
   </div>
 
   <aside id="gx-panel" class="gx-panel">
+    <div class="gx-panel-skel" aria-hidden="true">
+      <div class="gx-skel-kicker">
+        <i class="gx-skel-bone gx-skel-dot"></i>
+        <i class="gx-skel-bone gx-skel-kicker-lab"></i>
+      </div>
+      <i class="gx-skel-bone gx-skel-title"></i>
+      <div class="gx-skel-quote">
+        <i class="gx-skel-bone gx-skel-line w-92"></i>
+        <i class="gx-skel-bone gx-skel-line w-64"></i>
+      </div>
+      <div class="gx-skel-sec">
+        <i class="gx-skel-bone gx-skel-label"></i>
+        <i class="gx-skel-bone gx-skel-line"></i>
+        <i class="gx-skel-bone gx-skel-line"></i>
+        <i class="gx-skel-bone gx-skel-line"></i>
+        <i class="gx-skel-bone gx-skel-line w-88"></i>
+        <i class="gx-skel-bone gx-skel-line w-72"></i>
+      </div>
+      <div class="gx-skel-acts">
+        <i class="gx-skel-bone gx-skel-pill w-a"></i>
+        <i class="gx-skel-bone gx-skel-pill w-b"></i>
+        <i class="gx-skel-bone gx-skel-pill w-c"></i>
+      </div>
+      <div class="gx-skel-sec">
+        <i class="gx-skel-bone gx-skel-label"></i>
+        <div class="gx-skel-row"><i class="gx-skel-bone gx-skel-dot"></i><i class="gx-skel-bone gx-skel-row-t"></i></div>
+        <div class="gx-skel-row"><i class="gx-skel-bone gx-skel-dot"></i><i class="gx-skel-bone gx-skel-row-t w-80"></i></div>
+        <div class="gx-skel-row"><i class="gx-skel-bone gx-skel-dot"></i><i class="gx-skel-bone gx-skel-row-t w-70"></i></div>
+        <div class="gx-skel-row"><i class="gx-skel-bone gx-skel-dot"></i><i class="gx-skel-bone gx-skel-row-t w-84"></i></div>
+        <div class="gx-skel-row"><i class="gx-skel-bone gx-skel-dot"></i><i class="gx-skel-bone gx-skel-row-t w-62"></i></div>
+        <div class="gx-skel-row"><i class="gx-skel-bone gx-skel-dot"></i><i class="gx-skel-bone gx-skel-row-t w-76"></i></div>
+      </div>
+    </div>
     <div class="gx-panel-body"></div>
   </aside>
 </div>
@@ -491,7 +530,7 @@
 <script src="assets/js/store.js"></script>
 <script src="assets/js/khora.js?v=3"></script>
 <script src="assets/vendor/three.min.js"></script>
-<script src="assets/js/graph.js?v=32"></script>
+<script src="assets/js/graph.js?v=34"></script>
 <script src="assets/js/graph3d.js"></script>
 <script src="assets/js/pathways.js?v=33"></script>
 <script src="assets/js/profile.js?v=1"></script>

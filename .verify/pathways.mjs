@@ -246,7 +246,7 @@ const conceptId = await page.evaluate(() => {
 check('the pathway graph has a concept to write on', !!conceptId);
 if (conceptId) {
   await page.evaluate(id => window.PalinodeGraph.model.select(id), conceptId);
-  await page.waitForTimeout(200);
+  await page.waitForSelector('#gx-panel [data-act="write"]');
   check('the concept panel still offers Write on this', await page.evaluate(
     () => !!document.querySelector('#gx-panel [data-act="write"]')));
   await page.click('#gx-panel [data-act="write"]');
