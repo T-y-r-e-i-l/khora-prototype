@@ -104,6 +104,26 @@ const settled = await page.evaluate(() =>
     .every(e => getComputedStyle(e).opacity === '1'));
 check('everything is fully visible once settled', settled);
 
+const overflow = await page.evaluate(() => {
+  const panel = document.querySelector('#gx-panel');
+  const rows = [...panel.querySelectorAll('.gx-more-row')];
+  const panelBox = panel.getBoundingClientRect();
+  return {
+    scroll: panel.scrollWidth,
+    client: panel.clientWidth,
+    rowMax: Math.max(0, ...rows.map(el => Math.round(el.getBoundingClientRect().width))),
+    rowLeft: rows.length ? Math.round(Math.min(...rows.map(el => el.getBoundingClientRect().left))) : 0,
+    rowRight: rows.length ? Math.round(Math.max(...rows.map(el => el.getBoundingClientRect().right))) : 0,
+    panelLeft: Math.round(panelBox.left),
+    panelRight: Math.round(panelBox.right)
+  };
+});
+check('panel does not scroll horizontally', overflow.scroll <= overflow.client + 1,
+  overflow.scroll + ' vs ' + overflow.client);
+check('rows stay inside the rail',
+  overflow.rowRight <= overflow.panelRight + 1 && overflow.rowLeft >= overflow.panelLeft - 1,
+  overflow.rowMax + 'px rows, rail ' + overflow.client + 'px');
+
 await page.screenshot({ path: '.verify/pr-settled.png' });
 
 // reduced motion gets the content without the cascade

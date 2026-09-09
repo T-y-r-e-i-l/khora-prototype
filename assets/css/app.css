@@ -1219,10 +1219,17 @@ body.exploring { overflow: hidden; }
 /* --- detail panel --- */
 .gx-panel {
   position: absolute; top: 0; right: 0; bottom: 0; width: var(--rail-r);
+  max-width: 100%;
   background: linear-gradient(180deg, rgba(9,8,11,.94), rgba(6,5,8,.97));
   border-left: 1px solid var(--hairline);
   backdrop-filter: blur(20px);
-  overflow-y: auto; padding: 24px 22px 40px;
+  overflow-x: hidden; overflow-y: auto; padding: 24px 22px 40px;
+}
+.gx-panel-body,
+.gx-sec,
+.gx-more {
+  min-width: 0;
+  max-width: 100%;
 }
 .gx-panel[hidden] { display: none; }
 
@@ -1319,6 +1326,7 @@ body.exploring { overflow: hidden; }
 .gx-panel h3 {
   font-family: var(--serif); font-size: 23px; font-weight: 500; line-height: 1.28;
   margin: 0 0 6px; color: var(--ink);
+  overflow-wrap: anywhere;
 }
 .gx-author { font-family: var(--serif); font-style: italic; color: var(--ink-2); margin: 0 0 14px; font-size: 14px; }
 .gx-lede { font-size: 13px; line-height: 1.72; color: var(--ink-2); margin: 0 0 16px; }
@@ -1334,7 +1342,18 @@ body.exploring { overflow: hidden; }
   text-transform: uppercase; color: var(--ink-4); font-weight: 700;
 }
 
-.gx-act { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 4px; }
+.gx-act {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  margin-top: 4px;
+}
+.gx-act > .ghost,
+.gx-act > button {
+  width: 100%;
+  text-align: center;
+}
 .gx-fine { margin: 14px 0 0; font-size: 11px; line-height: 1.7; color: var(--ink-3); }
 
 /* the continuum reads small inside the 3D card */
@@ -1343,19 +1362,36 @@ body.exploring { overflow: hidden; }
 
 .gx-more { display: grid; gap: 4px; }
 .gx-more-row {
-  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 9px;
+  row-gap: 1px;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  text-align: left;
   background: rgba(0,0,0,.3); border: 1px solid var(--hairline-2);
-  border-radius: var(--r-sm); padding: 9px 11px; cursor: pointer;
+  border-radius: var(--r-sm); padding: 8px 10px; cursor: pointer;
   font-family: var(--sans); transition: all .16s var(--ease);
 }
 .gx-more-row:hover { border-color: rgba(255,255,255,.2); background: rgba(0,0,0,.5); }
+.gx-more-row > .orb {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
 .gx-more-row .t {
-  font-family: var(--serif); font-size: 13px; color: var(--ink); flex: 1;
+  grid-column: 2;
+  font-family: var(--serif); font-size: 13px; color: var(--ink);
+  min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .gx-more-row .s {
-  font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--ink-4); flex: none; max-width: 40%;
+  grid-column: 2;
+  font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-4);
+  min-width: 0; max-width: 100%;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 

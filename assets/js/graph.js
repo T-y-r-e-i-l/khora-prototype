@@ -783,7 +783,6 @@
           <div class="gx-kicker">${orb(c.category)}${escapeHtml(kickerText)}
             ${n.inNote ? '<span class="gx-tag">in your note</span>' : ''}</div>
           <h3>${escapeHtml(c.label)}</h3>
-          <p class="gx-question">${escapeHtml(c.turn)}</p>
           ${c.reading ? `<div class="gx-sec"><h4>${ins ? 'How it reads your note' : 'From the graph'}</h4>
             <p class="gx-lede">${escapeHtml(ins ? ins.reading : c.reading)}</p></div>` : (ins ? `<div class="gx-sec"><h4>How it reads your note</h4>
             <p class="gx-lede">${escapeHtml(ins.reading)}</p></div>` : '')}

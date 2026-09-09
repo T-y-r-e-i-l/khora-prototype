@@ -51,6 +51,18 @@ check('concept.label comes from title', concept.label === 'Dialectic');
 check('concept.reading comes from explain', concept.reading === NODE.explain);
 check('concept.turn is derived, not invented by an endpoint',
   typeof concept.turn === 'string' && concept.turn.length > 0);
+check('derived turn uses the node’s own claim',
+  /opposed claims|Dialectic|method of arriving/.test(concept.turn)
+    && !/If this is right/.test(concept.turn));
+check('two nodes do not share a generic turn',
+  K.deriveTurn('Objectification is a way of seeing that empties the other of a world.', 'Objectification')
+    !== K.deriveTurn(NODE.explain, NODE.title));
+check('a question in the explanation is kept',
+  K.deriveTurn('What is left of the person once they are made useful?', 'Objectification')
+    === 'What is left of the person once they are made useful?');
+check('an overlay turn is kept over a derived one',
+  K.toConcept(NODE, { turn: 'Name the instrument you are using someone as.' }).turn
+    === 'Name the instrument you are using someone as.');
 check('concept stays marked live', concept.live === true);
 check('concept does not invent a Palinode slug', concept.id.includes(':') === false);
 

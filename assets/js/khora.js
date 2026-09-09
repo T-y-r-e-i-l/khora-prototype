@@ -92,13 +92,55 @@
     return NODE_TYPE_CATEGORY[nodeType] || 'resonance';
   }
 
-  function deriveTurn(text) {
+  function firstQuestion(text) {
+    const m = String(text || '').match(/[^.!?\n][^?!]*\?/);
+    return m ? m[0].trim().replace(/\s+/g, ' ') : '';
+  }
+
+  function firstSentence(text) {
     const raw = String(text || '').trim();
-    if (!raw) return 'What follows from this?';
-    const sentence = raw.split(/(?<=[.!?])\s+/)[0].replace(/[.!?]+$/, '');
-    if (!sentence) return 'What follows from this?';
-    if (/\?$/.test(sentence)) return sentence + '?';
-    return 'If this is right, what would you have to take seriously?';
+    if (!raw) return '';
+    return raw.split(/(?<=[.!?])\s+/)[0].replace(/[.!?]+$/, '').trim();
+  }
+
+  function stripPreamble(s) {
+    return String(s || '')
+      .replace(/^(in|within|inside)\s+(the\s+)?khora[,:]?\s+/i, '')
+      .replace(/\bwithin\s+(the\s+)?khora\b[,:]?\s*/ig, ' ')
+      .replace(/^(the node for|this node|this (idea|concept))\s+/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function uncapitalize(s) {
+    const str = String(s || '');
+    if (!str) return str;
+    if (str.length > 1 && str[0] === str[0].toUpperCase() && /[A-Z]/.test(str[1])) return str;
+    return str.charAt(0).toLowerCase() + str.slice(1);
+  }
+
+  function shortenClause(s, max) {
+    const str = String(s || '').trim();
+    if (str.length <= max) return str;
+    const cut = str.slice(0, max);
+    const at = Math.max(cut.lastIndexOf(';'), cut.lastIndexOf(' — '), cut.lastIndexOf(','), cut.lastIndexOf(' '));
+    return (at > 40 ? cut.slice(0, at) : cut).replace(/[,;:\s—]+$/, '');
+  }
+
+  function deriveTurn(text, title) {
+    const asked = firstQuestion(text);
+    if (asked) return asked.replace(/\?+$/, '') + '?';
+    const name = String(title || '').trim();
+    const claim = stripPreamble(firstSentence(text));
+    if (claim) {
+      const clause = shortenClause(uncapitalize(claim), 150);
+      if (clause) return 'If ' + clause + ', what in this note would have to change?';
+    }
+    if (name) {
+      return 'What would you have to take seriously if ' + name +
+        ' were the right name for what is happening here?';
+    }
+    return 'What follows from this?';
   }
 
   function nodeTypeOf(entity) {
@@ -117,7 +159,8 @@
       category: extra.category || categoryFromNodeType(nodeTypeOf(entity)),
       node_type: nodeTypeOf(entity),
       reading: reading,
-      turn: extra.turn || deriveTurn(reading),
+      turn: extra.turn || deriveTurn(reading, title),
+      turnSource: extra.turn ? 'overlay' : 'derived',
       sources: extra.sources || [],
       kin: extra.kin || [],
       entity_type: 'Node',
@@ -216,7 +259,7 @@
     }, {
       category: current.category,
       tradition: current.tradition,
-      turn: current.turn && current.turn !== deriveTurn(current.reading) ? current.turn : null,
+      turn: current.turnSource === 'overlay' ? current.turn : null,
       kin: current.kin
     });
     merged.sources = ((payload && payload.items) || []).map(it => ({
@@ -226,7 +269,7 @@
       url: it.url || '',
       id: it.id || undefined
     }));
-    if (!merged.turn) merged.turn = deriveTurn(merged.reading);
+    if (!merged.turn) merged.turn = deriveTurn(merged.reading, merged.label);
     concepts[id] = merged;
     return merged;
   }
