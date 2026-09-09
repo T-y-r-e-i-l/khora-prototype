@@ -1,4 +1,4 @@
-/* On a phone the rail becomes a bottom bar: Notes, Explore, Pathways, Profile. */
+/* On a phone the rail becomes a bottom bar: Notes, Explore, Market, Pathways, Profile. */
 
 import { chromium } from '/Users/tyreil/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
 import { mockKhora } from './khora-mock.mjs';
@@ -65,13 +65,17 @@ check('visible items share one row',
   new Set(bar.items.map(i => i.top)).size === 1, bar.items.map(i => i.top).join(','));
 check('items are ordered left to right', bar.items.every((it, k) =>
   k === 0 || it.left > bar.items[k - 1].left), bar.items.map(i => i.id + '@' + i.left).join(','));
-check('the destinations are Notes, Explore, Pathways, Profile',
-  bar.items.map(i => i.id).join(',') === 'btn-rail,btn-explore,btn-pathways,btn-profile',
+check('the destinations are Notes, Explore, Market, Pathways, Profile',
+  bar.items.map(i => i.id).join(',') === 'btn-rail,btn-explore,btn-market,btn-pathways,btn-profile',
   bar.items.map(i => i.id).join(','));
 check('the brand is hidden on a phone', !bar.brandShown);
 check('Pathways is on the bar', bar.pathwaysShown);
 check('Profile is on the bar', bar.profileShown);
 check('Notes is on the bar', bar.writeShown);
+check('Market is on the bar', await page.evaluate(() => {
+  const el = document.getElementById('btn-market');
+  return !!(el && getComputedStyle(el).display !== 'none');
+}));
 check('Insights is off the bar', !bar.insightsShown);
 check('Explore is on the bar', bar.exploreShown);
 check('New note is still reachable', bar.newShown);

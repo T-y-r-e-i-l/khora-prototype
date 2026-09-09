@@ -341,10 +341,25 @@
     }
   }
 
+  function closeMarket() {
+    if (!window.PalinodeMarketplace || !PalinodeMarketplace.isOpen()) return;
+    PalinodeMarketplace.leave();
+    paintFieldFromAnalysis();
+    el.empty.hidden = false;
+    if (activeId) {
+      el.editorWrap.hidden = false;
+      el.empty.style.display = 'none';
+    } else {
+      el.editorWrap.hidden = true;
+      el.empty.style.display = '';
+    }
+  }
+
   function newNote() {
     closeExplore();
     closePathways();
     closeProfile();
+    closeMarket();
     el.body.classList.remove('show-insights', 'show-rail');
     syncNav('write');
     const n = Notes.create({});
@@ -1039,6 +1054,7 @@
     $$('.nav-item').forEach(b => b.classList.remove('on'));
     const id = which === 'insights' ? 'btn-nav-insights'
              : which === 'explore' ? 'btn-explore'
+             : which === 'market' ? 'btn-market'
              : which === 'pathways' ? 'btn-pathways'
              : which === 'profile' ? 'btn-profile'
              : 'btn-rail';
@@ -1049,6 +1065,7 @@
 
   function phoneTab() {
     if (exploring()) return 'explore';
+    if (window.PalinodeMarketplace && PalinodeMarketplace.isOpen()) return 'market';
     if (window.PalinodeProfile && PalinodeProfile.isOpen()) return 'profile';
     if (window.PalinodePathways && (PalinodePathways.isListOpen() || PalinodePathways.isWalkOpen()))
       return 'pathways';
@@ -1417,6 +1434,7 @@
     cancelOffer();
     closePathways();
     closeProfile();
+    closeMarket();
     el.body.classList.remove('show-insights', 'show-rail');
     await window.PalinodeGraph.open({
       note: Notes.get(activeId),
@@ -1444,6 +1462,24 @@
         renderList();
         el.input.focus();
         toast('New note, opened on ' + concept.label + '.');
+      },
+      onOpenEpic: epicId => {
+        window.PalinodeGraph.close();
+        document.body.classList.remove('exploring');
+        closePathways();
+        closeProfile();
+        el.body.classList.remove('show-insights', 'show-rail');
+        if (window.PalinodeMarketplace) PalinodeMarketplace.enter({ epicId });
+        syncNav('market');
+      },
+      onOpenMentor: mentorId => {
+        window.PalinodeGraph.close();
+        document.body.classList.remove('exploring');
+        closePathways();
+        closeProfile();
+        el.body.classList.remove('show-insights', 'show-rail');
+        if (window.PalinodeMarketplace) PalinodeMarketplace.enter({ mentorId });
+        syncNav('market');
       }
     });
     if (phone()) syncNav('explore');
@@ -1456,6 +1492,7 @@
     cancelOffer();
     closePathways();
     closeProfile();
+    closeMarket();
     el.body.classList.remove('show-insights', 'show-rail');
     await window.PalinodeGraph.open({
       mode: 'corpus',
@@ -1487,7 +1524,25 @@
         if (window.PalinodePathways) PalinodePathways.offerAttachStep(step);
       },
       onSaveNode: payload => saveNodeToNote(payload),
-      onNeedNote: payload => saveNodeToNote(payload)
+      onNeedNote: payload => saveNodeToNote(payload),
+      onOpenEpic: epicId => {
+        window.PalinodeGraph.close();
+        document.body.classList.remove('exploring');
+        closePathways();
+        closeProfile();
+        el.body.classList.remove('show-insights', 'show-rail');
+        if (window.PalinodeMarketplace) PalinodeMarketplace.enter({ epicId });
+        syncNav('market');
+      },
+      onOpenMentor: mentorId => {
+        window.PalinodeGraph.close();
+        document.body.classList.remove('exploring');
+        closePathways();
+        closeProfile();
+        el.body.classList.remove('show-insights', 'show-rail');
+        if (window.PalinodeMarketplace) PalinodeMarketplace.enter({ mentorId });
+        syncNav('market');
+      }
     });
     syncNav('explore');
   }
@@ -1829,20 +1884,32 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
     syncNav('write');
   });
   $('#btn-insights').addEventListener('click', () => {
+    if (window.PalinodeMarketplace && PalinodeMarketplace.isOpen()) return;
     el.body.classList.toggle(phone() ? 'show-insights' : 'insights-closed');
   });
   $('#btn-pathways').addEventListener('click', () => {
     closeExplore();
     closeProfile();
+    closeMarket();
     el.body.classList.remove('show-insights');
     if (window.PalinodePathways) PalinodePathways.enter();
     if (phone()) el.body.classList.add('show-rail');
     syncNav('pathways');
   });
+  $('#btn-market').addEventListener('click', () => {
+    if (window.PalinodeMarketplace && PalinodeMarketplace.isOpen()) return;
+    closeExplore();
+    closePathways();
+    closeProfile();
+    el.body.classList.remove('show-insights', 'show-rail');
+    if (window.PalinodeMarketplace) PalinodeMarketplace.enter();
+    syncNav('market');
+  });
   $('#btn-profile').addEventListener('click', () => {
     if (window.PalinodeProfile && PalinodeProfile.isOpen()) return;
     closeExplore();
     closePathways();
+    closeMarket();
     el.body.classList.remove('show-insights', 'show-rail');
     if (window.PalinodeProfile) PalinodeProfile.enter();
     syncNav('profile');
@@ -1965,8 +2032,31 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
 
   /* ================= boot ================= */
 
+  const marketHash = (location.hash || '').match(/^#market\/(?:epic|session|mentor)\/([^/?#]+)/);
+  const marketKind = (location.hash || '').match(/^#market\/(epic|session|mentor)\//);
   const shared = Share.parse(location.hash);
-  if (shared) {
+  if (marketHash && window.PalinodeMarketplace) {
+    $('#engine-name').textContent = window.PalinodeEngine.current();
+    if (window.PalinodePathways) {
+      PalinodePathways.onChange = () => {
+        renderComposer();
+        renderList();
+        PalinodePathways.refresh();
+      };
+      PalinodePathways.onChrome = () => syncNotePage();
+    }
+    renderList();
+    paintPrompt();
+    closeExplore();
+    closePathways();
+    closeProfile();
+    el.body.classList.remove('show-insights', 'show-rail');
+    const id = decodeURIComponent(marketHash[1]);
+    const kind = marketKind && marketKind[1];
+    if (kind === 'mentor') PalinodeMarketplace.enter({ mentorId: id });
+    else PalinodeMarketplace.enter({ epicId: id });
+    syncNav('market');
+  } else if (shared) {
     renderShared(shared);
   } else {
     $('#engine-name').textContent = window.PalinodeEngine.current();

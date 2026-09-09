@@ -78,11 +78,11 @@ check('the body starts at the top now', geo.bodyTop === 0, geo.bodyTop + 'px');
 // the DOM contract Tasks 3 and 6 consume: these exact ids, carrying these
 // exact data-views, in this order. A typo in either would ship green
 // against a bare count, so name them.
-const CONTRACT = 'btn-rail:write,btn-explore:explore,btn-pathways:pathways,btn-profile:profile';
+const CONTRACT = 'btn-rail:write,btn-explore:explore,btn-market:market,btn-pathways:pathways,btn-profile:profile';
 const actual = geo.items.map(i => i.id + ':' + i.view).join(',');
-check('four destinations', geo.items.length === 4,
+check('five destinations', geo.items.length === 5,
   geo.items.map(i => i.id).join(','));
-check('the destinations are the contracted four, in order',
+check('the destinations are the contracted five, in order',
   actual === CONTRACT, actual);
 check('Notes is the only one marked active',
   geo.onIds.length === 1 && geo.onIds[0] === 'btn-rail',

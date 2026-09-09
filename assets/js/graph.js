@@ -242,6 +242,13 @@
         out.push({ id: cid(c), type: 'concept', ref: c, kind: 'within' }));
       return out;
     }
+    if (node.type === 'epic') return out;
+    if (node.type === 'mentor') {
+      const m = window.PalinodeMarketplace && PalinodeMarketplace.hydrateMentor(node.ref);
+      (m && m.epics || []).forEach(e =>
+        out.push({ id: 'epic:' + e.id, type: 'epic', ref: e.id, kind: 'offers' }));
+      return out;
+    }
     return out;
   }
 
@@ -263,6 +270,14 @@
     }
     if (n.type === 'tradition') return TRADITIONS[n.ref] || n.ref;
     if (n.type === 'spectrum')  return AXIS[n.ref] ? AXIS[n.ref].title : n.ref;
+    if (n.type === 'epic') {
+      const s = window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(n.ref);
+      return s ? s.title : (n.label || n.ref);
+    }
+    if (n.type === 'mentor') {
+      const m = window.PalinodeMarketplace && PalinodeMarketplace.hydrateMentor(n.ref);
+      return m ? m.name : (n.label || n.ref);
+    }
     return n.ref;
   }
 
@@ -276,6 +291,11 @@
     // A spectrum is a question about where you stand, which is the stance lane.
     if (n.type === 'spectrum') return 'stance';
     if (n.type === 'link') return 'lineage';
+    if (n.type === 'epic') {
+      const s = window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(n.ref);
+      return (s && s.category) || 'lineage';
+    }
+    if (n.type === 'mentor') return 'lineage';
     return 'resonance';       // notes, other notes and media are yours
   }
 
@@ -293,6 +313,14 @@
     }
     if (n.type === 'tradition') return 'Tradition';
     if (n.type === 'spectrum') return AXIS[n.ref] ? AXIS[n.ref].branch : 'Spectrum';
+    if (n.type === 'epic') {
+      const s = window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(n.ref);
+      return s ? ('Epic · ' + s.mentorName) : 'Epic';
+    }
+    if (n.type === 'mentor') {
+      const m = window.PalinodeMarketplace && PalinodeMarketplace.hydrateMentor(n.ref);
+      return m ? ('Mentor · ' + (m.focusAreas || []).slice(0, 2).join(', ')) : 'Mentor';
+    }
     if (n.type === 'link') { const o = ATT_OF[n.ref]; return o ? hostOf(o.att.url) : 'Link'; }
     if (n.type === 'media') { const o = ATT_OF[n.ref]; return o ? o.att.kind : 'Media'; }
     return '';
@@ -506,6 +534,7 @@
     n.type === 'note' ? 34 :
     n.type === 'media' ? (n._url ? 46 : 14) :
     n.type === 'note-other' ? 22 :
+    n.type === 'epic' || n.type === 'mentor' ? 18 :
     n.type === 'tradition' ? 11 :
     n.type === 'spectrum' ? (leanOf(n.ref) ? 16 : 12) :
     n.type === 'link' ? 12 :
@@ -521,7 +550,7 @@
 
   const showLabel = n =>
     n.type === 'note' || n.type === 'note-other' || n.type === 'link' ||
-    n.type === 'spectrum' ||
+    n.type === 'spectrum' || n.type === 'epic' || n.type === 'mentor' ||
     n.inNote || n.state === 'open' ||
     n.id === selected || n.id === hoverId || isSaved(n.id);
 
@@ -559,6 +588,20 @@
         el = document.createElement('div');
         el.dataset.id = n.id;
         el.innerHTML = '<i class="gx-orb"></i><span class="gx-label"></span>';
+        if (n.type === 'epic') {
+          el.insertAdjacentHTML('beforeend',
+            `<span class="gx-hover-acts">
+              <button type="button" data-epic-share="${escapeHtml(n.ref)}">Share</button>
+              <button type="button" data-epic-bookmark="${escapeHtml(n.ref)}">Bookmark</button>
+            </span>`);
+        }
+        if (n.type === 'mentor') {
+          el.insertAdjacentHTML('beforeend',
+            `<span class="gx-hover-acts">
+              <button type="button" data-mentor-share="${escapeHtml(n.ref)}">Share</button>
+              <button type="button" data-mentor-open="${escapeHtml(n.ref)}">Profile</button>
+            </span>`);
+        }
         el.classList.add('gx-enter');
         elNodes.appendChild(el);
         nodeEls.set(n.id, el);
@@ -584,8 +627,8 @@
         if (orb.style.backgroundImage !== bg) orb.style.backgroundImage = bg;
       }
       const text = lab ? n.label : '';
-      const span = el.lastChild;
-      if (span.textContent !== text) span.textContent = text;
+      const span = el.querySelector('.gx-label');
+      if (span && span.textContent !== text) span.textContent = text;
     });
 
     edges.forEach(e => {
@@ -932,6 +975,41 @@
         ${more}`;
     }
 
+    else if (n.type === 'epic') {
+      const s = window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(n.ref);
+      body = s ? `
+        <div class="gx-kicker">${orb(s.category || 'lineage')}Epic</div>
+        <h3>${escapeHtml(s.title)}</h3>
+        <p class="gx-author">${escapeHtml(s.mentorName)}</p>
+        <p class="gx-lede">${escapeHtml(s.description)}</p>
+        <p class="gx-fine">${s.moduleCount} quests · ${escapeHtml((s.languages || []).join(' · '))} · $${s.price}</p>
+        <div class="gx-act">
+          <button class="ghost solid" data-act="epic-open" data-ref="${escapeHtml(s.id)}">View epic details</button>
+          <button class="ghost" data-act="epic-share" data-ref="${escapeHtml(s.id)}">Share</button>
+          <button class="ghost" data-act="epic-bookmark" data-ref="${escapeHtml(s.id)}">Bookmark</button>
+        </div>
+        ${more}` : `
+        <div class="gx-kicker">${orb('lineage')}Epic</div>
+        <h3>${escapeHtml(n.label || n.ref)}</h3>`;
+    }
+
+    else if (n.type === 'mentor') {
+      const m = window.PalinodeMarketplace && PalinodeMarketplace.hydrateMentor(n.ref);
+      body = m ? `
+        <div class="gx-kicker">${orb('lineage')}Mentor</div>
+        <h3>${escapeHtml(m.name)}</h3>
+        <p class="gx-author">${escapeHtml(m.education)}</p>
+        <p class="gx-lede">${escapeHtml(m.bio)}</p>
+        <p class="gx-fine">${m.epicCount} epic${m.epicCount === 1 ? '' : 's'} · ★ ${m.rating.toFixed(1)} · ${escapeHtml((m.languages || []).join(' · '))}</p>
+        <div class="gx-act">
+          <button class="ghost solid" data-act="mentor-open" data-ref="${escapeHtml(m.id)}">View Khora profile</button>
+          <button class="ghost" data-act="mentor-share" data-ref="${escapeHtml(m.id)}">Share</button>
+        </div>
+        ${more}` : `
+        <div class="gx-kicker">${orb('lineage')}Mentor</div>
+        <h3>${escapeHtml(n.label || n.ref)}</h3>`;
+    }
+
     const host = elPanel.querySelector('.gx-panel-body');
     host.innerHTML = body;
     reveal(host);
@@ -1153,9 +1231,9 @@
     notify();
     if (grow) {
       expandLive(n);
-      if (added === 0 && n.type !== 'note' && !liveUuid(n))
+      if (added === 0 && n.type !== 'note' && n.type !== 'epic' && n.type !== 'mentor' && !liveUuid(n))
         toast('Everything this leads to is already on the canvas.');
-    } else if (added === 0 && n.type !== 'note') {
+    } else if (added === 0 && n.type !== 'note' && n.type !== 'epic' && n.type !== 'mentor') {
       toast('Everything this leads to is already on the canvas.');
     }
   }
@@ -1487,6 +1565,7 @@
       detail(selected);
       expandLive(nodes.get(selected));
     } else if (elPanel) { setPanelLoading(false); elPanel.hidden = true; }
+    injectEpics(selected);
     markDirty();
     kick(0.45);
   }
@@ -1524,6 +1603,7 @@
       pushTrail(selected);
       detail(selected);
     } else if (elPanel) { setPanelLoading(false); elPanel.hidden = true; }
+    injectEpics(selected);
     markDirty();
     kick(0.45);
   }
@@ -1717,7 +1797,58 @@
       .forEach(c => { expand(c, 5); c.state = 'open'; });
     selected = NID.note;
     pushTrail(NID.note);
+    injectMarketNodes(NID.note);
     detail(NID.note);
+  }
+
+  function injectMarketNodes(anchorId) {
+    const M = window.PalinodeMarketplace;
+    if (!M) return;
+    const mentors = typeof M.mentorsForGraph === 'function' ? M.mentorsForGraph() : [];
+    const epics = typeof M.epicsForGraph === 'function' ? M.epicsForGraph() : [];
+    const rBase = isCorpus() ? 300 : 250;
+
+    mentors.forEach((m, i) => {
+      const id = 'mentor:' + m.id;
+      if (nodes.has(id)) return;
+      const angle = -Math.PI * 0.85 + (i / Math.max(1, mentors.length)) * Math.PI * 0.7;
+      const r = rBase;
+      const n = addNode({
+        id, type: 'mentor', ref: m.id,
+        px: Math.cos(angle) * r, py: Math.sin(angle) * r,
+        spawnR: 0, depth: 0
+      });
+      n.x = Math.cos(angle) * r;
+      n.y = Math.sin(angle) * r;
+      n.state = 'open';
+      n.label = m.name;
+      n.category = 'lineage';
+      if (anchorId && nodes.has(anchorId)) addEdge(anchorId, id, 'offers');
+    });
+
+    epics.forEach((s, i) => {
+      const id = 'epic:' + s.id;
+      if (nodes.has(id)) return;
+      const angle = Math.PI * 0.15 + (i / Math.max(1, epics.length)) * Math.PI * 0.75;
+      const r = rBase + 40;
+      const n = addNode({
+        id, type: 'epic', ref: s.id,
+        px: Math.cos(angle) * r, py: Math.sin(angle) * r,
+        spawnR: 0, depth: 0
+      });
+      n.x = Math.cos(angle) * r;
+      n.y = Math.sin(angle) * r;
+      n.state = 'open';
+      n.label = s.title;
+      n.category = s.category || 'lineage';
+      const mentorNode = 'mentor:' + s.mentorId;
+      if (nodes.has(mentorNode)) addEdge(mentorNode, id, 'offers');
+      else if (anchorId && nodes.has(anchorId)) addEdge(anchorId, id, 'offers');
+    });
+  }
+
+  function injectEpics(anchorId) {
+    injectMarketNodes(anchorId);
   }
 
   function seedPathway(pathway) {
@@ -1933,7 +2064,27 @@
     canvas.addEventListener('pointerup', e => {
       if (!drag) return;
       if (drag.node) drag.node.held = false;
-      if (!drag.moved && drag.node) select(drag.node.id);
+      if (!drag.moved && drag.node) {
+        const share = e.target.closest('[data-epic-share]');
+        const book = e.target.closest('[data-epic-bookmark]');
+        const mShare = e.target.closest('[data-mentor-share]');
+        const mOpen = e.target.closest('[data-mentor-open]');
+        if (share && window.PalinodeMarketplace) {
+          PalinodeMarketplace.shareEpic(share.getAttribute('data-epic-share'));
+        } else if (book && window.PalinodeMarketplace) {
+          PalinodeMarketplace.bookmarkEpic(book.getAttribute('data-epic-bookmark'));
+        } else if (mShare && window.PalinodeMarketplace) {
+          PalinodeMarketplace.shareMentor(mShare.getAttribute('data-mentor-share'));
+        } else if (mOpen && ctx.onOpenMentor) {
+          ctx.onOpenMentor(mOpen.getAttribute('data-mentor-open'));
+        } else if (drag.node.type === 'epic' && ctx.onOpenEpic) {
+          ctx.onOpenEpic(drag.node.ref);
+        } else if (drag.node.type === 'mentor' && ctx.onOpenMentor) {
+          ctx.onOpenMentor(drag.node.ref);
+        } else {
+          select(drag.node.id);
+        }
+      }
       drag = null;
     });
 
@@ -2009,6 +2160,26 @@
         return;
       }
       if (kind === 'read')  { if (ctx.onRead) ctx.onRead(act.dataset.ref); return; }
+      if (kind === 'epic-open') {
+        if (ctx.onOpenEpic) ctx.onOpenEpic(act.dataset.ref);
+        return;
+      }
+      if (kind === 'epic-share') {
+        if (window.PalinodeMarketplace) PalinodeMarketplace.shareEpic(act.dataset.ref);
+        return;
+      }
+      if (kind === 'epic-bookmark') {
+        if (window.PalinodeMarketplace) PalinodeMarketplace.bookmarkEpic(act.dataset.ref);
+        return;
+      }
+      if (kind === 'mentor-open') {
+        if (ctx.onOpenMentor) ctx.onOpenMentor(act.dataset.ref);
+        return;
+      }
+      if (kind === 'mentor-share') {
+        if (window.PalinodeMarketplace) PalinodeMarketplace.shareMentor(act.dataset.ref);
+        return;
+      }
     });
 
     // ---- 2D / 3D ----
@@ -2195,6 +2366,29 @@
         if (n.type === 'tradition') {
           const all = BY_TRADITION[n.ref] || [];
           return Object.assign(base, { line: all.length + ' concepts belong to this tradition.' });
+        }
+        if (n.type === 'epic') {
+          const s = window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(n.ref);
+          return Object.assign(base, {
+            sub: s ? s.mentorName : 'Epic',
+            line: s ? s.description : '',
+            actions: [
+              { act: 'epic-open', ref: n.ref, label: 'View epic details', primary: true },
+              { act: 'epic-share', ref: n.ref, label: 'Share' },
+              { act: 'epic-bookmark', ref: n.ref, label: 'Bookmark' }
+            ]
+          });
+        }
+        if (n.type === 'mentor') {
+          const m = window.PalinodeMarketplace && PalinodeMarketplace.hydrateMentor(n.ref);
+          return Object.assign(base, {
+            sub: m ? m.education : 'Mentor',
+            line: m ? m.bio : '',
+            actions: [
+              { act: 'mentor-open', ref: n.ref, label: 'View Khora profile', primary: true },
+              { act: 'mentor-share', ref: n.ref, label: 'Share' }
+            ]
+          });
         }
         if (n.type === 'media' || n.type === 'link') {
           const o = ATT_OF[n.ref];

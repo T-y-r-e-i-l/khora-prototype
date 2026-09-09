@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/app.css?v=54">
+<link rel="stylesheet" href="assets/css/app.css?v=61">
 </head>
 <body>
 
@@ -53,6 +53,14 @@
         <circle cx="18.5" cy="8" r="1.7" fill="currentColor"/>
       </svg>
       <span class="nav-lab">Explore</span>
+    </button>
+
+    <button class="nav-item" id="btn-market" data-view="market">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M5 8h14l-1.2 11H6.2L5 8z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M9 8V6.5A3 3 0 0 1 12 3.5 3 3 0 0 1 15 6.5V8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <span class="nav-lab">Market</span>
     </button>
 
     <button class="nav-item" id="btn-pathways" data-view="pathways">
@@ -243,6 +251,65 @@
 
         <!-- standing belief profile -->
         <section id="profile-view" hidden></section>
+
+        <!-- marketplace -->
+        <section id="market-wrap" hidden>
+          <div id="mkt-board">
+            <header class="mkt-head">
+              <div class="mkt-title-row">
+                <h2 class="mkt-title">Marketplace</h2>
+                <p class="mkt-lede">Mentors on Khora and the epics they offer for guided practice.</p>
+              </div>
+              <div class="seg" id="mkt-tabs" role="tablist">
+                <button type="button" class="seg-btn on" data-mkt-tab="mentors">Mentors</button>
+                <button type="button" class="seg-btn" data-mkt-tab="epics">Epics</button>
+                <button type="button" class="seg-btn" data-mkt-tab="mine">My Epics</button>
+              </div>
+              <div class="mkt-controls">
+                <div class="search mkt-search">
+                  <input type="search" id="mkt-q" placeholder="Search mentors…" autocomplete="off">
+                </div>
+                <label class="gx-sort">
+                  <span>Language</span>
+                  <select id="mkt-filter-lang" aria-label="Language">
+                    <option value="">All</option>
+                  </select>
+                </label>
+                <label class="gx-sort">
+                  <span>Price</span>
+                  <select id="mkt-filter-price" aria-label="Price">
+                    <option value="">All</option>
+                    <option value="low">Under $160</option>
+                    <option value="mid">$160–$200</option>
+                    <option value="high">Over $200</option>
+                  </select>
+                </label>
+                <label class="gx-sort">
+                  <span>Tag</span>
+                  <select id="mkt-filter-tag" aria-label="Tag">
+                    <option value="">All</option>
+                  </select>
+                </label>
+              </div>
+            </header>
+            <div class="mkt-grid" id="mkt-grid"></div>
+            <p class="mkt-empty" id="mkt-empty" hidden></p>
+          </div>
+
+          <div id="mkt-mentor" hidden>
+            <button type="button" class="micro mkt-back" data-mkt-back-board>← Board</button>
+            <div id="mkt-mentor-body"></div>
+          </div>
+
+          <div id="mkt-overview" hidden>
+            <button type="button" class="micro mkt-back" data-mkt-back-board>← Board</button>
+            <div id="mkt-overview-body"></div>
+          </div>
+
+          <div id="mkt-learn" hidden>
+            <div id="mkt-learn-body"></div>
+          </div>
+        </section>
 
         <!-- reading room -->
         <section id="reading-room" hidden></section>
@@ -523,6 +590,65 @@
   </div>
 </div>
 
+<div id="mkt-checkout-scrim" class="scrim">
+  <div class="modal mkt-checkout" role="dialog" aria-labelledby="mkt-checkout-title">
+    <h3 id="mkt-checkout-title">Epic</h3>
+    <p class="lede">Mock checkout — nothing is charged. Card fields are decorative.</p>
+    <p class="mkt-ov-price" id="mkt-checkout-price"></p>
+    <form class="mkt-checkout-form" id="mkt-checkout-form">
+      <label class="mkt-field"><span>Name on card</span><input type="text" value="Ada Lovelace" autocomplete="off"></label>
+      <label class="mkt-field"><span>Card number</span><input type="text" value="4242 4242 4242 4242" autocomplete="off"></label>
+      <div class="mkt-checkout-row">
+        <label class="mkt-field"><span>Expiry</span><input type="text" value="12 / 28" autocomplete="off"></label>
+        <label class="mkt-field"><span>CVC</span><input type="text" value="123" autocomplete="off"></label>
+      </div>
+      <div class="gx-act">
+        <button class="ghost solid" type="submit" id="mkt-pay">Pay</button>
+        <button class="ghost" type="button" id="mkt-checkout-cancel">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="mkt-book-scrim" class="scrim">
+  <div class="modal mkt-checkout" role="dialog" aria-labelledby="mkt-book-title">
+    <h3 id="mkt-book-title">Book a session</h3>
+    <p class="lede" id="mkt-book-lede">Mock booking — nothing is charged.</p>
+    <p class="mkt-ov-price" id="mkt-book-price"></p>
+    <form class="mkt-checkout-form" id="mkt-book-form">
+      <label class="mkt-field"><span>What do you want to work on?</span>
+        <textarea id="mkt-book-topic" rows="3" placeholder="A stuck judgement, a relationship rupture, a contested word…"></textarea>
+      </label>
+      <label class="mkt-field"><span>Time</span>
+        <select id="mkt-book-slot" aria-label="Session time">
+          <option value="Thu 10:00">Thu · 10:00</option>
+          <option value="Thu 16:30">Thu · 16:30</option>
+          <option value="Fri 11:00">Fri · 11:00</option>
+          <option value="Sat 09:30">Sat · 09:30</option>
+        </select>
+      </label>
+      <label class="mkt-field"><span>Name on card</span><input type="text" value="Ada Lovelace" autocomplete="off"></label>
+      <label class="mkt-field"><span>Card number</span><input type="text" value="4242 4242 4242 4242" autocomplete="off"></label>
+      <div class="gx-act">
+        <button class="ghost solid" type="submit" id="mkt-book-pay">Book &amp; pay</button>
+        <button class="ghost" type="button" id="mkt-book-cancel">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<aside id="mkt-chat" class="mkt-chat" hidden>
+  <div class="mkt-chat-head">
+    <strong id="mkt-chat-title">Chat</strong>
+    <button type="button" class="micro" id="mkt-chat-close">Close</button>
+  </div>
+  <div class="mkt-chat-body" id="mkt-chat-body"></div>
+  <div class="mkt-chat-compose">
+    <textarea id="mkt-chat-input" rows="2" placeholder="Message your mentor…"></textarea>
+    <button type="button" class="ghost solid" id="mkt-chat-send">Send</button>
+  </div>
+</aside>
+
 <div id="toast"></div>
 
 <script src="assets/js/corpus.js"></script>
@@ -535,11 +661,13 @@
 <script src="assets/js/engine.js"></script>
 <script src="assets/js/store.js"></script>
 <script src="assets/js/khora.js?v=4"></script>
+<script src="assets/js/marketplace-data.js?v=4"></script>
+<script src="assets/js/marketplace.js?v=9"></script>
 <script src="assets/vendor/three.min.js"></script>
-<script src="assets/js/graph.js?v=37"></script>
+<script src="assets/js/graph.js?v=41"></script>
 <script src="assets/js/graph3d.js"></script>
 <script src="assets/js/pathways.js?v=34"></script>
 <script src="assets/js/profile.js?v=1"></script>
-<script src="assets/js/app.js?v=35"></script>
+<script src="assets/js/app.js?v=40"></script>
 </body>
 </html>
