@@ -2,6 +2,7 @@
    belongs to a single note. */
 
 import { chromium } from '/Users/tyreil/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
+import { mockKhora } from './khora-mock.mjs';
 
 let pass = 0, fail = 0;
 const check = (name, ok, note) => {
@@ -15,6 +16,7 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const problems = [];
 page.on('pageerror', e => problems.push('pageerror: ' + e.message));
+await mockKhora(page);
 await page.goto('http://localhost:8765/index.html', { waitUntil: 'networkidle' });
 await page.evaluate(() => localStorage.clear());
 await page.reload({ waitUntil: 'networkidle' });

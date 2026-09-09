@@ -9,6 +9,7 @@
   const SPECUI = window.PalinodeSpectrumUI;
   const Media = window.PalinodeMedia;
   const CATS = window.PalinodeEngine.categories;
+  const Khora = window.PalinodeKhora;
 
   const $  = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
@@ -1137,43 +1138,77 @@
     const inShelf = shelf.find(x => x.id === bare);
     if (inShelf) return inShelf;
     const w = LIB.works[bare];
-    if (!w) return null;
-    // Reached by exploring rather than by the note — no insights raised it.
-    return Object.assign({}, w, { raisedBy: [], sections: [] });
+    if (w) return Object.assign({}, w, { raisedBy: [], sections: [] });
+    if (Khora && Khora.getWork(bare)) {
+      return Object.assign({ raisedBy: [], sections: [] }, Khora.getWork(bare));
+    }
+    return null;
   }
 
-  function openWork(id) {
-    const w = findWork(id);
-    if (!w) { toast('That work is not in the library.'); return; }
+  function mergeWork(live, local) {
+    if (!live) return local;
+    if (!local) return Object.assign({ raisedBy: [], sections: [] }, live);
+    return Object.assign({}, local, {
+      id: live.id || local.id,
+      title: live.title || local.title,
+      author: live.author || local.author,
+      gist: live.gist || local.gist,
+      short_summary: live.short_summary || local.short_summary,
+      url: live.url || local.url,
+      citations: live.citations || local.citations || [],
+      live: true,
+      raisedBy: local.raisedBy || [],
+      sections: local.sections || []
+    });
+  }
 
+  function workLinks(w) {
+    if (w.url) {
+      const extra = LIB.links(w).filter(l => l.href !== w.url);
+      return [{ label: 'Source', href: w.url, primary: true }].concat(extra);
+    }
+    return LIB.links(w);
+  }
+
+  function citeLine(c) {
+    if (!c || typeof c === 'string') return String(c || '');
+    return c.title || c.work || c.text || c.citation || c.url || JSON.stringify(c);
+  }
+
+  function paintRoom(w) {
     el.editorWrap.hidden = true;
     el.empty.style.display = 'none';
     const banner = $('#prompt-banner'); if (banner) banner.style.display = 'none';
     el.room.hidden = false;
 
-    const links = LIB.links(w);
+    const links = workLinks(w);
+    const raised = w.raisedBy || [];
+    const sections = w.sections || [];
+    const cites = w.citations || [];
+    const rights = w.rights === 'open' || w.rights === 'restricted' ? rightsPill(w)
+      : (w.url ? '<span class="rights open"><i></i>Source</span>' : '');
 
     el.room.innerHTML = `
       <button class="rr-back" id="rr-back">← Back to the note</button>
 
       <div class="rr-kicker">
-        ${rightsPill(w)}
+        ${rights}
         ${w.tradition ? `<span>${esc(window.PalinodeCorpus.TRADITIONS[w.tradition] || w.tradition)}</span>` : ''}
         ${w.year ? `<span>${esc(w.year)}</span>` : ''}
       </div>
 
       <h1 class="rr-title">${esc(w.title)}</h1>
-      <p class="rr-author">${esc(w.author)}</p>
-      ${w.sections.length ? `<p class="rr-sections">Your writing points to <b>${esc(w.sections.join(', '))}</b></p>` : '<div style="height:22px"></div>'}
+      <p class="rr-author">${esc(w.author || '')}</p>
+      ${sections.length ? `<p class="rr-sections">Your writing points to <b>${esc(sections.join(', '))}</b></p>` : '<div style="height:22px"></div>'}
 
       ${w.gist ? `<div class="rr-sec"><h3>What it argues</h3><p>${esc(w.gist)}</p></div>` : ''}
       ${w.start ? `<div class="rr-sec"><h3>Where to start</h3><p class="muted">${esc(w.start)}</p></div>` : ''}
       ${w.counter ? `<div class="rr-sec"><h3>Read against</h3><p class="muted">${esc(w.counter)}</p></div>` : ''}
 
-      ${w.raisedBy.length ? `<div class="rr-sec">
+      ${raised.length ? `<div class="rr-sec">
         <h3>Why your note raised this</h3>
         <div class="rr-raised">
-          ${w.raisedBy.map(r => `
+          ${raised.map(r => `
             <div class="r" data-key="${esc(r.key)}">
               ${orb(r.category)}
               <div><h5>${esc(r.label)}</h5>${r.note ? `<p>${esc(r.note)}</p>` : ''}</div>
@@ -1184,20 +1219,30 @@
         <p class="muted">You reached this by exploring rather than by writing — nothing in the current note raised it.</p>
       </div>`}
 
+      ${cites.length ? `<div class="rr-sec">
+        <h3>Citations</h3>
+        <div class="rr-raised">
+          ${cites.map(c => `<div class="r"><div><h5>${esc(citeLine(c))}</h5>${c.author ? `<p>${esc(c.author)}</p>` : ''}</div></div>`).join('')}
+        </div>
+      </div>` : ''}
+
       <div class="rr-sec">
-        <h3>${w.rights === 'open' ? 'Read the full text' : 'Where to find it'}</h3>
+        <h3>${w.url ? 'Source' : (w.rights === 'open' ? 'Read the full text' : 'Where to find it')}</h3>
         <div class="rr-links">
           ${links.map(l => `<a href="${l.href}" target="_blank" rel="noopener"
              class="${l.primary ? 'primary' : ''}">${esc(l.label)}</a>`).join('')}
         </div>
-        <p class="rr-note">${w.rights === 'open'
-          ? 'This work is out of copyright, so the complete text is freely available. Everything above is Palinode’s own account of it, not the text itself.'
-          : 'This work is still in copyright, so Palinode carries the argument and the reading path but never the text. The links go to library and reference copies.'}</p>
+        <p class="rr-note">${w.live && w.gist
+          ? 'Summary from Khora. Local reading notes appear only when this title is also in Palinode’s library.'
+          : (w.rights === 'open'
+            ? 'This work is out of copyright, so the complete text is freely available. Everything above is Palinode’s own account of it, not the text itself.'
+            : 'This work is still in copyright, so Palinode carries the argument and the reading path but never the text. The links go to library and reference copies.')}</p>
       </div>`;
 
     $('#rr-back').addEventListener('click', closeRoom);
     el.room.querySelectorAll('.rr-raised .r').forEach(r =>
       r.addEventListener('click', () => {
+        if (!r.dataset.key) return;
         closeRoom();
         setTab('insights');
         openKey = r.dataset.key;
@@ -1208,6 +1253,44 @@
       }));
 
     document.querySelector('.centre').scrollTo({ top: 0, behavior: 'auto' });
+  }
+
+  async function openWork(id) {
+    const bare = String(id).replace(/^w:/, '');
+    let w = findWork(bare);
+
+    if (Khora && Khora.isUuid(bare)) {
+      if (w) paintRoom(w);
+      try {
+        const live = await Khora.loadWork(bare);
+        w = mergeWork(live, w);
+      } catch (e) {
+        if (!w) { toast('Could not open that work.'); return; }
+      }
+      if (!w) { toast('That work is not in the library.'); return; }
+      paintRoom(w);
+      return;
+    }
+
+    if (!w && Khora) {
+      try {
+        const hit = await Khora.resolveByTitle(bare, ['Item']);
+        if (hit) w = mergeWork(await Khora.loadWork(hit.id), null);
+      } catch (e) { /* keep going */ }
+    }
+
+    if (!w) { toast('That work is not in the library.'); return; }
+    paintRoom(w);
+
+    if (Khora && w.title) {
+      try {
+        const hit = await Khora.resolveByTitle(w.title, ['Item']);
+        if (hit && hit.id) {
+          const live = await Khora.loadWork(hit.id);
+          paintRoom(mergeWork(live, w));
+        }
+      } catch (e) { /* keep the local room */ }
+    }
   }
 
   function closeRoom() {

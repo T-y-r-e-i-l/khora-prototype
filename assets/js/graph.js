@@ -15,6 +15,7 @@
 (function () {
   const { CONCEPTS, CATEGORIES, TRADITIONS } = window.PalinodeCorpus;
   const LIB = window.PalinodeLibrary;
+  const Khora = window.PalinodeKhora;
   const Saved  = window.PalinodeStore.Saved;
   const Notes  = window.PalinodeStore.Notes;
   const Attach = window.PalinodeStore.Attach;
@@ -78,6 +79,27 @@
   const nid = id => 'n:' + id;      // another note
   const aid = id => 'a:' + id;      // an attachment on a note
   const sid = id => 's:' + id;      // a belief spectrum
+
+  function conceptOf(ref) {
+    if (!ref) return null;
+    if (CONCEPT[ref]) return CONCEPT[ref];
+    if (!Khora) return null;
+    return Khora.getConcept(ref)
+      || (Khora.liveIdFor(ref) && Khora.getConcept(Khora.liveIdFor(ref)))
+      || null;
+  }
+  function workOf(ref) {
+    if (!ref) return null;
+    if (WORK[ref]) return WORK[ref];
+    if (LIB.works[ref]) return LIB.works[ref];
+    if (!Khora) return null;
+    return Khora.getWork(ref) || null;
+  }
+  function liveUuid(node) {
+    if (!Khora || !node) return null;
+    if (Khora.isUuid(node.ref)) return node.ref;
+    return Khora.liveIdFor(node.ref);
+  }
 
   // What this note leans, keyed by axis. Tentative: a lean is a reading of
   // the passage and never a placement.
@@ -159,19 +181,33 @@
       return out;
     }
     if (node.type === 'concept') {
-      const c = CONCEPT[node.ref];
-      if (!c) return out;
-      (c.kin || []).forEach(k => CONCEPT[k] &&
-        out.push({ id: cid(k), type: 'concept', ref: k, kind: 'kin' }));
-      (WORKS_OF[c.id] || []).forEach(w =>
-        out.push({ id: wid(w), type: 'work', ref: w, kind: 'cites' }));
-      // your own other entries that arrived at the same idea
-      (NOTES_BY_CONCEPT[c.id] || []).forEach(nId => {
-        if (nId !== ctx.note.id) out.push({ id: nid(nId), type: 'note-other', ref: nId, kind: 'also-wrote' });
-      });
-      BEL.axesForConcept(c.id).forEach(a =>
-        out.push({ id: sid(a.id), type: 'spectrum', ref: a.id, kind: 'sits-on' }));
-      out.push({ id: tid(c.tradition), type: 'tradition', ref: c.tradition, kind: 'tradition' });
+      const c = conceptOf(node.ref);
+      if (c) {
+        (c.kin || []).forEach(k => conceptOf(k) &&
+          out.push({ id: cid(k), type: 'concept', ref: k, kind: 'kin' }));
+        (WORKS_OF[c.id] || []).forEach(w =>
+          out.push({ id: wid(w), type: 'work', ref: w, kind: 'cites' }));
+        (NOTES_BY_CONCEPT[c.id] || []).forEach(nId => {
+          if (ctx.note && nId !== ctx.note.id)
+            out.push({ id: nid(nId), type: 'note-other', ref: nId, kind: 'also-wrote' });
+        });
+        if (!c.live && BEL.axesForConcept(c.id)) {
+          BEL.axesForConcept(c.id).forEach(a =>
+            out.push({ id: sid(a.id), type: 'spectrum', ref: a.id, kind: 'sits-on' }));
+        }
+        if (c.tradition) out.push({ id: tid(c.tradition), type: 'tradition', ref: c.tradition, kind: 'tradition' });
+      }
+      const uuid = liveUuid(node);
+      if (uuid && Khora) {
+        Khora.neighborsOf(uuid).forEach(ent => {
+          const seed = Khora.toGraphSeed(Khora.overlayFromLocal(ent) || ent);
+          if (out.some(x => x.id === seed.id)) return;
+          out.push({
+            id: seed.id, type: seed.type, ref: seed.ref,
+            kind: seed.type === 'work' ? 'cites' : 'kin'
+          });
+        });
+      }
       return out;
     }
     if (node.type === 'spectrum') {
@@ -186,9 +222,19 @@
       return out;
     }
     if (node.type === 'work') {
-      // the cross-pollinating edge: who else reads this book
       (CONCEPTS_OF[node.ref] || []).forEach(c =>
         out.push({ id: cid(c), type: 'concept', ref: c, kind: 'read-by' }));
+      const uuid = liveUuid(node);
+      if (uuid && Khora) {
+        Khora.neighborsOf(uuid).forEach(ent => {
+          const seed = Khora.toGraphSeed(Khora.overlayFromLocal(ent) || ent);
+          if (out.some(x => x.id === seed.id)) return;
+          out.push({
+            id: seed.id, type: seed.type, ref: seed.ref,
+            kind: seed.type === 'work' ? 'cites' : 'read-by'
+          });
+        });
+      }
       return out;
     }
     if (node.type === 'tradition') {
@@ -207,15 +253,24 @@
       if (!o) return 'Attachment';
       return o.att.kind === 'link' ? (o.att.title || hostOf(o.att.url)) : o.att.name;
     }
-    if (n.type === 'concept')   return CONCEPT[n.ref] ? CONCEPT[n.ref].label : n.ref;
-    if (n.type === 'work')      return WORK[n.ref] ? WORK[n.ref].title : n.ref;
+    if (n.type === 'concept') {
+      const c = conceptOf(n.ref);
+      return c ? c.label : (n.label || n.ref);
+    }
+    if (n.type === 'work') {
+      const w = workOf(n.ref);
+      return w ? w.title : (n.label || n.ref);
+    }
     if (n.type === 'tradition') return TRADITIONS[n.ref] || n.ref;
     if (n.type === 'spectrum')  return AXIS[n.ref] ? AXIS[n.ref].title : n.ref;
     return n.ref;
   }
 
   function category(n) {
-    if (n.type === 'concept' && CONCEPT[n.ref]) return CONCEPT[n.ref].category;
+    if (n.type === 'concept') {
+      const c = conceptOf(n.ref);
+      if (c) return c.category;
+    }
     if (n.type === 'work') return 'lineage';
     if (n.type === 'tradition') return 'stance';
     // A spectrum is a question about where you stand, which is the stance lane.
@@ -227,8 +282,15 @@
   function kicker(n) {
     if (n.type === 'note') return 'Your note';
     if (n.type === 'note-other') return 'Another entry';
-    if (n.type === 'concept') return CONCEPT[n.ref] ? (TRADITIONS[CONCEPT[n.ref].tradition] || '') : '';
-    if (n.type === 'work') return WORK[n.ref] ? WORK[n.ref].author : '';
+    if (n.type === 'concept') {
+      const c = conceptOf(n.ref);
+      if (!c) return n.sub || '';
+      return TRADITIONS[c.tradition] || c.node_type || '';
+    }
+    if (n.type === 'work') {
+      const w = workOf(n.ref);
+      return w ? w.author : (n.sub || '');
+    }
     if (n.type === 'tradition') return 'Tradition';
     if (n.type === 'spectrum') return AXIS[n.ref] ? AXIS[n.ref].branch : 'Spectrum';
     if (n.type === 'link') { const o = ATT_OF[n.ref]; return o ? hostOf(o.att.url) : 'Link'; }
@@ -325,6 +387,31 @@
     markDirty();
     kick(admitted ? 0.55 : 0.3);
     return admitted;
+  }
+
+  async function expandLive(node) {
+    if (!Khora || !node) return 0;
+    if (node.type !== 'concept' && node.type !== 'work') return 0;
+    const uuid = liveUuid(node);
+    if (!uuid) return 0;
+    if (node._liveExpand) return 0;
+    node._liveExpand = true;
+    try {
+      await Khora.expand(uuid, ['Node', 'Item'], true);
+      if (node.type === 'concept') {
+        try { await Khora.explain(uuid); } catch (e) { /* explain is optional */ }
+      } else {
+        try { await Khora.summary(uuid); } catch (e) { /* summary is optional */ }
+      }
+      if (!root) return 0;
+      const added = expand(node, 9);
+      if (selected === node.id) detail(node.id);
+      notify();
+      return added;
+    } catch (e) {
+      node._liveExpand = false;
+      return 0;
+    }
   }
 
   // Keep the field legible: drop the most distant frontier nodes first,
@@ -618,12 +705,12 @@
           ${unvisited.map(nb => {
             const tmp = { type: nb.type, ref: nb.ref };
             const lb = label(tmp), ct = category(tmp);
-            const sub = nb.type === 'work' && WORK[nb.ref]
-              ? WORK[nb.ref].author
+            const sub = nb.type === 'work' && workOf(nb.ref)
+              ? workOf(nb.ref).author
               : nb.type === 'spectrum' && AXIS[nb.ref]
                 ? (leanOf(nb.ref) ? 'this note leans' : AXIS[nb.ref].branch)
-              : nb.type === 'concept' && CONCEPT[nb.ref]
-                ? (TRADITIONS[CONCEPT[nb.ref].tradition] || '')
+              : nb.type === 'concept' && conceptOf(nb.ref)
+                ? (TRADITIONS[conceptOf(nb.ref).tradition] || conceptOf(nb.ref).node_type || '')
                 : nb.kind === 'within' ? 'tradition' : '';
             return `<button class="gx-more-row" data-goto="${nb.id}" data-type="${nb.type}" data-ref="${nb.ref}">
               ${orb(ct)}<span class="t">${escapeHtml(lb)}</span>
@@ -651,46 +738,64 @@
     }
 
     else if (n.type === 'concept') {
-      const c = CONCEPT[n.ref];
-      const ins = (ctx.analysis.insights || []).find(i => i.conceptId === n.ref);
-      body = `
-        <div class="gx-kicker">${orb(c.category)}${escapeHtml(TRADITIONS[c.tradition] || '')}
-          ${n.inNote ? '<span class="gx-tag">in your note</span>' : ''}</div>
-        <h3>${escapeHtml(c.label)}</h3>
-        <p class="gx-question">${escapeHtml(c.turn)}</p>
-        ${ins ? `<div class="gx-sec"><h4>How it reads your note</h4>
-          <p class="gx-lede">${escapeHtml(ins.reading)}</p></div>` : ''}
-        ${conceptAxesSection(n.ref)}
-        <div class="gx-act">
-          <button class="ghost solid" data-act="write" data-ref="${n.ref}">Write on this</button>
-          <button class="ghost" data-act="save">${isSaved(n.id) ? 'On a note ✓' : 'Add to note'}</button>
-          <button class="ghost" data-act="path">Add to pathway</button>
-        </div>
-        ${more}`;
+      const c = conceptOf(n.ref);
+      if (!c) {
+        body = `
+          <div class="gx-kicker">${orb(n.category || 'resonance')}Opening</div>
+          <h3>${escapeHtml(n.label || n.ref)}</h3>
+          <p class="gx-lede">Fetching this concept from Khora…</p>`;
+      } else {
+        const ins = (ctx.analysis.insights || []).find(i => i.conceptId === n.ref);
+        const kickerText = TRADITIONS[c.tradition] || c.node_type || '';
+        body = `
+          <div class="gx-kicker">${orb(c.category)}${escapeHtml(kickerText)}
+            ${n.inNote ? '<span class="gx-tag">in your note</span>' : ''}</div>
+          <h3>${escapeHtml(c.label)}</h3>
+          <p class="gx-question">${escapeHtml(c.turn)}</p>
+          ${c.reading ? `<div class="gx-sec"><h4>${ins ? 'How it reads your note' : 'From the graph'}</h4>
+            <p class="gx-lede">${escapeHtml(ins ? ins.reading : c.reading)}</p></div>` : (ins ? `<div class="gx-sec"><h4>How it reads your note</h4>
+            <p class="gx-lede">${escapeHtml(ins.reading)}</p></div>` : '')}
+          ${!c.live ? conceptAxesSection(n.ref) : ''}
+          <div class="gx-act">
+            <button class="ghost solid" data-act="write" data-ref="${n.ref}">Write on this</button>
+            <button class="ghost" data-act="save">${isSaved(n.id) ? 'On a note ✓' : 'Add to note'}</button>
+            <button class="ghost" data-act="path">Add to pathway</button>
+          </div>
+          ${more}`;
+      }
     }
 
     else if (n.type === 'work') {
-      const w = WORK[n.ref];
-      const rights = w.rights === 'open'
-        ? '<span class="rights open"><i></i>Full text free</span>'
-        : '<span class="rights restricted"><i></i>In copyright</span>';
-      body = `
-        <div class="gx-kicker">${rights}${w.year ? `<span>${escapeHtml(w.year)}</span>` : ''}</div>
-        <h3>${escapeHtml(w.title)}</h3>
-        <p class="gx-author">${escapeHtml(w.author)}</p>
-        ${w.gist ? `<p class="gx-lede">${escapeHtml(w.gist)}</p>` : ''}
-        <div class="gx-act">
-          <button class="ghost solid" data-act="read" data-ref="${n.ref}">Open in the Reading Room</button>
-          <button class="ghost" data-act="save">${isSaved(n.id) ? 'On a note ✓' : 'Add to note'}</button>
-          <button class="ghost" data-act="path">Add to pathway</button>
-        </div>
-        ${more}`;
+      const w = workOf(n.ref);
+      if (!w) {
+        body = `
+          <div class="gx-kicker">${orb('lineage')}Opening</div>
+          <h3>${escapeHtml(n.label || n.ref)}</h3>
+          <p class="gx-lede">Fetching this text from Khora…</p>`;
+      } else {
+        const rights = w.rights === 'open'
+          ? '<span class="rights open"><i></i>Full text free</span>'
+          : w.rights === 'restricted'
+            ? '<span class="rights restricted"><i></i>In copyright</span>'
+            : (w.url ? '<span class="rights open"><i></i>Source</span>' : '');
+        body = `
+          <div class="gx-kicker">${rights}${w.year ? `<span>${escapeHtml(w.year)}</span>` : ''}</div>
+          <h3>${escapeHtml(w.title)}</h3>
+          <p class="gx-author">${escapeHtml(w.author || '')}</p>
+          ${w.gist ? `<p class="gx-lede">${escapeHtml(w.gist)}</p>` : ''}
+          <div class="gx-act">
+            <button class="ghost solid" data-act="read" data-ref="${n.ref}">Open in the Reading Room</button>
+            <button class="ghost" data-act="save">${isSaved(n.id) ? 'On a note ✓' : 'Add to note'}</button>
+            <button class="ghost" data-act="path">Add to pathway</button>
+          </div>
+          ${more}`;
+      }
     }
 
     else if (n.type === 'note-other') {
       const other = NOTE_OF[n.ref];
       const mine = new Set((ctx.analysis.concepts || []).map(c => c.id));
-      const shared = (other.conceptIds || []).filter(c => mine.has(c) && CONCEPT[c]);
+      const shared = (other.conceptIds || []).filter(c => mine.has(c) && conceptOf(c));
       body = `
         <div class="gx-kicker">${orb('resonance')}Another entry
           <span>${new Date(other.updated).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}</span></div>
@@ -698,8 +803,8 @@
         <p class="gx-lede">${escapeHtml((other.body || '').slice(0, 240))}${(other.body || '').length > 240 ? '…' : ''}</p>
         ${shared.length ? `<div class="gx-sec"><h4>You arrived here twice</h4>
           <div class="gx-more">${shared.map(c => `<button class="gx-more-row" data-goto="${cid(c)}">
-            <span class="orb sm" style="--c:var(--${CONCEPT[c].category})"></span>
-            <span class="t">${escapeHtml(CONCEPT[c].label)}</span></button>`).join('')}</div></div>` : ''}
+            <span class="orb sm" style="--c:var(--${conceptOf(c).category})"></span>
+            <span class="t">${escapeHtml(conceptOf(c).label)}</span></button>`).join('')}</div></div>` : ''}
         <div class="gx-act">
           <button class="ghost solid" data-act="open-note" data-ref="${escapeHtml(n.ref)}">Open this note</button>
           <button class="ghost" data-act="path">Add to pathway</button>
@@ -822,12 +927,13 @@
       seen.add(id); out.push({ id, type, ref, kind });
     };
 
-    const tradOf = c => CONCEPT[c] && CONCEPT[c].tradition;
+    const tradOf = c => conceptOf(c) && conceptOf(c).tradition;
 
     if (n.type === 'concept') {
       const t = tradOf(n.ref);
       (BY_TRADITION[t] || []).forEach(c => push(cid(c), 'concept', c, 'within'));
-      (CONCEPT[n.ref].kin || []).forEach(k =>
+      const local = conceptOf(n.ref);
+      (local && local.kin || []).forEach(k =>
         (WORKS_OF[k] || []).forEach(w => push(wid(w), 'work', w, 'cites')));
     }
 
@@ -835,7 +941,7 @@
       // other books read by the same concepts — the shelf next to this one
       (CONCEPTS_OF[n.ref] || []).forEach(c => {
         (WORKS_OF[c] || []).forEach(w => push(wid(w), 'work', w, 'cites'));
-        (CONCEPT[c] && CONCEPT[c].kin || []).forEach(k => push(cid(k), 'concept', k, 'kin'));
+        (conceptOf(c) && conceptOf(c).kin || []).forEach(k => push(cid(k), 'concept', k, 'kin'));
       });
     }
 
@@ -846,7 +952,7 @@
 
     if (n.type === 'note') {
       (ctx.analysis.concepts || []).forEach(c =>
-        (CONCEPT[c.id] && CONCEPT[c.id].kin || []).forEach(k => push(cid(k), 'concept', k, 'kin')));
+        (conceptOf(c.id) && conceptOf(c.id).kin || []).forEach(k => push(cid(k), 'concept', k, 'kin')));
     }
     return out;
   }
@@ -1012,7 +1118,13 @@
     detail(id);
     centreOn(n);
     notify();
-    if (grow && added === 0 && n.type !== 'note') toast('Everything this leads to is already on the canvas.');
+    if (grow) {
+      expandLive(n);
+      if (added === 0 && n.type !== 'note' && !liveUuid(n))
+        toast('Everything this leads to is already on the canvas.');
+    } else if (added === 0 && n.type !== 'note') {
+      toast('Everything this leads to is already on the canvas.');
+    }
   }
 
   const listeners = [];
@@ -1082,17 +1194,21 @@
 
     await buildJournalIndex();
 
-    connectionsOn = !!(ctx.mode === 'pathway' && ctx.connections);
+    connectionsOn = ctx.mode === 'corpus' ? true : !!(ctx.mode === 'pathway' && ctx.connections);
     root.classList.toggle('corpus-mode', isCorpus());
     if (ctx.mode === 'pathway' && ctx.pathway) seedPathway(ctx.pathway);
     else if (isCorpus()) {
       corpusQ = '';
       corpusCats = new Set();
       corpusSort = 'name';
+      corpusLive = false;
       syncCorpusControls();
-      seedCorpus();
+      await seedCorpus();
     }
-    else seedNoteField();
+    else {
+      seedNoteField();
+      await resolveDetectedToLive();
+    }
 
     applyChrome();
     sim = { alpha: 1 };
@@ -1105,29 +1221,36 @@
     syncSaveBtn();
   }
 
-  function corpusReady() { return !!(String(corpusQ || '').trim() || corpusCats.size); }
+  function corpusReady() { return !!(String(corpusQ || '').trim() || corpusCats.size || corpusLive); }
+
+  let corpusLive = false;
+  let corpusGen = 0;
+  let corpusUsingApi = true;
 
   function corpusMatches(c) {
-    if (corpusCats.size && !corpusCats.has(c.category)) return false;
+    if (corpusCats.size) {
+      const kind = c.node_type || (c.entity_type === 'Item' ? 'ITEM' : c.category);
+      if (!corpusCats.has(kind) && !corpusCats.has(c.category)) return false;
+    }
     const q = String(corpusQ || '').trim().toLowerCase();
     if (!q) return true;
-    const hay = [c.label, c.reading, c.turn, TRADITIONS[c.tradition] || '', c.id]
+    const hay = [c.label, c.title, c.reading, c.turn, c.author, TRADITIONS[c.tradition] || '', c.id, c.node_type]
       .join(' ').toLowerCase();
     return hay.includes(q);
   }
 
   function sortConcepts(list) {
     const copy = list.slice();
-    if (corpusSort === 'tradition') {
+    if (corpusSort === 'tradition' || corpusSort === 'kind') {
       copy.sort((a, b) =>
-        (TRADITIONS[a.tradition] || '').localeCompare(TRADITIONS[b.tradition] || '') ||
-        a.label.localeCompare(b.label));
+        String(a.tradition || a.node_type || a.entity_type || '').localeCompare(String(b.tradition || b.node_type || b.entity_type || '')) ||
+        String(a.label || a.title).localeCompare(String(b.label || b.title)));
     } else if (corpusSort === 'category') {
       const order = ['resonance', 'tension', 'clarity', 'stance', 'lineage'];
       copy.sort((a, b) =>
-        order.indexOf(a.category) - order.indexOf(b.category) || a.label.localeCompare(b.label));
+        order.indexOf(a.category) - order.indexOf(b.category) || String(a.label || a.title).localeCompare(String(b.label || b.title)));
     } else {
-      copy.sort((a, b) => a.label.localeCompare(b.label));
+      copy.sort((a, b) => String(a.label || a.title).localeCompare(String(b.label || b.title)));
     }
     return copy;
   }
@@ -1140,7 +1263,9 @@
         return { c, x: Math.cos(a) * r, y: Math.sin(a) * r };
       });
     }
-    const key = corpusSort === 'tradition' ? c => c.tradition : c => c.category;
+    const key = corpusSort === 'tradition' || corpusSort === 'kind'
+      ? c => c.tradition || c.node_type || c.category
+      : c => c.category;
     const groups = {};
     list.forEach(c => { (groups[key(c)] = groups[key(c)] || []).push(c); });
     const keys = Object.keys(groups);
@@ -1158,7 +1283,16 @@
     return out;
   }
 
-  function seedCorpus() {
+  function layoutLive(list) {
+    return layoutCorpus(list.map(rec => ({
+      label: rec.label || rec.title,
+      tradition: rec.tradition || rec.node_type || rec.entity_type || '',
+      category: rec.category || 'resonance',
+      rec: rec
+    }))).map(row => ({ rec: row.c.rec, x: row.x, y: row.y }));
+  }
+
+  function clearField() {
     [...nodes.keys()].forEach(id => {
       const el = nodeEls.get(id);
       if (el) { el.remove(); nodeEls.delete(id); }
@@ -1169,9 +1303,48 @@
     trailCursor = -1;
     selected = null;
     if (elTrail) elTrail.innerHTML = '';
+  }
+
+  function placeLive(list, links, selectFirst) {
+    const placed = layoutLive(list);
+    placed.forEach(({ rec, x, y }) => {
+      const seed = Khora.toGraphSeed(rec);
+      const n = addNode({
+        id: seed.id, type: seed.type, ref: seed.ref,
+        px: x, py: y, spawnR: 0, depth: 0
+      });
+      n.x = x; n.y = y;
+      n.state = 'open';
+      n.label = seed.label;
+      n.category = seed.category;
+    });
+    (links || []).forEach(link => {
+      const a = nodes.has('c:' + link.a) ? 'c:' + link.a
+              : nodes.has('w:' + link.a) ? 'w:' + link.a : null;
+      const b = nodes.has('c:' + link.b) ? 'c:' + link.b
+              : nodes.has('w:' + link.b) ? 'w:' + link.b : null;
+      if (a && b) addEdge(a, b, link.kind || 'kin');
+    });
+    if (placed.length && selectFirst) {
+      const first = Khora.toGraphSeed(placed[0].rec);
+      selected = first.id;
+      pushTrail(selected);
+      detail(selected);
+      expandLive(nodes.get(selected));
+    } else if (elPanel) elPanel.hidden = true;
+    markDirty();
+    kick(0.45);
+  }
+
+  function seedCorpusLocal() {
+    corpusUsingApi = false;
+    corpusLive = false;
     const empty = document.getElementById('gx-empty');
-    if (!corpusReady()) {
-      if (empty) empty.hidden = false;
+    if (!String(corpusQ || '').trim() && !corpusCats.size) {
+      if (empty) {
+        empty.hidden = false;
+        empty.textContent = 'Search or filter to draw the field';
+      }
       if (elPanel) elPanel.hidden = true;
       markDirty();
       return;
@@ -1203,6 +1376,68 @@
     kick(0.45);
   }
 
+  async function seedCorpus() {
+    clearField();
+    const empty = document.getElementById('gx-empty');
+    const gen = ++corpusGen;
+    corpusUsingApi = !!(Khora && typeof fetch === 'function');
+
+    if (!corpusUsingApi) {
+      seedCorpusLocal();
+      return;
+    }
+
+    if (empty) {
+      empty.hidden = false;
+      empty.textContent = 'Loading the field…';
+    }
+    if (elPanel) elPanel.hidden = true;
+
+    try {
+      const q = String(corpusQ || '').trim();
+      let entities = [];
+      let links = [];
+      if (!q) {
+        const intro = await Khora.intro(5);
+        if (gen !== corpusGen) return;
+        entities = intro.nodes || [];
+        links = intro.links || [];
+        if (!entities.length) {
+          const rnd = await Khora.random();
+          if (gen !== corpusGen) return;
+          entities = rnd;
+        }
+      } else {
+        entities = await Khora.search(q, ['Node', 'Item']);
+        if (gen !== corpusGen) return;
+      }
+      const adapted = entities.map(e => Khora.getConcept(e.id) || Khora.getWork(e.id) || Khora.overlayFromLocal(e) || e)
+        .filter(rec => corpusMatches(rec));
+      entities = sortConcepts(adapted).slice(0, 48);
+      if (q && entities.length) {
+        const ids = entities.map(e => e.id).filter(Boolean);
+        try { links = await Khora.linkAll(ids); } catch (e) { links = []; }
+        if (gen !== corpusGen) return;
+      }
+      if (gen !== corpusGen) return;
+      corpusLive = true;
+      if (!entities.length) {
+        if (empty) {
+          empty.hidden = false;
+          empty.textContent = q ? 'Nothing matched in Khora' : 'Search the graph to draw the field';
+        }
+        markDirty();
+        return;
+      }
+      if (empty) empty.hidden = true;
+      placeLive(entities, links, !!q);
+    } catch (err) {
+      if (gen !== corpusGen) return;
+      toast('Could not reach Khora — using the local corpus.');
+      seedCorpusLocal();
+    }
+  }
+
   function syncCorpusControls() {
     const search = document.getElementById('gx-search');
     const row = document.getElementById('gx-corpus-row');
@@ -1232,9 +1467,9 @@
     if (root) root.classList.toggle('corpus-mode', on);
   }
 
-  function redrawCorpus() {
+  async function redrawCorpus() {
     if (!isCorpus() || !root) return;
-    seedCorpus();
+    await seedCorpus();
     syncCorpusControls();
     applyChrome();
   }
@@ -1251,6 +1486,20 @@
     };
     if (step.type === 'note-other') step.noteId = step.ref;
     return step;
+  }
+
+  async function resolveDetectedToLive() {
+    if (!Khora || !ctx || !ctx.analysis) return;
+    const list = ctx.analysis.concepts || [];
+    for (const c of list) {
+      if (!c || !c.label) continue;
+      try {
+        const hit = await Khora.resolveByTitle(c.label, ['Node']);
+        if (hit && hit.id) Khora.mapSlug(c.id, hit.id);
+      } catch (e) { /* keep the local concept */ }
+    }
+    if (selected) detail(selected);
+    notify();
   }
 
   function seedNoteField() {
@@ -1328,11 +1577,44 @@
     if (box) box.checked = connectionsOn;
   }
 
+  async function drawLiveConnections() {
+    if (!Khora) return;
+    const liveIds = [...nodes.values()]
+      .filter(n => n.type === 'concept' || n.type === 'work')
+      .map(n => n.ref)
+      .filter(id => Khora.isUuid(id));
+    const liveNodeIds = new Set([...nodes.keys()].filter(id => id.slice(0, 2) === 'c:' || id.slice(0, 2) === 'w:'));
+    if (!connectionsOn) {
+      edges = edges.filter(e => !(liveNodeIds.has(e.a) && liveNodeIds.has(e.b)));
+      markDirty();
+      notify();
+      return;
+    }
+    if (!liveIds.length) return;
+    try {
+      const links = await Khora.linkAll(liveIds);
+      links.forEach(link => {
+        const a = nodes.has('c:' + link.a) ? 'c:' + link.a
+                : nodes.has('w:' + link.a) ? 'w:' + link.a : null;
+        const b = nodes.has('c:' + link.b) ? 'c:' + link.b
+                : nodes.has('w:' + link.b) ? 'w:' + link.b : null;
+        if (a && b) addEdge(a, b, link.kind || 'kin');
+      });
+      markDirty();
+      notify();
+    } catch (e) { /* keep the field as-is */ }
+  }
+
   function setConnections(on) {
     connectionsOn = !!on;
     const box = document.getElementById('gx-conn-toggle');
     if (box) box.checked = connectionsOn;
-    if (!root || !ctx || ctx.mode !== 'pathway') return;
+    if (!root || !ctx) return;
+    if (ctx.mode === 'corpus') {
+      drawLiveConnections();
+      return;
+    }
+    if (ctx.mode !== 'pathway') return;
     if (connectionsOn) {
       trail.forEach(id => { const n = nodes.get(id); if (n) expand(n, 7); });
       kick(0.5);
@@ -1485,9 +1767,11 @@
       const kind = act.dataset.act;
       if (kind === 'save') {
         const n = nodes.get(selected);
-        const sub = n.type === 'work' && WORK[n.ref] ? WORK[n.ref].author
+        const w = workOf(n.ref);
+        const c = conceptOf(n.ref);
+        const sub = n.type === 'work' && w ? w.author
                   : n.type === 'spectrum' && AXIS[n.ref] ? AXIS[n.ref].branch
-                  : n.type === 'concept' && CONCEPT[n.ref] ? (TRADITIONS[CONCEPT[n.ref].tradition] || '') : '';
+                  : n.type === 'concept' && c ? (TRADITIONS[c.tradition] || c.node_type || '') : '';
         const payload = { id: n.id, type: n.type, label: n.label, sub, category: n.category };
         if (ctx.onSaveNode) { ctx.onSaveNode(payload); return; }
         if (!ctx.note || !ctx.note.id) {
@@ -1517,7 +1801,11 @@
         return;
       }
       if (kind === 'open-note') { if (ctx.onOpenNote) ctx.onOpenNote(act.dataset.ref); return; }
-      if (kind === 'write') { if (ctx.onWrite) ctx.onWrite(CONCEPT[act.dataset.ref]); return; }
+      if (kind === 'write') {
+        const rec = conceptOf(act.dataset.ref) || { label: act.dataset.ref, turn: 'What follows from this?' };
+        if (ctx.onWrite) ctx.onWrite(rec);
+        return;
+      }
       if (kind === 'read')  { if (ctx.onRead) ctx.onRead(act.dataset.ref); return; }
     });
 
@@ -1537,7 +1825,11 @@
     const connToggle = document.getElementById('gx-conn-toggle');
     if (connToggle) connToggle.addEventListener('change', e => setConnections(e.target.checked));
     const gq = document.getElementById('gx-q');
-    if (gq) gq.addEventListener('input', () => { corpusQ = gq.value; redrawCorpus(); });
+    if (gq) gq.addEventListener('input', () => {
+      corpusQ = gq.value;
+      clearTimeout(redrawCorpus._t);
+      redrawCorpus._t = setTimeout(() => { redrawCorpus(); }, 350);
+    });
     const gs = document.getElementById('gx-sort');
     if (gs) gs.addEventListener('change', () => { corpusSort = gs.value; redrawCorpus(); });
     const gc = document.getElementById('gx-cat');
@@ -1631,7 +1923,8 @@
         const base = { id, kicker: kicker(n), title: label(n), category: category(n), actions: [] };
 
         if (n.type === 'concept') {
-          const c = CONCEPT[n.ref];
+          const c = conceptOf(n.ref);
+          if (!c) return Object.assign(base, { line: 'Opening…', lineKind: 'question' });
           return Object.assign(base, {
             line: c.turn, lineKind: 'question',
             actions: [{ act: 'write', ref: n.ref, label: 'Write on this', primary: true },
@@ -1639,9 +1932,10 @@
           });
         }
         if (n.type === 'work') {
-          const w = WORK[n.ref];
+          const w = workOf(n.ref);
+          if (!w) return Object.assign(base, { line: 'Opening…' });
           return Object.assign(base, {
-            sub: w.author + (w.year ? ' · ' + w.year : ''),
+            sub: (w.author || '') + (w.year ? ' · ' + w.year : ''),
             line: w.gist || '', rights: w.rights,
             actions: [{ act: 'read', ref: n.ref, label: 'Reading Room', primary: true },
                       { act: 'save', label: isSaved(n.id) ? 'Saved ✓' : 'Save to note' }]

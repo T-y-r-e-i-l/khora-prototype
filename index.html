@@ -363,8 +363,7 @@
         </svg>
         <select id="gx-sort" aria-label="Sort">
           <option value="name">Name</option>
-          <option value="tradition">Tradition</option>
-          <option value="category">Category</option>
+          <option value="kind">Kind</option>
         </select>
       </label>
       <label class="gx-sort" id="gx-cat-wrap">
@@ -374,16 +373,19 @@
         </svg>
         <select id="gx-cat" aria-label="Filter">
           <option value="">All</option>
-          <option value="resonance">Resonance</option>
-          <option value="tension">Tension</option>
-          <option value="clarity">Clarity</option>
-          <option value="stance">Stance</option>
-          <option value="lineage">Lineage</option>
+          <option value="IDEA">Idea</option>
+          <option value="COMPLEX_IDEA">Complex idea</option>
+          <option value="COMPOSITE_IDEA">Composite idea</option>
+          <option value="CONTEXTUAL_IDEA">Contextual idea</option>
+          <option value="DEFINITION_IDEA">Definition</option>
+          <option value="PERSON">Person</option>
+          <option value="INSTITUTION">Institution</option>
+          <option value="ITEM">Text</option>
         </select>
       </label>
       <div class="filters" id="gx-filters"></div>
     </div>
-    <div class="gx-empty" id="gx-empty" hidden>Search or filter to draw the field</div>
+    <div class="gx-empty" id="gx-empty" hidden>Loading the field…</div>
     <div class="gx-trail-row">
       <button class="micro" id="gx-save-path" type="button" disabled>Save as Pathway</button>
       <div id="gx-trail" class="gx-trail"></div>
@@ -487,11 +489,12 @@
 <script src="assets/js/spectrum-ui.js"></script>
 <script src="assets/js/engine.js"></script>
 <script src="assets/js/store.js"></script>
+<script src="assets/js/khora.js?v=3"></script>
 <script src="assets/vendor/three.min.js"></script>
-<script src="assets/js/graph.js?v=31"></script>
+<script src="assets/js/graph.js?v=32"></script>
 <script src="assets/js/graph3d.js"></script>
 <script src="assets/js/pathways.js?v=33"></script>
 <script src="assets/js/profile.js?v=1"></script>
-<script src="assets/js/app.js?v=34"></script>
+<script src="assets/js/app.js?v=35"></script>
 </body>
 </html>

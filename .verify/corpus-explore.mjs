@@ -1,6 +1,7 @@
-/* Nav Explore loads the corpus: query first, then draw. */
+/* Nav Explore loads the live Khora field, then search can narrow it. */
 
 import { chromium } from '/Users/tyreil/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
+import { mockKhora } from './khora-mock.mjs';
 
 const URL = 'http://localhost:8765/index.html';
 
@@ -16,6 +17,7 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const problems = [];
 page.on('pageerror', e => problems.push('pageerror: ' + e.message));
+await mockKhora(page);
 
 await page.goto(URL, { waitUntil: 'networkidle' });
 await page.evaluate(() => localStorage.clear());
@@ -23,12 +25,13 @@ await page.reload({ waitUntil: 'networkidle' });
 
 await page.click('#btn-explore');
 await page.waitForSelector('#graph:not([hidden])');
+await page.waitForFunction(() => document.querySelectorAll('#gx-nodes .gx-node').length >= 1);
 check('nav Explore opens without a note', await page.evaluate(
   () => !document.getElementById('graph').hidden));
-check('the field starts empty', await page.evaluate(
-  () => document.querySelectorAll('#gx-nodes .gx-node').length === 0));
-check('the empty prompt is shown', await page.evaluate(
-  () => !document.getElementById('gx-empty').hidden));
+check('cold start draws the live intro field', await page.evaluate(
+  () => document.querySelectorAll('#gx-nodes .gx-node').length >= 1));
+check('the empty prompt hides after intro', await page.evaluate(
+  () => document.getElementById('gx-empty').hidden));
 check('search uses the Library search component', await page.evaluate(() => {
   const box = document.querySelector('#gx-search.search');
   const q = document.getElementById('gx-q');
@@ -36,8 +39,11 @@ check('search uses the Library search component', await page.evaluate(() => {
 }));
 check('sort is present', await page.evaluate(
   () => !document.getElementById('gx-corpus-row').hidden && !!document.getElementById('gx-sort')));
-check('category filters are present', await page.evaluate(
-  () => document.querySelectorAll('#gx-filters .chip').length >= 5));
+check('kind filter lists node types', await page.evaluate(() => {
+  const cat = document.getElementById('gx-cat');
+  return !!(cat && [...cat.options].some(o => o.value === 'IDEA')
+    && [...cat.options].some(o => o.value === 'PERSON'));
+}));
 check('the page is titled Explore', await page.evaluate(
   () => document.getElementById('gx-title-text').textContent === 'Explore'));
 check('Close is hidden on the Explore page', await page.evaluate(
@@ -57,10 +63,10 @@ check('the empty prompt does not cover search or filters', await page.evaluate((
 
 await page.click('#gx-q');
 await page.keyboard.type('ressentiment');
-await page.waitForTimeout(200);
+await page.waitForTimeout(700);
 check('a query draws matching concepts', await page.evaluate(
   () => document.querySelectorAll('#gx-nodes .gx-concept').length >= 1));
-check('the empty prompt hides after a query', await page.evaluate(
+check('the empty prompt stays hidden after a query', await page.evaluate(
   () => document.getElementById('gx-empty').hidden));
 
 await page.click('#gx-nodes .gx-concept');
