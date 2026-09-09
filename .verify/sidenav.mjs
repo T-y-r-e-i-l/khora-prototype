@@ -115,6 +115,8 @@ const viewState = () => page.evaluate(() => {
     graph: shown('graph'), reading: shown('reading-room'),
     pathPage: shown('pathway-wrap') || shown('path-empty'),
     pathMode: document.getElementById('body').classList.contains('pathways-mode'),
+    profile: shown('profile-view'),
+    profileMode: document.getElementById('body').classList.contains('profile-mode'),
     body: document.getElementById('body').className,
     active: [...document.querySelectorAll('.nav-item.on')].map(e => e.id).join(',')
   });
@@ -139,14 +141,23 @@ check('Pathways marks itself active', JSON.parse(afterPath).active.includes('btn
 await page.click('#btn-profile');
 await page.waitForTimeout(300);
 const afterProfile = await viewState();
-check('Profile is still inert',
-  afterProfile === afterPath && problems.length === errsBefore,
-  afterProfile === afterPath ? problems.length - errsBefore + ' new page errors'
-                             : afterProfile);
+check('Profile opens the page and leaves Pathways', await page.evaluate(() => {
+  const body = document.getElementById('body');
+  const view = document.getElementById('profile-view');
+  return body.classList.contains('profile-mode')
+    && view && !view.hidden
+    && !body.classList.contains('pathways-mode')
+    && document.getElementById('graph').hidden;
+}));
+check('Profile marks itself active', JSON.parse(afterProfile).active.includes('btn-profile'),
+  JSON.parse(afterProfile).active);
+check('Profile did not throw', problems.length === errsBefore,
+  problems.length - errsBefore + ' new page errors');
 await page.click('#btn-pathways');
 await page.waitForTimeout(200);
-check('Pathways stays the page', await page.evaluate(
-  () => document.getElementById('body').classList.contains('pathways-mode')));
+check('Pathways returns from Profile', await page.evaluate(
+  () => document.getElementById('body').classList.contains('pathways-mode')
+    && (document.getElementById('profile-view') || {}).hidden !== false));
 await page.click('#btn-rail');
 await page.waitForTimeout(200);
 check('Write leaves Pathways', await page.evaluate(

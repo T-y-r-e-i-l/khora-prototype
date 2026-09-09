@@ -266,6 +266,7 @@
   function openNote(id) {
     const n = Notes.get(id);
     if (!n) return;
+    closeProfile();
     activeId = id;
     openKey = null;
     cancelOffer();
@@ -323,9 +324,24 @@
     }
   }
 
+  function closeProfile() {
+    if (!window.PalinodeProfile || !PalinodeProfile.isOpen()) return;
+    PalinodeProfile.leave();
+    paintFieldFromAnalysis();
+    el.empty.hidden = false;
+    if (activeId) {
+      el.editorWrap.hidden = false;
+      el.empty.style.display = 'none';
+    } else {
+      el.editorWrap.hidden = true;
+      el.empty.style.display = '';
+    }
+  }
+
   function newNote() {
     closeExplore();
     closePathways();
+    closeProfile();
     el.body.classList.remove('show-insights', 'show-rail');
     syncNav('write');
     const n = Notes.create({});
@@ -963,6 +979,8 @@
       }
       if (window.PalinodePathways && PalinodePathways.refreshWalk)
         PalinodePathways.refreshWalk();
+      if (window.PalinodeProfile && PalinodeProfile.isOpen())
+        PalinodeProfile.render();
       if (entry) renderPlaceResult(entry);
       else closePlace();
       return;
@@ -1019,6 +1037,7 @@
     const id = which === 'insights' ? 'btn-nav-insights'
              : which === 'explore' ? 'btn-explore'
              : which === 'pathways' ? 'btn-pathways'
+             : which === 'profile' ? 'btn-profile'
              : 'btn-rail';
     const btn = document.getElementById(id);
     if (btn) btn.classList.add('on');
@@ -1026,6 +1045,7 @@
 
   function phoneTab() {
     if (exploring()) return 'explore';
+    if (window.PalinodeProfile && PalinodeProfile.isOpen()) return 'profile';
     if (window.PalinodePathways && (PalinodePathways.isListOpen() || PalinodePathways.isWalkOpen()))
       return 'pathways';
     if (el.body.classList.contains('show-insights')) return 'insights';
@@ -1275,6 +1295,7 @@
     persist();
     cancelOffer();
     closePathways();
+    closeProfile();
     el.body.classList.remove('show-insights', 'show-rail');
     await window.PalinodeGraph.open({
       note: Notes.get(activeId),
@@ -1313,6 +1334,7 @@
     }
     cancelOffer();
     closePathways();
+    closeProfile();
     el.body.classList.remove('show-insights', 'show-rail');
     await window.PalinodeGraph.open({
       mode: 'corpus',
@@ -1619,9 +1641,10 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
   $('#btn-rail').addEventListener('click', () => {
     if (phone()) {
       const tab = phoneTab();
-      if (tab === 'insights' || tab === 'explore' || tab === 'pathways') {
+      if (tab === 'insights' || tab === 'explore' || tab === 'pathways' || tab === 'profile') {
         closeExplore();
         closePathways();
+        closeProfile();
         el.body.classList.remove('show-insights', 'show-rail');
         syncNav('write');
         return;
@@ -1633,6 +1656,12 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
     if (window.PalinodeGraph && PalinodeGraph.isPage && PalinodeGraph.isPage()) {
       closeExplore();
       closePathways();
+      closeProfile();
+      syncNav('write');
+      return;
+    }
+    if (window.PalinodeProfile && PalinodeProfile.isOpen()) {
+      closeProfile();
       syncNav('write');
       return;
     }
@@ -1646,6 +1675,7 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
   $('#btn-nav-insights').addEventListener('click', () => {
     closeExplore();
     closePathways();
+    closeProfile();
     el.body.classList.remove('show-rail');
     if (el.body.classList.contains('show-insights')) {
       el.body.classList.remove('show-insights');
@@ -1665,11 +1695,20 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
       return;
     }
     closeExplore();
+    closeProfile();
     el.body.classList.remove('show-insights');
     if (window.PalinodePathways) PalinodePathways.enter();
     if (phone() && window.PalinodePathways && !PalinodePathways.isWalkOpen())
       el.body.classList.add('show-rail');
     syncNav('pathways');
+  });
+  $('#btn-profile').addEventListener('click', () => {
+    if (window.PalinodeProfile && PalinodeProfile.isOpen()) return;
+    closeExplore();
+    closePathways();
+    el.body.classList.remove('show-insights', 'show-rail');
+    if (window.PalinodeProfile) PalinodeProfile.enter();
+    syncNav('profile');
   });
 
   document.addEventListener('keydown', e => {
@@ -1814,6 +1853,7 @@ What I actually want is for someone to see how hard it has been. That is a small
       PalinodePathways.onOpenNote = id => {
         closeExplore();
         closePathways();
+        closeProfile();
         openNote(id);
         syncNav('write');
       };
@@ -1821,6 +1861,7 @@ What I actually want is for someone to see how hard it has been. That is a small
         if (!concept) return;
         closeExplore();
         closePathways();
+        closeProfile();
         const n = Notes.create({ promptText: concept.turn, title: '' });
         openNote(n.id);
         renderList();
@@ -1832,10 +1873,14 @@ What I actually want is for someone to see how hard it has been. That is a small
       PalinodePathways.onRead = workId => {
         closeExplore();
         closePathways();
+        closeProfile();
         openWork(workId);
         syncNav('write');
       };
     }
+
+    if (window.PalinodeProfile)
+      PalinodeProfile.onPlace = axisId => openPlace(axisId, 'profile');
 
     renderPrompt();
     renderList();
