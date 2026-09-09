@@ -316,18 +316,12 @@
     if (count) count.textContent = steps.length + (steps.length === 1 ? ' step' : ' steps');
     if (!steps.length) {
       feed.innerHTML = '<p class="gx-lede">This pathway has no steps yet. Add a note or media, or save a trail from Explore.</p>';
-      $('#walk-pos').textContent = '0 / 0';
-      $('#walk-prev').disabled = true;
-      $('#walk-next').disabled = true;
     } else {
       if (walkCursor >= steps.length) walkCursor = steps.length - 1;
       feed.innerHTML = steps.map((step, i) =>
         `<article class="feed-item${i === walkCursor ? ' on' : ''}" data-step="${i}">${stepHTML(step, p)}</article>`
       ).join('');
       fillMedia(feed);
-      $('#walk-pos').textContent = (walkCursor + 1) + ' / ' + steps.length;
-      $('#walk-prev').disabled = walkCursor <= 0;
-      $('#walk-next').disabled = walkCursor >= steps.length - 1;
     }
     renderShelf(p);
     closeAddPanels();
@@ -343,9 +337,6 @@
     walkCursor = Math.max(0, Math.min(p.steps.length - 1, i));
     $$('#walk-feed .feed-item').forEach(el =>
       el.classList.toggle('on', Number(el.dataset.step) === walkCursor));
-    $('#walk-pos').textContent = (walkCursor + 1) + ' / ' + p.steps.length;
-    $('#walk-prev').disabled = walkCursor <= 0;
-    $('#walk-next').disabled = walkCursor >= p.steps.length - 1;
     if (scroll !== false) {
       const item = feed.querySelector(`.feed-item[data-step="${walkCursor}"]`);
       if (item) item.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -665,11 +656,6 @@
       if (card) openWalk(card.dataset.open);
     });
 
-    $('#walk-prev').addEventListener('click', () => { if (walkCursor > 0) focusStep(walkCursor - 1); });
-    $('#walk-next').addEventListener('click', () => {
-      const p = current();
-      if (p && walkCursor < p.steps.length - 1) focusStep(walkCursor + 1);
-    });
     const wrap = $('#pathway-wrap');
     if (wrap) {
       wrap.addEventListener('click', e => {

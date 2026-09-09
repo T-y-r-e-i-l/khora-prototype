@@ -407,31 +407,18 @@ await page.waitForTimeout(300);
 const pathWalk = await page.evaluate(() => {
   const wrap = document.getElementById('pathway-wrap');
   const back = document.getElementById('path-back');
-  const prev = document.getElementById('walk-prev').getBoundingClientRect();
-  const next = document.getElementById('walk-next').getBoundingClientRect();
-  const nav = document.querySelector('nav.sidenav').getBoundingClientRect();
-  const mid = (prev.left + next.right) / 2;
   return {
     rail: document.getElementById('body').classList.contains('show-rail'),
     wrap: wrap && !wrap.hidden,
     backShown: !!(back && !back.hidden && getComputedStyle(back).display !== 'none'),
     label: (document.getElementById('path-back-label').textContent || '').trim(),
-    navMid: (nav.left + nav.right) / 2,
-    ctrlMid: mid,
-    prevBottom: Math.round(prev.bottom),
-    navTop: Math.round(nav.top),
-    prevDisplay: getComputedStyle(document.getElementById('walk-prev')).display
+    hasNav: !!document.querySelector('.walk-nav')
   };
 });
 check('opening a pathway leaves the library', !pathWalk.rail && pathWalk.wrap);
 check('the back control is on the pathway', pathWalk.backShown);
 check('the back label shows the pathway title', pathWalk.label === 'A short walk', pathWalk.label);
-check('Prev and Next are visible on the walk', pathWalk.prevDisplay !== 'none');
-check('Prev and Next sit above the bar', pathWalk.prevBottom <= pathWalk.navTop + 1,
-  pathWalk.prevBottom + ' vs bar at ' + pathWalk.navTop);
-check('Prev and Next are centered with the bar',
-  Math.abs(pathWalk.ctrlMid - pathWalk.navMid) <= 16,
-  Math.round(pathWalk.ctrlMid) + ' vs ' + Math.round(pathWalk.navMid));
+check('the Prev / Next bar is gone', !pathWalk.hasNav);
 
 await page.click('#btn-path-back');
 await page.waitForTimeout(250);

@@ -90,20 +90,23 @@ check('the pathway title wraps instead of scrolling', await page.evaluate(() => 
 }));
 check('the feed has a block per step', await page.evaluate(
   () => document.querySelectorAll('#walk-feed .feed-item').length >= 2));
-const firstPos = await page.textContent('#walk-pos');
-check('the walk opens on the first step', /^1 \//.test(firstPos.trim()), firstPos);
+const firstOn = await page.evaluate(() => {
+  const on = document.querySelector('#walk-feed .feed-item.on');
+  return on ? on.dataset.step : null;
+});
+check('the walk opens on the first step', firstOn === '0', 'step ' + firstOn);
 
 const before = await page.evaluate(() => {
   const on = document.querySelector('#walk-feed .feed-item.on h3');
   return on ? on.textContent : '';
 });
-await page.click('#walk-next');
+await page.click('#walk-feed .feed-item[data-step="1"]');
 await page.waitForTimeout(150);
 const after = await page.evaluate(() => {
   const on = document.querySelector('#walk-feed .feed-item.on h3');
   return on ? on.textContent : '';
 });
-check('Next jumps to the next feed item', after !== before, before + ' → ' + after);
+check('tapping a later step focuses it', after !== before, before + ' → ' + after);
 
 const lenBefore = await page.evaluate(() => window.PalinodeStore.Pathways.all()[0].steps.length);
 await page.click('#walk-add-note');

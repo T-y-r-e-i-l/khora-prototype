@@ -1717,15 +1717,6 @@ body.dim3 .gx-top, body.dim3 .gx-trail-row { right: 0; }
   border-radius: var(--r-sm); padding: 8px 12px; color: var(--ink-2); cursor: pointer;
 }
 .walk-picker button:hover { color: var(--ink); background: var(--glass-3); }
-.walk-nav {
-  display: flex; align-items: center; gap: 14px;
-  position: sticky; bottom: 0;
-  padding: 12px 0 4px;
-  margin-top: 8px;
-  border-top: 1px solid var(--hairline-2);
-  background: linear-gradient(180deg, transparent, rgba(6,5,8,.92) 28%);
-}
-#walk-pos { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
 .path-name {
   width: 100%; box-sizing: border-box;
   background: rgba(0,0,0,.45); border: 1px solid var(--hairline);
@@ -2088,20 +2079,6 @@ nav.sidenav {
   .ins-ico-close { display: block; }
   .body.insights-closed .ins-collapse svg { transform: none; }
   .ins-collapse { width: 28px; height: 28px; }
-  .body.pathways-mode:not(.show-rail) .walk-nav {
-    position: fixed;
-    left: 0; right: 0;
-    bottom: calc(var(--bar) + env(safe-area-inset-bottom, 0px));
-    z-index: 25;
-    justify-content: center;
-    gap: 22px;
-    margin: 0;
-    padding: 10px 16px;
-    box-sizing: border-box;
-    border-top: 1px solid var(--hairline-2);
-    background: linear-gradient(180deg, rgba(6,5,8,0), rgba(6,5,8,.94) 42%);
-  }
-  .body.pathways-mode.show-rail .walk-nav { display: none; }
   nav.sidenav .nav-item { height: 52px; width: auto; min-width: 56px; flex: 1; }
   nav.sidenav .nav-item::before { width: 40px; height: 40px; }
   nav.sidenav .nav-new { width: 40px; height: 40px; flex: none; }
