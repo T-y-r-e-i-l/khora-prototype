@@ -77,6 +77,17 @@ check('the walk constellation sits above the date', await page.evaluate(() => {
   return mr.bottom <= kr.top + 1
     && Math.abs(mr.width - wr.width) <= 2;
 }));
+check('the pathway title wraps instead of scrolling', await page.evaluate(() => {
+  const el = document.getElementById('walk-title');
+  if (!el || el.tagName !== 'TEXTAREA') return false;
+  const saved = el.value;
+  el.value = 'On being told to slow down → Communitarianism as a long heading';
+  el.dispatchEvent(new Event('input'));
+  const wrapped = el.scrollWidth <= el.clientWidth + 2 && el.clientHeight > 40;
+  el.value = saved;
+  el.dispatchEvent(new Event('input'));
+  return wrapped;
+}));
 check('the feed has a block per step', await page.evaluate(
   () => document.querySelectorAll('#walk-feed .feed-item').length >= 2));
 const firstPos = await page.textContent('#walk-pos');
@@ -198,17 +209,12 @@ check('the field follows the selected spectrum', await page.evaluate(
 
 await page.click('#walk-constel');
 await page.waitForSelector('#graph:not([hidden])');
+await page.waitForTimeout(400);
 check('clicking the constellation opens Explore', await page.evaluate(() => {
   const g = document.getElementById('graph');
   const title = document.getElementById('gx-title-text');
   return !g.hidden && title.textContent === 'A short walk';
 }));
-await page.click('#gx-close');
-await page.waitForFunction(() => document.getElementById('graph').hidden);
-
-await page.click('#walk-explore');
-await page.waitForSelector('#graph:not([hidden])');
-await page.waitForTimeout(400);
 const graph = await page.evaluate(() => {
   const ids = [...window.PalinodeGraph.model.all().keys()];
   const trail = window.PalinodeGraph.model.trail();

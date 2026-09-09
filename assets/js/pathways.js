@@ -291,12 +291,20 @@
 
   function current() { return walkId ? Pathways.get(walkId) : null; }
 
+  function sizeWalkTitle() {
+    const el = $('#walk-title');
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }
+
   function renderWalk() {
     const p = current();
     const feed = $('#walk-feed');
     if (!p || !feed) return;
     const steps = p.steps || [];
     $('#walk-title').value = p.title || '';
+    sizeWalkTitle();
     paintWalkConstel(p);
     const date = $('#walk-date');
     const count = $('#walk-steps');
@@ -658,7 +666,6 @@
       const p = current();
       if (p && walkCursor < p.steps.length - 1) focusStep(walkCursor + 1);
     });
-    $('#walk-explore').addEventListener('click', openExplore);
     const wrap = $('#pathway-wrap');
     if (wrap) {
       wrap.addEventListener('click', e => {
@@ -674,6 +681,12 @@
       if (act) { fireAct(act.dataset.act, act.dataset.ref); return; }
       const item = e.target.closest('.feed-item[data-step]');
       if (item) focusStep(Number(item.dataset.step));
+    });
+    $('#walk-title').addEventListener('input', sizeWalkTitle);
+    $('#walk-title').addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      e.target.blur();
     });
     $('#walk-title').addEventListener('change', () => {
       if (walkId) { Pathways.update(walkId, { title: $('#walk-title').value.trim() }); notify(); }

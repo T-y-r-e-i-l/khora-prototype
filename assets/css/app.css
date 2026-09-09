@@ -1425,11 +1425,17 @@ body.dim3 .gx-top, body.dim3 .gx-trail-row { right: 0; }
   font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase;
   color: #fff;
 }
-#pathway-wrap .title-input { margin-bottom: 12px; }
-.walk-actions {
-  margin: 0 0 22px;
+#pathway-wrap .title-input {
+  display: block;
+  margin-bottom: 22px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--hairline-2);
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  field-sizing: content;
+  min-height: calc(30px * 1.25);
 }
 .path-empty { color: var(--ink-3); font-size: 12px; line-height: 1.6; padding: 22px 12px; }
 
