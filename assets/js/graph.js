@@ -1209,6 +1209,7 @@
     const empty = document.getElementById('gx-empty');
     const q = document.getElementById('gx-q');
     const sort = document.getElementById('gx-sort');
+    const cat = document.getElementById('gx-cat');
     const filters = document.getElementById('gx-filters');
     const on = isCorpus();
     if (search) search.hidden = !on;
@@ -1216,6 +1217,9 @@
     if (empty) empty.hidden = !on || corpusReady();
     if (q && q.value !== corpusQ) q.value = corpusQ;
     if (sort) sort.value = corpusSort;
+    if (cat) cat.value = corpusCats.size === 1 ? [...corpusCats][0] : '';
+    const catWrap = document.getElementById('gx-cat-wrap');
+    if (catWrap) catWrap.classList.toggle('on', corpusCats.size === 1);
     if (filters && on) {
       filters.innerHTML = Object.keys(CATEGORIES).map(id => {
         const cat = CATEGORIES[id];
@@ -1536,6 +1540,12 @@
     if (gq) gq.addEventListener('input', () => { corpusQ = gq.value; redrawCorpus(); });
     const gs = document.getElementById('gx-sort');
     if (gs) gs.addEventListener('change', () => { corpusSort = gs.value; redrawCorpus(); });
+    const gc = document.getElementById('gx-cat');
+    if (gc) gc.addEventListener('change', () => {
+      corpusCats = new Set();
+      if (gc.value) corpusCats.add(gc.value);
+      redrawCorpus();
+    });
     const gf = document.getElementById('gx-filters');
     if (gf) gf.addEventListener('click', e => {
       const chip = e.target.closest('[data-cat]');

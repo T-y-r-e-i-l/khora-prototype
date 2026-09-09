@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/app.css?v=38">
+<link rel="stylesheet" href="assets/css/app.css?v=48">
 </head>
 <body>
 
@@ -35,7 +35,7 @@
         <path d="M5 4h11l3 3v13H5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
         <path d="M8 10h8M8 14h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
       </svg>
-      <span class="nav-lab"><span class="nav-lab-d">Notes</span><span class="nav-lab-m">Write</span></span>
+      <span class="nav-lab"><span class="nav-lab-d">Notes</span><span class="nav-lab-m">Notes</span></span>
     </button>
 
     <button class="nav-item" id="btn-nav-insights" data-view="insights">
@@ -100,7 +100,13 @@
       </section>
 
       <div class="rail-head">
-        <div class="rail-title" id="rail-title">Library</div>
+        <div class="rail-title" id="rail-title">
+          <span class="rail-lab-notes">
+            <span class="nav-lab-d">Library</span>
+            <span class="nav-lab-m">Notes</span>
+          </span>
+          <span class="rail-lab-paths">Pathways</span>
+        </div>
         <div class="search">
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
             <circle cx="6" cy="6" r="4.4" stroke="rgba(255,255,255,.42)" stroke-width="1.2"/>
@@ -117,6 +123,24 @@
 
     <!-- ============ centre ============ -->
     <main class="centre">
+      <div class="page-back" id="note-back" hidden>
+        <button type="button" id="btn-note-back" aria-label="Back to notes">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <span id="note-back-label">Untitled</span>
+      </div>
+      <div class="page-back" id="path-back" hidden>
+        <button type="button" id="btn-path-back" aria-label="Back to pathways">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <span id="path-back-label">Untitled pathway</span>
+      </div>
       <div class="centre-inner" id="centre-inner">
 
         <!-- editor -->
@@ -129,6 +153,7 @@
             <span class="spacer"></span>
             <button class="micro" id="btn-share">Share</button>
           </div>
+          <button class="ghost" id="btn-note-insights" type="button">Insights</button>
           <div class="editor-stack">
             <div class="mirror" id="mirror" aria-hidden="true"></div>
             <textarea id="body-input" spellcheck="true"
@@ -239,9 +264,13 @@
           <span class="micro" id="engine-name" style="cursor:default"></span>
           <button class="ins-collapse" id="btn-insights" title="Hide the reading"
                   aria-label="Hide the reading">
-            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <svg class="ins-ico-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M10 3.5L5.5 8l4.5 4.5" stroke="currentColor" stroke-width="2.15"
                     stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <svg class="ins-ico-close" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2.15"
+                    stroke-linecap="round"/>
             </svg>
           </button>
         </div>
@@ -328,10 +357,28 @@
     <div class="gx-corpus-row" id="gx-corpus-row" hidden>
       <label class="gx-sort">
         <span>Sort</span>
-        <select id="gx-sort">
+        <svg class="gx-tool-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M8 6v12M8 6l-3 3M8 6l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M16 18V6M16 18l-3-3M16 18l3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <select id="gx-sort" aria-label="Sort">
           <option value="name">Name</option>
           <option value="tradition">Tradition</option>
           <option value="category">Category</option>
+        </select>
+      </label>
+      <label class="gx-sort" id="gx-cat-wrap">
+        <span class="gx-cat-lab">Kind</span>
+        <svg class="gx-tool-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 6h16l-6 7v5l-4 2v-7L4 6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+        <select id="gx-cat" aria-label="Filter">
+          <option value="">All</option>
+          <option value="resonance">Resonance</option>
+          <option value="tension">Tension</option>
+          <option value="clarity">Clarity</option>
+          <option value="stance">Stance</option>
+          <option value="lineage">Lineage</option>
         </select>
       </label>
       <div class="filters" id="gx-filters"></div>
@@ -441,10 +488,10 @@
 <script src="assets/js/engine.js"></script>
 <script src="assets/js/store.js"></script>
 <script src="assets/vendor/three.min.js"></script>
-<script src="assets/js/graph.js?v=29"></script>
+<script src="assets/js/graph.js?v=31"></script>
 <script src="assets/js/graph3d.js"></script>
-<script src="assets/js/pathways.js?v=32"></script>
+<script src="assets/js/pathways.js?v=33"></script>
 <script src="assets/js/profile.js?v=1"></script>
-<script src="assets/js/app.js?v=30"></script>
+<script src="assets/js/app.js?v=34"></script>
 </body>
 </html>

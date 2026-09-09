@@ -44,6 +44,11 @@
       window.PalinodePathways.onChange();
   }
 
+  function chrome() {
+    if (window.PalinodePathways && typeof window.PalinodePathways.onChrome === 'function')
+      window.PalinodePathways.onChrome();
+  }
+
   function bodyEl() { return document.getElementById('body'); }
 
   function hideWriteCentre() {
@@ -85,8 +90,6 @@
       body.classList.add('pathways-mode', 'insights-closed');
       body.classList.remove('show-insights');
     }
-    const title = $('#rail-title');
-    if (title) title.textContent = 'Pathways';
     const list = $('#path-list');
     if (list) list.hidden = false;
     hideWriteCentre();
@@ -108,8 +111,7 @@
       body.classList.remove('pathways-mode');
       if (!insightsWasClosed) body.classList.remove('insights-closed');
     }
-    const title = $('#rail-title');
-    if (title) title.textContent = 'Library';
+    chrome();
   }
 
   function showList() { enter(); }
@@ -277,6 +279,7 @@
     const body = bodyEl();
     if (body) body.classList.remove('show-rail');
     focusStep(walkCursor, false);
+    chrome();
   }
 
   function closeWalk(opts) {
@@ -287,6 +290,7 @@
       showPathEmpty();
       renderList();
     }
+    chrome();
   }
 
   function current() { return walkId ? Pathways.get(walkId) : null; }
@@ -682,7 +686,11 @@
       const item = e.target.closest('.feed-item[data-step]');
       if (item) focusStep(Number(item.dataset.step));
     });
-    $('#walk-title').addEventListener('input', sizeWalkTitle);
+    $('#walk-title').addEventListener('input', () => {
+      sizeWalkTitle();
+      const label = $('#path-back-label');
+      if (label) label.textContent = ($('#walk-title').value || '').trim() || 'Untitled pathway';
+    });
     $('#walk-title').addEventListener('keydown', e => {
       if (e.key !== 'Enter') return;
       e.preventDefault();
@@ -837,6 +845,7 @@
     offerAttach, offerAttachStep, askForgetPath,
     refreshWalk: () => { if (walkId) renderWalk(); },
     onChange: null,
+    onChrome: null,
     onOpenNote: null,
     onWrite: null,
     onPlace: null,

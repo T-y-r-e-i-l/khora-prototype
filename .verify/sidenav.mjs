@@ -102,6 +102,8 @@ check('no label is clipped by the rail', !geo.navScrolls &&
 check('the brand glyph is in the rail', await page.isVisible('nav.sidenav .nav-brand img'));
 check('the wordmark is gone', !(await page.evaluate(
   () => /Philosophical Reader/i.test(document.querySelector('nav.sidenav').textContent))));
+check('Insights is not a note button on desktop', await page.evaluate(
+  () => getComputedStyle(document.getElementById('btn-note-insights')).display === 'none'));
 
 /* Everything below here runs first against the state the app opens in:
    no note. What is on screen, plus which destination is marked. */

@@ -285,6 +285,8 @@
     Media.release();
     renderComposer();
     renderList();
+    if (phone()) el.body.classList.remove('show-rail');
+    syncNotePage();
     run(true);
   }
 
@@ -378,7 +380,7 @@
   }
 
   el.input.addEventListener('input', schedule);
-  el.title.addEventListener('input', () => { persist(); renderList(); });
+  el.title.addEventListener('input', () => { persist(); renderList(); syncNotePage(); });
   window.addEventListener('resize', grow);
 
   async function run(silent) {
@@ -1041,6 +1043,7 @@
              : 'btn-rail';
     const btn = document.getElementById(id);
     if (btn) btn.classList.add('on');
+    syncNotePage();
   }
 
   function phoneTab() {
@@ -1050,6 +1053,41 @@
       return 'pathways';
     if (el.body.classList.contains('show-insights')) return 'insights';
     return 'write';
+  }
+
+  function notePageLabel() {
+    const typed = (el.title && el.title.value || '').trim();
+    if (typed) return typed;
+    if (!activeId) return 'Note';
+    const n = Notes.get(activeId);
+    return ((n && n.title) || '').trim() || 'Untitled';
+  }
+
+  function syncNotePage() {
+    const back = document.getElementById('note-back');
+    const label = document.getElementById('note-back-label');
+    const onWrite = phone() && phoneTab() === 'write';
+    const onNote = !!(onWrite && !el.body.classList.contains('show-rail') && el.editorWrap && !el.editorWrap.hidden);
+    if (label) label.textContent = notePageLabel();
+    if (back) back.hidden = !onNote;
+    if (!phone()) el.body.classList.remove('show-rail');
+    syncPathPage();
+  }
+
+  function pathPageLabel() {
+    const typed = (($('#walk-title') || {}).value || '').trim();
+    if (typed) return typed;
+    return 'Untitled pathway';
+  }
+
+  function syncPathPage() {
+    const back = document.getElementById('path-back');
+    const label = document.getElementById('path-back-label');
+    const wrap = document.getElementById('pathway-wrap');
+    const onPath = phone() && phoneTab() === 'pathways';
+    const onWalk = !!(onPath && !el.body.classList.contains('show-rail') && wrap && !wrap.hidden);
+    if (label) label.textContent = pathPageLabel();
+    if (back) back.hidden = !onWalk;
   }
 
   function syncKeyboardNav() {
@@ -1640,16 +1678,11 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
 
   $('#btn-rail').addEventListener('click', () => {
     if (phone()) {
-      const tab = phoneTab();
-      if (tab === 'insights' || tab === 'explore' || tab === 'pathways' || tab === 'profile') {
-        closeExplore();
-        closePathways();
-        closeProfile();
-        el.body.classList.remove('show-insights', 'show-rail');
-        syncNav('write');
-        return;
-      }
-      el.body.classList.toggle('show-rail');
+      closeExplore();
+      closePathways();
+      closeProfile();
+      el.body.classList.remove('show-insights');
+      el.body.classList.add('show-rail');
       syncNav('write');
       return;
     }
@@ -1672,6 +1705,19 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
     }
     el.body.classList.toggle('rail-closed');
   });
+  const btnNoteBack = document.getElementById('btn-note-back');
+  if (btnNoteBack) btnNoteBack.addEventListener('click', () => {
+    if (!phone()) return;
+    el.body.classList.add('show-rail');
+    syncNotePage();
+  });
+  const btnPathBack = document.getElementById('btn-path-back');
+  if (btnPathBack) btnPathBack.addEventListener('click', () => {
+    if (!phone()) return;
+    el.body.classList.add('show-rail');
+    syncNotePage();
+  });
+  window.addEventListener('resize', syncNotePage);
   $('#btn-nav-insights').addEventListener('click', () => {
     closeExplore();
     closePathways();
@@ -1685,21 +1731,29 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
     el.body.classList.add('show-insights');
     syncNav('insights');
   });
+  $('#btn-note-insights').addEventListener('click', () => {
+    if (!phone()) return;
+    closeExplore();
+    closePathways();
+    closeProfile();
+    el.body.classList.remove('show-rail', 'insights-closed');
+    if (el.body.classList.contains('show-insights')) {
+      el.body.classList.remove('show-insights');
+      syncNav('write');
+      return;
+    }
+    el.body.classList.add('show-insights');
+    syncNav('write');
+  });
   $('#btn-insights').addEventListener('click', () => {
     el.body.classList.toggle(phone() ? 'show-insights' : 'insights-closed');
   });
   $('#btn-pathways').addEventListener('click', () => {
-    if (window.PalinodePathways && PalinodePathways.isListOpen()) {
-      if (phone()) el.body.classList.toggle('show-rail');
-      syncNav('pathways');
-      return;
-    }
     closeExplore();
     closeProfile();
     el.body.classList.remove('show-insights');
     if (window.PalinodePathways) PalinodePathways.enter();
-    if (phone() && window.PalinodePathways && !PalinodePathways.isWalkOpen())
-      el.body.classList.add('show-rail');
+    if (phone()) el.body.classList.add('show-rail');
     syncNav('pathways');
   });
   $('#btn-profile').addEventListener('click', () => {
@@ -1850,6 +1904,7 @@ What I actually want is for someone to see how hard it has been. That is a small
         renderList();
         PalinodePathways.refresh();
       };
+      PalinodePathways.onChrome = () => syncNotePage();
       PalinodePathways.onOpenNote = id => {
         closeExplore();
         closePathways();
@@ -1888,6 +1943,8 @@ What I actually want is for someone to see how hard it has been. That is a small
     const first = Notes.all()[0];
     if (first) openNote(first.id);
     else { el.editorWrap.hidden = true; el.empty.style.display = ''; }
+    if (phone()) el.body.classList.add('show-rail');
+    syncNotePage();
 
     if (window.PalinodeStore.usingMemory()) {
       toast('Storage unavailable here — notes will last for this session only.');
