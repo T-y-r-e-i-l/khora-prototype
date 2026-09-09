@@ -417,7 +417,12 @@
     n.type === 'link' ? 12 :
     n.state === 'open' || n.inNote || n.id === selected ? 15 : 9;
 
-  const isSaved = id => !!ctx && Saved.has(ctx.note.id, id);
+  const isCorpus = () => !!(ctx && ctx.mode === 'corpus');
+  const isSaved = id => !!(ctx && ctx.note && ctx.note.id && Saved.has(ctx.note.id, id));
+
+  let corpusQ = '';
+  let corpusCats = new Set();
+  let corpusSort = 'name';
 
   const showLabel = n =>
     n.type === 'note' || n.type === 'note-other' || n.type === 'link' ||
@@ -658,7 +663,8 @@
         ${conceptAxesSection(n.ref)}
         <div class="gx-act">
           <button class="ghost solid" data-act="write" data-ref="${n.ref}">Write on this</button>
-          <button class="ghost" data-act="save">${isSaved(n.id) ? 'Saved ✓' : 'Save to note'}</button>
+          <button class="ghost" data-act="save">${isSaved(n.id) ? 'On a note ✓' : 'Add to note'}</button>
+          <button class="ghost" data-act="path">Add to pathway</button>
         </div>
         ${more}`;
     }
@@ -675,7 +681,8 @@
         ${w.gist ? `<p class="gx-lede">${escapeHtml(w.gist)}</p>` : ''}
         <div class="gx-act">
           <button class="ghost solid" data-act="read" data-ref="${n.ref}">Open in the Reading Room</button>
-          <button class="ghost" data-act="save">${isSaved(n.id) ? 'Saved ✓' : 'Save to note'}</button>
+          <button class="ghost" data-act="save">${isSaved(n.id) ? 'On a note ✓' : 'Add to note'}</button>
+          <button class="ghost" data-act="path">Add to pathway</button>
         </div>
         ${more}`;
     }
@@ -695,6 +702,7 @@
             <span class="t">${escapeHtml(CONCEPT[c].label)}</span></button>`).join('')}</div></div>` : ''}
         <div class="gx-act">
           <button class="ghost solid" data-act="open-note" data-ref="${escapeHtml(n.ref)}">Open this note</button>
+          <button class="ghost" data-act="path">Add to pathway</button>
         </div>
         ${more}`;
     }
@@ -712,6 +720,8 @@
           <div class="gx-act">
             <a class="ghost solid" href="${escapeHtml(a.url)}" target="_blank" rel="noopener"
                style="text-decoration:none">Open the link</a>
+            <button class="ghost" data-act="save">${isSaved(n.id) ? 'On a note ✓' : 'Add to note'}</button>
+            <button class="ghost" data-act="path">Add to pathway</button>
           </div>
           ${owner ? `<div class="gx-sec"><h4>Held by</h4><div class="gx-more">
             <button class="gx-more-row" data-goto="${o.noteId === ctx.note.id ? NID.note : nid(o.noteId)}">
@@ -728,6 +738,10 @@
             <span>${escapeHtml(Media.human(a.size))}</span></div>
           <h3>${escapeHtml(a.name)}</h3>
           ${preview}
+          <div class="gx-act">
+            <button class="ghost" data-act="save">${isSaved(n.id) ? 'On a note ✓' : 'Add to note'}</button>
+            <button class="ghost" data-act="path">Add to pathway</button>
+          </div>
           ${owner ? `<div class="gx-sec"><h4>Held by</h4><div class="gx-more">
             <button class="gx-more-row" data-goto="${o.noteId === ctx.note.id ? NID.note : nid(o.noteId)}">
               ${orb('resonance')}<span class="t">${escapeHtml(owner.title || 'Untitled')}</span></button>
@@ -762,7 +776,8 @@
         <div class="gx-act">
           <button class="ghost solid" data-act="place" data-ref="${escapeHtml(n.ref)}">${
             placed ? 'Answer another' : 'Place yourself'}</button>
-          <button class="ghost" data-act="save">${isSaved(n.id) ? 'Saved ✓' : 'Save to note'}</button>
+          <button class="ghost" data-act="save">${isSaved(n.id) ? 'On a note ✓' : 'Add to note'}</button>
+          <button class="ghost" data-act="path">Add to pathway</button>
         </div>
         <p class="gx-fine">${answered} of ${BEL.itemsFor(n.ref).length} items answered here. Only answers move the journal mark; the passage only ever leans.</p>
         ${more}`;
@@ -774,6 +789,9 @@
         <div class="gx-kicker">${orb('stance')}Tradition</div>
         <h3>${escapeHtml(TRADITIONS[n.ref] || n.ref)}</h3>
         <p class="gx-lede">${all.length} concept${all.length === 1 ? '' : 's'} in Palinode belong to this tradition.</p>
+        <div class="gx-act">
+          <button class="ghost" data-act="path">Add to pathway</button>
+        </div>
         ${more}`;
     }
 
@@ -980,6 +998,7 @@
     if (!n) return;
     selected = id;
     markDirty();
+    if (window.PalinodeField) PalinodeField.paint(category(n));
 
     // Freeze the node being opened before anything else moves. The camera
     // then has a stationary target, which is what makes the pan readable —
@@ -1064,7 +1083,15 @@
     await buildJournalIndex();
 
     connectionsOn = !!(ctx.mode === 'pathway' && ctx.connections);
+    root.classList.toggle('corpus-mode', isCorpus());
     if (ctx.mode === 'pathway' && ctx.pathway) seedPathway(ctx.pathway);
+    else if (isCorpus()) {
+      corpusQ = '';
+      corpusCats = new Set();
+      corpusSort = 'name';
+      syncCorpusControls();
+      seedCorpus();
+    }
     else seedNoteField();
 
     applyChrome();
@@ -1076,6 +1103,150 @@
     requestAnimationFrame(loop);
     nodes.forEach(n => { if (n.type === 'media') resolveThumb(n); });
     syncSaveBtn();
+  }
+
+  function corpusReady() { return !!(String(corpusQ || '').trim() || corpusCats.size); }
+
+  function corpusMatches(c) {
+    if (corpusCats.size && !corpusCats.has(c.category)) return false;
+    const q = String(corpusQ || '').trim().toLowerCase();
+    if (!q) return true;
+    const hay = [c.label, c.reading, c.turn, TRADITIONS[c.tradition] || '', c.id]
+      .join(' ').toLowerCase();
+    return hay.includes(q);
+  }
+
+  function sortConcepts(list) {
+    const copy = list.slice();
+    if (corpusSort === 'tradition') {
+      copy.sort((a, b) =>
+        (TRADITIONS[a.tradition] || '').localeCompare(TRADITIONS[b.tradition] || '') ||
+        a.label.localeCompare(b.label));
+    } else if (corpusSort === 'category') {
+      const order = ['resonance', 'tension', 'clarity', 'stance', 'lineage'];
+      copy.sort((a, b) =>
+        order.indexOf(a.category) - order.indexOf(b.category) || a.label.localeCompare(b.label));
+    } else {
+      copy.sort((a, b) => a.label.localeCompare(b.label));
+    }
+    return copy;
+  }
+
+  function layoutCorpus(list) {
+    if (corpusSort === 'name' || list.length < 3) {
+      const r = 90 + Math.min(260, list.length * 16);
+      return list.map((c, i) => {
+        const a = (i / Math.max(1, list.length)) * Math.PI * 2 - Math.PI / 2;
+        return { c, x: Math.cos(a) * r, y: Math.sin(a) * r };
+      });
+    }
+    const key = corpusSort === 'tradition' ? c => c.tradition : c => c.category;
+    const groups = {};
+    list.forEach(c => { (groups[key(c)] = groups[key(c)] || []).push(c); });
+    const keys = Object.keys(groups);
+    const out = [];
+    keys.forEach((k, gi) => {
+      const ang = (gi / keys.length) * Math.PI * 2;
+      const cx = Math.cos(ang) * 260, cy = Math.sin(ang) * 200;
+      const bunch = groups[k];
+      bunch.forEach((c, i) => {
+        const a = (i / Math.max(1, bunch.length)) * Math.PI * 2;
+        const r = 36 + bunch.length * 10;
+        out.push({ c, x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+      });
+    });
+    return out;
+  }
+
+  function seedCorpus() {
+    [...nodes.keys()].forEach(id => {
+      const el = nodeEls.get(id);
+      if (el) { el.remove(); nodeEls.delete(id); }
+    });
+    nodes = new Map();
+    edges = [];
+    trail = [];
+    trailCursor = -1;
+    selected = null;
+    if (elTrail) elTrail.innerHTML = '';
+    const empty = document.getElementById('gx-empty');
+    if (!corpusReady()) {
+      if (empty) empty.hidden = false;
+      if (elPanel) elPanel.hidden = true;
+      markDirty();
+      return;
+    }
+    if (empty) empty.hidden = true;
+    const list = sortConcepts(CONCEPTS.filter(corpusMatches)).slice(0, 48);
+    const placed = layoutCorpus(list);
+    placed.forEach(({ c, x, y }) => {
+      const n = addNode({
+        id: cid(c.id), type: 'concept', ref: c.id,
+        px: x, py: y, spawnR: 0, depth: 0
+      });
+      n.x = x; n.y = y;
+      n.state = 'open';
+      n.label = c.label;
+      n.category = c.category;
+    });
+    placed.forEach(({ c }) => {
+      (c.kin || []).forEach(k => {
+        if (nodes.has(cid(k))) addEdge(cid(c.id), cid(k), 'kin');
+      });
+    });
+    if (placed.length) {
+      selected = cid(placed[0].c.id);
+      pushTrail(selected);
+      detail(selected);
+    } else if (elPanel) elPanel.hidden = true;
+    markDirty();
+    kick(0.45);
+  }
+
+  function syncCorpusControls() {
+    const search = document.getElementById('gx-search');
+    const row = document.getElementById('gx-corpus-row');
+    const empty = document.getElementById('gx-empty');
+    const q = document.getElementById('gx-q');
+    const sort = document.getElementById('gx-sort');
+    const filters = document.getElementById('gx-filters');
+    const on = isCorpus();
+    if (search) search.hidden = !on;
+    if (row) row.hidden = !on;
+    if (empty) empty.hidden = !on || corpusReady();
+    if (q && q.value !== corpusQ) q.value = corpusQ;
+    if (sort) sort.value = corpusSort;
+    if (filters && on) {
+      filters.innerHTML = Object.keys(CATEGORIES).map(id => {
+        const cat = CATEGORIES[id];
+        const pressed = corpusCats.has(id);
+        const dim = corpusCats.size && !pressed;
+        return `<button type="button" class="chip${dim ? ' off' : ''}" data-cat="${id}">
+          <span class="orb sm" style="--c:var(--${id})"></span>${cat.label}</button>`;
+      }).join('');
+    }
+    if (root) root.classList.toggle('corpus-mode', on);
+  }
+
+  function redrawCorpus() {
+    if (!isCorpus() || !root) return;
+    seedCorpus();
+    syncCorpusControls();
+    applyChrome();
+  }
+
+  function stepFromNode(n) {
+    if (!n) return null;
+    const step = {
+      id: n.type === 'note' && ctx && ctx.note ? nid(ctx.note.id) : n.id,
+      type: n.type === 'note' ? 'note-other' : n.type,
+      ref: n.type === 'note' && ctx && ctx.note ? ctx.note.id : n.ref,
+      label: n.label || label(n),
+      category: n.category || category(n),
+      sub: kicker(n)
+    };
+    if (step.type === 'note-other') step.noteId = step.ref;
+    return step;
   }
 
   function seedNoteField() {
@@ -1137,14 +1308,18 @@
     const hint = document.getElementById('gx-hint');
     const conn = document.getElementById('gx-conn');
     const path = ctx && ctx.mode === 'pathway' && ctx.pathway;
-    if (title) title.textContent = path ? (path.title || 'Pathway') : 'Exploring';
+    if (title) title.textContent = path ? (path.title || 'Pathway') : isCorpus() ? 'Explore' : 'Exploring';
+    const closeBtn = document.getElementById('gx-close');
+    if (closeBtn) closeBtn.hidden = isCorpus();
+    if (root) root.classList.toggle('page-mode', isCorpus());
     if (conn) conn.hidden = !path;
     if (hint) {
-      hint.hidden = !!path;
-      if (!path) hint.textContent = dim === '3'
+      hint.hidden = !!path || isCorpus();
+      if (!path && !isCorpus()) hint.textContent = dim === '3'
         ? 'Click a world to centre it · click empty space to go back · drag to orbit'
         : 'Click any orb to open it and grow the field';
     }
+    syncCorpusControls();
     const box = document.getElementById('gx-conn-toggle');
     if (box) box.checked = connectionsOn;
   }
@@ -1178,6 +1353,15 @@
     document.body.classList.remove('dim3');
     root.hidden = true;
     document.body.classList.remove('exploring');
+    if (root) root.classList.remove('corpus-mode', 'page-mode');
+    const closeBtn = document.getElementById('gx-close');
+    if (closeBtn) closeBtn.hidden = false;
+    const empty = document.getElementById('gx-empty');
+    if (empty) empty.hidden = true;
+    const search = document.getElementById('gx-search');
+    if (search) search.hidden = true;
+    const crow = document.getElementById('gx-corpus-row');
+    if (crow) crow.hidden = true;
     root = null;
     sim = null;
   }
@@ -1300,7 +1484,14 @@
         const sub = n.type === 'work' && WORK[n.ref] ? WORK[n.ref].author
                   : n.type === 'spectrum' && AXIS[n.ref] ? AXIS[n.ref].branch
                   : n.type === 'concept' && CONCEPT[n.ref] ? (TRADITIONS[CONCEPT[n.ref].tradition] || '') : '';
-        const now = Saved.toggle(ctx.note.id, { id: n.id, type: n.type, label: n.label, sub, category: n.category });
+        const payload = { id: n.id, type: n.type, label: n.label, sub, category: n.category };
+        if (ctx.onSaveNode) { ctx.onSaveNode(payload); return; }
+        if (!ctx.note || !ctx.note.id) {
+          if (ctx.onNeedNote) ctx.onNeedNote(payload);
+          else toast('Open a note first.');
+          return;
+        }
+        const now = Saved.toggle(ctx.note.id, payload);
         markDirty();
         toast(now
           ? 'Saved to “' + (ctx.note.title || 'this note') + '”.'
@@ -1308,6 +1499,12 @@
         detail(selected);
         if (ctx.onSaveChange) ctx.onSaveChange();
         notify();
+        return;
+      }
+      if (kind === 'path') {
+        const n = nodes.get(selected);
+        const step = stepFromNode(n);
+        if (step && ctx.onAddToPathway) ctx.onAddToPathway(step);
         return;
       }
       if (kind === 'place') {
@@ -1335,10 +1532,29 @@
     });
     const connToggle = document.getElementById('gx-conn-toggle');
     if (connToggle) connToggle.addEventListener('change', e => setConnections(e.target.checked));
+    const gq = document.getElementById('gx-q');
+    if (gq) gq.addEventListener('input', () => { corpusQ = gq.value; redrawCorpus(); });
+    const gs = document.getElementById('gx-sort');
+    if (gs) gs.addEventListener('change', () => { corpusSort = gs.value; redrawCorpus(); });
+    const gf = document.getElementById('gx-filters');
+    if (gf) gf.addEventListener('click', e => {
+      const chip = e.target.closest('[data-cat]');
+      if (!chip) return;
+      const id = chip.dataset.cat;
+      if (corpusCats.has(id)) corpusCats.delete(id);
+      else corpusCats.add(id);
+      redrawCorpus();
+    });
     document.getElementById('gx-in').addEventListener('click',  () => { view.s = Math.min(2.4, view.s * 1.25); });
     document.getElementById('gx-out').addEventListener('click', () => { view.s = Math.max(0.4, view.s / 1.25); });
     document.getElementById('gx-fit').addEventListener('click', () => {
       stopCam();
+      if (isCorpus()) {
+        const n = nodes.get(selected);
+        view.s = 1;
+        if (n) centreOn(n); else { view.tx = 0; view.ty = 0; }
+        return;
+      }
       selected = NID.note; markDirty(); detail(NID.note);
       const n = nodes.get(NID.note);
       view.s = 1;
@@ -1348,6 +1564,8 @@
     window.addEventListener('resize', resize);
     document.addEventListener('keydown', e => {
       if (e.key !== 'Escape' || !root) return;
+      // The Explore page is a destination — leave it from the nav.
+      if (isCorpus()) return;
       // An item overlay on top of the graph takes the key first; escaping
       // the question should not also escape the exploration.
       const scrim = document.getElementById('place-scrim');
@@ -1358,7 +1576,14 @@
 
   window.PalinodeGraph = {
     open, close, isOpen: () => !!root,
+    isPage: () => !!(root && isCorpus()),
     trailSteps, setConnections,
+    refreshDetail() {
+      if (!root || !selected) return;
+      markDirty();
+      detail(selected);
+      notify();
+    },
 
     // Called after an item is answered elsewhere: the mark on every
     // spectrum node has moved, so the panel and the 3D card must be re-read.

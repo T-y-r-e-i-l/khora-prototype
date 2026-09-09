@@ -29,7 +29,7 @@ await page.fill('#title', 'The job');
 await page.fill('#body-input', NOTE);
 await page.waitForTimeout(1400);
 
-await page.click('#btn-explore');
+await page.click('#constellation');
 await page.waitForSelector('#graph:not([hidden])');
 await page.waitForTimeout(600);
 await page.click('#gx-dim .seg-btn[data-dim="3"]');

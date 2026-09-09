@@ -27,7 +27,7 @@ await page.waitForSelector('#body-input', { state: 'visible' });
 await page.fill('#title', 'The job');
 await page.fill('#body-input', NOTE);
 await page.waitForTimeout(1400);
-await page.click('#btn-explore');
+await page.click('#constellation');
 await page.waitForSelector('#graph:not([hidden])');
 await page.waitForTimeout(900);
 
@@ -107,7 +107,11 @@ await page.screenshot({ path: '.verify/pr-settled.png' });
 const ctx2 = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
 const p2 = await ctx2.newPage();
 await p2.goto(URL, { waitUntil: 'networkidle' });
-await p2.click('#btn-explore');
+await p2.click('#btn-new');
+await p2.waitForSelector('#body-input', { state: 'visible' });
+await p2.fill('#body-input', NOTE);
+await p2.waitForTimeout(1200);
+await p2.click('#constellation');
 await p2.waitForSelector('#graph:not([hidden])');
 await p2.waitForTimeout(900);
 const rm = await p2.evaluate(() => {

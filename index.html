@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/app.css?v=22">
+<link rel="stylesheet" href="assets/css/app.css?v=31">
 </head>
 <body>
 
@@ -117,9 +117,6 @@
       <div class="note-list" id="note-list"></div>
       <div class="note-list" id="path-list" hidden></div>
       <button class="rail-new" id="btn-new-list">New note</button>
-      <div class="rail-foot">
-        <button class="micro" id="btn-reset-day" title="Development helper: rolls the day forward so the skip allowance can be tested">Reset today</button>
-      </div>
     </aside>
 
     <!-- ============ centre ============ -->
@@ -245,7 +242,7 @@
           <button class="ins-collapse" id="btn-insights" title="Hide the reading"
                   aria-label="Hide the reading">
             <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M10 3.5L5.5 8l4.5 4.5" stroke="currentColor" stroke-width="1.5"
+              <path d="M10 3.5L5.5 8l4.5 4.5" stroke="currentColor" stroke-width="2.15"
                     stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
@@ -314,6 +311,13 @@
         <b id="gx-title-text">Exploring</b>
         <span class="gx-hint" id="gx-hint">Click any orb to open it and grow the field</span>
       </div>
+      <div class="search" id="gx-search" hidden>
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="6" cy="6" r="4.4" stroke="rgba(255,255,255,.42)" stroke-width="1.2"/>
+          <path d="M9.4 9.4L12.5 12.5" stroke="rgba(255,255,255,.42)" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        <input id="gx-q" type="search" placeholder="Search the corpus…" autocomplete="off">
+      </div>
       <label class="gx-conn" id="gx-conn" hidden>
         <input type="checkbox" id="gx-conn-toggle"> Show Connections
       </label>
@@ -323,6 +327,18 @@
       </div>
       <button class="micro" id="gx-close">Close</button>
     </div>
+    <div class="gx-corpus-row" id="gx-corpus-row" hidden>
+      <label class="gx-sort">
+        <span>Sort</span>
+        <select id="gx-sort">
+          <option value="name">Name</option>
+          <option value="tradition">Tradition</option>
+          <option value="category">Category</option>
+        </select>
+      </label>
+      <div class="filters" id="gx-filters"></div>
+    </div>
+    <div class="gx-empty" id="gx-empty" hidden>Search or filter to draw the field</div>
     <div class="gx-trail-row">
       <button class="micro" id="gx-save-path" type="button" disabled>Save as Pathway</button>
       <div id="gx-trail" class="gx-trail"></div>
@@ -350,6 +366,17 @@
     <div class="modal-actions">
       <button class="ghost" type="button" id="path-save-cancel">Cancel</button>
       <button class="ghost solid" type="button" id="path-save-confirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="note-pick-scrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="note-pick-title">
+    <h3 id="note-pick-title">Add to a note</h3>
+    <div id="note-pick-list" class="path-pick-list"></div>
+    <div class="modal-actions">
+      <button class="ghost" type="button" id="note-pick-new">New note</button>
+      <button class="ghost" type="button" id="note-pick-cancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -416,9 +443,9 @@
 <script src="assets/js/engine.js"></script>
 <script src="assets/js/store.js"></script>
 <script src="assets/vendor/three.min.js"></script>
-<script src="assets/js/graph.js"></script>
+<script src="assets/js/graph.js?v=29"></script>
 <script src="assets/js/graph3d.js"></script>
-<script src="assets/js/pathways.js?v=22"></script>
-<script src="assets/js/app.js?v=22"></script>
+<script src="assets/js/pathways.js?v=28"></script>
+<script src="assets/js/app.js?v=29"></script>
 </body>
 </html>

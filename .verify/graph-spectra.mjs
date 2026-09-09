@@ -31,7 +31,7 @@ await page.fill('#body-input', NOTE);
 await page.waitForTimeout(1200);
 
 /* ---------- 2D: spectra grow out of the concepts ---------- */
-await page.click('#btn-explore');
+await page.click('#constellation');
 await page.waitForSelector('#graph:not([hidden])');
 await page.waitForTimeout(1200);
 

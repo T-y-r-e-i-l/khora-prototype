@@ -13,6 +13,39 @@
   const $  = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
 
+  const FIELD_REST = ['#8a5a12', '#123a5e', '#5c1416', '#2f1650', '#6b5a10'];
+  const FIELD_DEEP = {
+    resonance: '#8a5a12', tension: '#5c1416', clarity: '#2f1650',
+    stance: '#6b5a10', lineage: '#123a5e'
+  };
+  const FIELD_WASH = {
+    resonance: '#c47a28', tension: '#8a2428', clarity: '#4a2a78',
+    stance: '#8a7420', lineage: '#1a5a58'
+  };
+  function paintField(primary, extras) {
+    const field = document.getElementById('field');
+    if (!field) return;
+    const seen = [];
+    [primary].concat(extras || []).forEach(c => {
+      if (FIELD_DEEP[c] && seen.indexOf(c) < 0) seen.push(c);
+    });
+    const colors = seen.length ? [
+      FIELD_DEEP[seen[0]],
+      FIELD_WASH[seen[0]],
+      FIELD_DEEP[seen[1] || seen[0]],
+      FIELD_WASH[seen[1] || seen[2] || seen[0]],
+      FIELD_DEEP[seen[2] || seen[seen.length - 1]]
+    ] : FIELD_REST;
+    colors.forEach((c, i) => field.style.setProperty('--f' + (i + 1), c));
+    field.dataset.mood = seen[0] || 'rest';
+  }
+  function paintFieldFromAnalysis() {
+    const concepts = (analysis && analysis.concepts) || [];
+    paintField(concepts[0] && concepts[0].category,
+      concepts.slice(1, 4).map(c => c.category));
+  }
+  window.PalinodeField = { paint: paintField };
+
   const el = {
     body:      $('#body'),
     list:      $('#note-list'),
@@ -51,6 +84,7 @@
   const LIB = window.PalinodeLibrary;
 
   let activeId   = null;
+  let pendingSave = null;
   let analysis   = null;
   let openKey    = null;
   let timer      = null;
@@ -118,10 +152,6 @@
     openNote(n.id);
     renderList();
     el.input.focus();
-  });
-
-  $('#btn-reset-day').addEventListener('click', () => {
-    Prompts.resetDay(); renderPrompt(); toast('Day rolled forward — skip allowance restored.');
   });
 
   /* ================= library ================= */
@@ -282,6 +312,7 @@
   function closePathways() {
     if (!window.PalinodePathways) return;
     PalinodePathways.leave();
+    paintFieldFromAnalysis();
     el.empty.hidden = false;
     if (activeId) {
       el.editorWrap.hidden = false;
@@ -350,6 +381,8 @@
     renderBeliefs();
     renderTabCounts();
     considerOffer();
+    if (!window.PalinodePathways || !PalinodePathways.isListOpen())
+      paintFieldFromAnalysis();
     el.metaWords.textContent = analysis.stats.words + (analysis.stats.words === 1 ? ' word' : ' words');
     el.pulse.classList.remove('on');
     el.metaState.textContent = analysis.insights.length
@@ -492,7 +525,7 @@
     const cat = CATS[chip.dataset.cat];
     if (!cat) return;
     showReadTip(chip, cat.label,
-      cat.blurb + ' The number is how many the reader found in this note.');
+      cat.blurb + ' The number is how many Khora found in this note.');
   });
   el.filters.addEventListener('pointerout', e => {
     const chip = e.target.closest('.chip');
@@ -593,7 +626,7 @@
       const anyHidden = hidden.length > 0;
       el.insList.innerHTML = `<div style="padding:26px 6px;color:var(--ink-4);font-size:12px;line-height:1.7">
         ${analysis.stats.words < 12
-          ? 'Keep writing. The reader needs a paragraph or so before it has anything honest to say.'
+          ? 'Keep writing. Khora needs a paragraph or so before it has anything honest to say.'
           : 'Nothing surfaced under the current filters.'}
         ${anyHidden ? '<br><button class="micro" id="btn-restore" style="padding-left:0;margin-top:10px">Restore dismissed</button>' : ''}
       </div>`;
@@ -687,7 +720,7 @@
     if (!shelf.length) {
       el.readList.innerHTML = `<div style="padding:26px 6px;color:var(--ink-4);font-size:12px;line-height:1.7">
         ${analysis.stats.words < 12
-          ? 'Nothing to recommend yet. The reader needs a paragraph before it can point anywhere.'
+          ? 'Nothing to recommend yet. Khora needs a paragraph before it can point anywhere.'
           : 'No readings under the current filters.'}</div>`;
       return;
     }
@@ -824,7 +857,7 @@
     } else {
       out += `<div style="padding:22px 6px;color:var(--ink-4);font-size:12px;line-height:1.7">
         ${!analysis || analysis.stats.words < 12
-          ? 'Keep writing. Spectra surface from the same triggers the reader uses, so it needs a paragraph first.'
+          ? 'Keep writing. Spectra surface from the same triggers Khora uses, so it needs a paragraph first.'
           : 'This note has not come near any of the twenty-seven spectra yet. That is a fact about the passage, not a gap to fill.'}
       </div>`;
     }
@@ -884,7 +917,7 @@
         ${placeItem.options.map(o =>
           `<button class="place-opt" data-opt="${esc(o.id)}">${esc(o.label)}</button>`).join('')}
       </div>
-      <p class="lede" style="margin:0 0 16px">Your answer is what moves this spectrum. Nothing you write is scored — the reader can only say a passage leans.</p>
+      <p class="lede" style="margin:0 0 16px">Your answer is what moves this spectrum. Nothing you write is scored — Khora can only say a passage leans.</p>
       <div class="modal-actions">
         <button class="ghost" data-act="skip">Not this one</button>
         <button class="ghost" data-act="close">Close</button>
@@ -1201,6 +1234,37 @@
   });
 
   $('#btn-close-modal').addEventListener('click', () => el.scrim.classList.remove('on'));
+  const notePick = $('#note-pick-scrim');
+  if (notePick) {
+    $('#note-pick-cancel').addEventListener('click', () => {
+      pendingSave = null;
+      notePick.classList.remove('on');
+    });
+    notePick.addEventListener('click', e => { if (e.target === notePick) { pendingSave = null; notePick.classList.remove('on'); } });
+    $('#note-pick-list').addEventListener('click', e => {
+      const b = e.target.closest('[data-pick]');
+      if (!b || !pendingSave) return;
+      const payload = pendingSave;
+      pendingSave = null;
+      notePick.classList.remove('on');
+      const rec = Notes.get(b.dataset.pick);
+      if (!rec) return;
+      Saved.toggle(rec.id, payload);
+      renderComposer();
+      if (window.PalinodeGraph && PalinodeGraph.refreshDetail) PalinodeGraph.refreshDetail();
+      toast('Added to “' + (rec.title || 'Untitled') + '”.');
+    });
+    $('#note-pick-new').addEventListener('click', () => {
+      const payload = pendingSave;
+      pendingSave = null;
+      notePick.classList.remove('on');
+      const n = Notes.create({ title: '', body: '' });
+      if (payload) Saved.toggle(n.id, payload);
+      openNote(n.id);
+      renderList();
+      toast('Added to a new note.');
+    });
+  }
   el.scrim.addEventListener('click', e => { if (e.target === el.scrim) el.scrim.classList.remove('on'); });
 
   /* ================= exploration ================= */
@@ -1242,7 +1306,71 @@
     });
     if (phone()) syncNav('explore');
   }
-  $('#btn-explore').addEventListener('click', explore);
+  async function openCorpus() {
+    if (window.PalinodeGraph && PalinodeGraph.isPage && PalinodeGraph.isPage()) {
+      syncNav('explore');
+      return;
+    }
+    cancelOffer();
+    closePathways();
+    el.body.classList.remove('show-insights', 'show-rail');
+    await window.PalinodeGraph.open({
+      mode: 'corpus',
+      note: activeId ? Notes.get(activeId) : { id: '', title: '', body: '' },
+      analysis: analysis || { concepts: [], insights: [], leans: [], stats: { words: 0 } },
+      onSavePathway: steps => {
+        if (window.PalinodePathways) PalinodePathways.offerSave(steps, { noteId: activeId });
+      },
+      onClose: () => { if (phone()) syncNav('write'); },
+      onSaveChange: renderComposer,
+      onOpenNote: noteId => {
+        window.PalinodeGraph.close();
+        document.body.classList.remove('exploring');
+        openNote(noteId);
+        toast('Opened “' + (Notes.get(noteId).title || 'Untitled') + '”.');
+      },
+      onRead: workId => { window.PalinodeGraph.close(); document.body.classList.remove('exploring'); openWork(workId); },
+      onPlace: axisId => openPlace(axisId, 'graph'),
+      onWrite: concept => {
+        window.PalinodeGraph.close();
+        document.body.classList.remove('exploring');
+        const n = Notes.create({ promptText: concept.turn, title: '' });
+        openNote(n.id);
+        renderList();
+        el.input.focus();
+        toast('New note, opened on ' + concept.label + '.');
+      },
+      onAddToPathway: step => {
+        if (window.PalinodePathways) PalinodePathways.offerAttachStep(step);
+      },
+      onSaveNode: payload => saveNodeToNote(payload),
+      onNeedNote: payload => saveNodeToNote(payload)
+    });
+    syncNav('explore');
+  }
+
+  function saveNodeToNote(payload) {
+    const apply = id => {
+      const rec = Notes.get(id);
+      if (!rec) return;
+      const now = Saved.toggle(id, payload);
+      renderComposer();
+      if (window.PalinodeGraph && PalinodeGraph.refreshDetail) PalinodeGraph.refreshDetail();
+      toast(now
+        ? 'Added to “' + (rec.title || 'Untitled') + '”.'
+        : 'Removed from “' + (rec.title || 'Untitled') + '”.');
+    };
+    if (activeId) { apply(activeId); return; }
+    pendingSave = payload;
+    const list = $('#note-pick-list');
+    const notes = Notes.all();
+    list.innerHTML = notes.length
+      ? notes.map(n => `<button type="button" data-pick="${esc(n.id)}">${esc(n.title || 'Untitled')}</button>`).join('')
+      : '<p class="lede">No notes yet. Start a new one.</p>';
+    $('#note-pick-scrim').classList.add('on');
+  }
+
+  $('#btn-explore').addEventListener('click', openCorpus);
   el.constel.addEventListener('click', explore);      // the mini map is a door
 
   /* ---------- the note as a container ---------- */
@@ -1502,6 +1630,12 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
       syncNav('write');
       return;
     }
+    if (window.PalinodeGraph && PalinodeGraph.isPage && PalinodeGraph.isPage()) {
+      closeExplore();
+      closePathways();
+      syncNav('write');
+      return;
+    }
     if (window.PalinodePathways && PalinodePathways.isListOpen()) {
       closePathways();
       syncNav('write');
@@ -1543,6 +1677,8 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
       el.scrim.classList.remove('on');
       $('#path-save-scrim').classList.remove('on');
       $('#path-pick-scrim').classList.remove('on');
+      const notePick = $('#note-pick-scrim');
+      if (notePick) notePick.classList.remove('on');
       closeForget();
       if (window.PalinodePathways && PalinodePathways.isWalkOpen()) {
         PalinodePathways.closeWalk({ toList: true });

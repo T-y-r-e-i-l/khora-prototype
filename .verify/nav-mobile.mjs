@@ -141,7 +141,7 @@ await page.fill('#body-input',
   'I had no choice but to stay in that job. It was out of my hands and there was nothing I could do about any of it, so I kept going. My family expects things of me and I owe them that much.');
 await page.waitForTimeout(1400);
 
-await page.click('#btn-explore');
+await page.evaluate(() => document.getElementById('constellation').click());
 await page.waitForSelector('#graph:not([hidden])', { timeout: 8000 });
 await page.waitForTimeout(500);
 const exp = await page.evaluate(() => {

@@ -28,6 +28,7 @@
   let pendingSteps = null;
   let pendingNoteId = null;
   let attachNoteId = null;
+  let pendingStep = null;
 
   function toast(msg) {
     const t = document.getElementById('toast');
@@ -90,8 +91,8 @@
     if (list) list.hidden = false;
     hideWriteCentre();
     renderList();
-    if (walkId && Pathways.get(walkId)) { showFeed(); renderWalk(); }
-    else showPathEmpty();
+    if (walkId && Pathways.get(walkId)) { showFeed(); renderWalk(); paintWalk(); }
+    else { showPathEmpty(); paintWalk(); }
   }
 
   function leave() {
@@ -123,6 +124,81 @@
     return !!(wrap && !wrap.hidden);
   }
 
+  function stepCat(step) {
+    if (step.category) return step.category;
+    if (step.type === 'concept' && CONCEPT[step.ref]) return CONCEPT[step.ref].category;
+    if (step.type === 'work' || step.type === 'link') return 'lineage';
+    if (step.type === 'tradition' || step.type === 'spectrum') return 'stance';
+    return 'resonance';
+  }
+
+  function stepLabel(step) {
+    if (step.type === 'concept' && CONCEPT[step.ref]) return CONCEPT[step.ref].label;
+    if (step.type === 'work') {
+      try { const w = LIB.resolve(step.ref); if (w && w.title) return w.title; } catch (e) {}
+    }
+    if (step.type === 'spectrum') {
+      const s = BEL.spectrum(step.ref);
+      if (s) return s.title;
+    }
+    if (step.type === 'note' || step.type === 'note-other') {
+      const n = Notes.get(step.noteId || step.ref);
+      if (n) return n.title || 'Untitled';
+    }
+    return step.label || 'Step';
+  }
+
+  function chipLabel(step) {
+    const raw = String(stepLabel(step)).replace(/\s+/g, ' ').trim();
+    return raw.length > 14 ? raw.slice(0, 13).trimEnd() + '…' : raw;
+  }
+
+  function previewConstellation(p) {
+    const steps = (p.steps || []).slice(0, 7);
+    const a = stepCat(steps[0] || {});
+    const b = stepCat(steps[steps.length - 1] || steps[0] || {});
+    if (!steps.length) {
+      return `<div class="constellation path-constel" style="--g1:var(--resonance);--g2:var(--lineage)" aria-hidden="true">
+        <div class="path-constel-empty">No steps yet</div></div>`;
+    }
+    const cl = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const pts = steps.map((s, i) => {
+      const ang = i * 2.399963;
+      const r = 0.20 + 0.30 * Math.sqrt((i + 0.6) / steps.length);
+      return {
+        x: cl(50 + Math.cos(ang) * r * 68, 26, 74),
+        y: cl(50 + Math.sin(ang) * r * 64, 18, 82),
+        cat: stepCat(s),
+        label: chipLabel(s)
+      };
+    });
+    for (let pass = 0; pass < 3; pass++) {
+      pts.forEach((pt, i) => {
+        pts.slice(0, i).forEach(other => {
+          const dx = pt.x - other.x, dy = pt.y - other.y;
+          if (Math.abs(dx) < 26 && Math.abs(dy) < 14) {
+            pt.y = cl(pt.y + (dy >= 0 ? 12 : -12), 16, 84);
+          }
+        });
+      });
+    }
+    const lines = [];
+    pts.forEach((pt, i) => {
+      if (i > 0) {
+        lines.push(`<line x1="${pts[i - 1].x}%" y1="${pts[i - 1].y}%" x2="${pt.x}%" y2="${pt.y}%"
+          stroke="rgba(255,255,255,.16)" stroke-width="1"/>`);
+        lines.push(`<line x1="${pts[0].x}%" y1="${pts[0].y}%" x2="${pt.x}%" y2="${pt.y}%"
+          stroke="rgba(255,255,255,.07)" stroke-width="1"/>`);
+      }
+    });
+    const nodes = pts.map((pt, i) =>
+      `<div class="node" style="left:${pt.x}%;top:${pt.y}%;animation-delay:${i * 55}ms">
+        <span class="orb sm" style="--c:var(--${esc(pt.cat)})"></span>${esc(pt.label)}</div>`
+    ).join('');
+    return `<div class="constellation path-constel" style="--g1:var(--${esc(a)});--g2:var(--${esc(b)})" aria-hidden="true">
+      <svg>${lines.join('')}</svg>${nodes}</div>`;
+  }
+
   function renderList() {
     const list = $('#path-list');
     if (!list) return;
@@ -133,6 +209,7 @@
     }
     list.innerHTML = all.map(p => `
       <div class="note-item ${p.id === walkId ? 'active' : ''}" data-open="${esc(p.id)}">
+        ${previewConstellation(p)}
         <h4>${esc(p.title || 'Untitled pathway')}</h4>
         <p>${p.steps.length} step${p.steps.length === 1 ? '' : 's'} · ${fmt(p.updated)}</p>
         <button class="forget" data-forget-path="${esc(p.id)}" title="Delete pathway">×</button>
@@ -223,6 +300,7 @@
     closeAddPanels();
     closePeek();
     renderList();
+    paintWalk();
   }
 
   function focusStep(i, scroll) {
@@ -239,6 +317,15 @@
       const item = feed.querySelector(`.feed-item[data-step="${walkCursor}"]`);
       if (item) item.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+    paintWalk();
+  }
+
+  function paintWalk() {
+    if (!window.PalinodeField) return;
+    const p = current();
+    if (!p || !(p.steps || []).length) { PalinodeField.paint(null); return; }
+    const step = p.steps[walkCursor];
+    PalinodeField.paint(stepCat(step), p.steps.map(stepCat));
   }
 
   function closeAddPanels() {
@@ -474,8 +561,7 @@
     }, graphActs()));
   }
 
-  function offerAttach(noteId) {
-    attachNoteId = noteId;
+  function showPathPick() {
     const list = $('#path-pick-list');
     const all = Pathways.all();
     list.innerHTML = all.length
@@ -484,7 +570,31 @@
     $('#path-pick-scrim').classList.add('on');
   }
 
+  function offerAttach(noteId) {
+    pendingStep = null;
+    attachNoteId = noteId;
+    showPathPick();
+  }
+
+  function offerAttachStep(step) {
+    pendingStep = step;
+    attachNoteId = step && (step.noteId || (step.type === 'note-other' ? step.ref : null)) || null;
+    showPathPick();
+  }
+
   function attachTo(pathwayId) {
+    if (pendingStep) {
+      const s = Object.assign({}, pendingStep);
+      if (s.type === 'note-other' && s.ref) s.noteId = s.noteId || s.ref;
+      Pathways.addStep(pathwayId, s);
+      $('#path-pick-scrim').classList.remove('on');
+      pendingStep = null;
+      attachNoteId = null;
+      toast('Added to the pathway.');
+      notify();
+      if (walkId === pathwayId) renderWalk();
+      return;
+    }
     if (!attachNoteId) return;
     const n = Notes.get(attachNoteId);
     Pathways.linkNote(pathwayId, attachNoteId);
@@ -530,8 +640,9 @@
     $('#walk-explore').addEventListener('click', openExplore);
     $('#walk-feed').addEventListener('click', e => {
       const act = e.target.closest('[data-act]');
-      if (!act) return;
-      fireAct(act.dataset.act, act.dataset.ref);
+      if (act) { fireAct(act.dataset.act, act.dataset.ref); return; }
+      const item = e.target.closest('.feed-item[data-step]');
+      if (item) focusStep(Number(item.dataset.step));
     });
     $('#walk-title').addEventListener('change', () => {
       if (walkId) { Pathways.update(walkId, { title: $('#walk-title').value.trim() }); notify(); }
@@ -646,6 +757,15 @@
 
     $('#path-pick-cancel').addEventListener('click', () => $('#path-pick-scrim').classList.remove('on'));
     $('#path-pick-new').addEventListener('click', () => {
+      if (pendingStep) {
+        const rec = Pathways.create({
+          title: pendingStep.label || 'Untitled pathway',
+          steps: [],
+          noteIds: []
+        });
+        attachTo(rec.id);
+        return;
+      }
       if (!attachNoteId) return;
       const n = Notes.get(attachNoteId);
       const rec = Pathways.create({
@@ -670,7 +790,7 @@
   window.PalinodePathways = {
     offerSave, showList, hideList, enter, leave, openWalk, closeWalk,
     isListOpen, isWalkOpen, refresh: renderList,
-    offerAttach, askForgetPath,
+    offerAttach, offerAttachStep, askForgetPath,
     refreshWalk: () => { if (walkId) renderWalk(); },
     onChange: null,
     onOpenNote: null,
