@@ -383,6 +383,26 @@
     syncNotePage();
   }
 
+  function writeFromQuest(opts) {
+    closeExplore();
+    closePathways();
+    closeProfile();
+    closeMarket();
+    closeQuests();
+    el.body.classList.remove('show-insights', 'show-rail');
+    syncNav('write');
+    const n = Notes.create({
+      promptText: (opts && opts.prompt) || '',
+      title: (opts && opts.title) || (opts && opts.prompt) || ''
+    });
+    openNote(n.id);
+    renderList();
+    if (el.title && n.title) el.title.value = n.title;
+    if (el.input) el.input.focus();
+    const label = (opts && opts.label) || 'this quest';
+    toast('New note for ' + label + '. Return to Quests to submit it.');
+  }
+
   function wireQuestsChrome() {
     if (!window.PalinodeQuests) return;
     PalinodeQuests.onChange = () => {
@@ -390,6 +410,7 @@
     };
     PalinodeQuests.onChrome = () => syncNotePage();
     PalinodeQuests.onStartQuest = startAcceptedQuest;
+    PalinodeQuests.onWriteFromQuest = writeFromQuest;
   }
 
   function newNote() {
@@ -1102,6 +1123,20 @@
     syncNotePage();
   }
 
+  function setFabOpen(open) {
+    if (!phone()) open = false;
+    document.documentElement.classList.toggle('fab-open', !!open);
+    const toggle = document.getElementById('nav-fab-toggle');
+    const scrim = document.getElementById('nav-fab-scrim');
+    if (toggle) {
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+    }
+    if (scrim) scrim.hidden = !open;
+  }
+
+  function closeFab() { setFabOpen(false); }
+
   function phoneTab() {
     if (exploring()) return 'explore';
     if (window.PalinodeMarketplace && PalinodeMarketplace.isOpen()) return 'market';
@@ -1170,11 +1205,13 @@
   function syncKeyboardNav() {
     if (!phone()) {
       document.documentElement.classList.remove('nav-hidden');
+      closeFab();
       return;
     }
     const vv = window.visualViewport;
     const kbUp = !!(vv && (window.innerHeight - vv.height > 80));
     document.documentElement.classList.toggle('nav-hidden', kbUp);
+    if (kbUp) closeFab();
   }
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', syncKeyboardNav);
@@ -2002,8 +2039,26 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
     syncNav('profile');
   });
 
+  const fabToggle = document.getElementById('nav-fab-toggle');
+  const fabScrim = document.getElementById('nav-fab-scrim');
+  if (fabToggle) {
+    fabToggle.addEventListener('click', () => {
+      if (!phone()) return;
+      setFabOpen(!document.documentElement.classList.contains('fab-open'));
+    });
+  }
+  if (fabScrim) fabScrim.addEventListener('click', closeFab);
+  $$('nav.sidenav .nav-item').forEach(btn => {
+    btn.addEventListener('click', () => { if (phone()) closeFab(); });
+  });
+  window.addEventListener('resize', () => { if (!phone()) closeFab(); });
+
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
+      if (document.documentElement.classList.contains('fab-open')) {
+        closeFab();
+        return;
+      }
       el.scrim.classList.remove('on');
       $('#path-save-scrim').classList.remove('on');
       $('#path-pick-scrim').classList.remove('on');
@@ -2229,7 +2284,8 @@ What I actually want is for someone to see how hard it has been. That is a small
     const first = Notes.all()[0];
     if (first) openNote(first.id);
     else { el.editorWrap.hidden = true; el.empty.style.display = ''; }
-    if (phone()) el.body.classList.add('show-rail');
+    el.body.classList.remove('show-rail');
+    void openCorpus();
     syncNotePage();
 
     if (window.PalinodeStore.usingMemory()) {

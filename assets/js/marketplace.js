@@ -63,7 +63,7 @@
     if (!state.enrollments[epicId]) {
       const quests = {};
       (e.questIds || []).forEach(qid => {
-        quests[qid] = { status: 'Draft', notes: '', fileName: '', updated: Date.now() };
+        quests[qid] = { status: 'Draft', notes: '', noteId: null, noteTitle: '', fileName: '', updated: Date.now() };
       });
       state.enrollments[epicId] = {
         epicId,
@@ -541,10 +541,31 @@
     if (!e || !en) return;
     if (!learnQuestId && e.quests.length) learnQuestId = e.quests[0].id;
     const quest = (e.quests || []).find(q => q.id === learnQuestId) || e.quests[0];
-    const sub = en.quests[quest.id] || { status: 'Draft', notes: '', fileName: '' };
+    const sub = en.quests[quest.id] || { status: 'Draft', notes: '', noteId: null, noteTitle: '', fileName: '' };
+    // Prefer shared quest-log submission when present.
+    if (window.PalinodeQuests) {
+      const log = PalinodeQuests.get(quest.id);
+      if (log && log.submission && log.submission.noteId) {
+        sub.noteId = log.submission.noteId;
+        sub.noteTitle = log.submission.noteTitle || '';
+      }
+    }
     const prog = progressOf(e.id);
     const locked = sub.status === 'Submitted' || sub.status === 'Under Review' || sub.status === 'Completed';
     const allDone = prog.total > 0 && prog.done === prog.total;
+    const notes = window.PalinodeStore && PalinodeStore.Notes
+      ? PalinodeStore.Notes.all()
+      : [];
+    const noteOptions = notes.map(n => {
+      const sel = sub.noteId === n.id ? ' selected' : '';
+      const label = (n.title || 'Untitled');
+      return `<option value="${esc(n.id)}"${sel}>${esc(label)}</option>`;
+    }).join('');
+    const steps = (quest.steps || []).map(s => {
+      const c = (window.PalinodeCorpus && PalinodeCorpus.CONCEPTS || [])
+        .find(x => x.id === s.conceptId);
+      return `<li>${esc(c ? c.label : s.conceptId)}</li>`;
+    }).join('');
 
     host.innerHTML = `
       <div class="mkt-learn-head">
@@ -569,11 +590,15 @@
         <div class="mkt-learn-detail">
           <h3>${esc(quest.title)}</h3>
           <p class="mkt-desc">${esc(quest.description)}</p>
+          ${steps ? `<h4 class="mkt-ov-h">Nodes</h4><ul class="quest-objectives">${steps}</ul>` : ''}
           <label class="mkt-field">
-            <span>Your turn-in</span>
-            <textarea id="mkt-quest-notes" ${locked ? 'readonly' : ''} rows="5"
-              placeholder="Notes, reflections, links…">${esc(sub.notes)}</textarea>
+            <span>Submit a journal note</span>
+            <select id="mkt-quest-note" ${locked ? 'disabled' : ''}>
+              <option value="">Choose a note…</option>
+              ${noteOptions}
+            </select>
           </label>
+          ${sub.noteId ? `<p class="gx-fine">Selected · ${esc(sub.noteTitle || 'Untitled')}</p>` : ''}
           <label class="mkt-field">
             <span>Attachment (name only — mock)</span>
             <input type="text" id="mkt-quest-file" ${locked ? 'readonly' : ''}
@@ -595,19 +620,51 @@
       </div>`;
   }
 
+  function syncQuestSubmission(epicId, questId, payload) {
+    const en = ensureEnrollment(epicId);
+    if (!en || !questId) return;
+    const cur = en.quests[questId] || { status: 'Draft', notes: '', noteId: null, noteTitle: '', fileName: '' };
+    cur.noteId = payload.noteId || null;
+    cur.noteTitle = payload.noteTitle || '';
+    cur.notes = payload.mode === 'response'
+      ? (payload.body || '')
+      : (cur.noteTitle || payload.body || '');
+    if (payload.submitted && cur.status === 'Draft') {
+      cur.status = 'Submitted';
+    }
+    cur.updated = Date.now();
+    en.quests[questId] = cur;
+    save();
+    if (active && view === 'learn') renderLearn();
+  }
+
   function submitQuest() {
     const en = enrollment(focusId);
     if (!en || !learnQuestId) return;
-    const notes = ($('#mkt-quest-notes') || {}).value || '';
-    if (!notes.trim()) { toast('Add notes before turning in.'); return; }
+    const sel = $('#mkt-quest-note');
+    const noteId = (sel && sel.value) || (en.quests[learnQuestId] && en.quests[learnQuestId].noteId) || '';
+    if (!noteId) { toast('Select a journal note before turning in.'); return; }
+    const note = window.PalinodeStore && PalinodeStore.Notes
+      ? PalinodeStore.Notes.get(noteId)
+      : null;
+    if (!note) { toast('That note is missing. Pick another.'); return; }
     const fileName = ($('#mkt-quest-file') || {}).value || '';
     en.quests[learnQuestId] = {
       status: 'Submitted',
-      notes: notes.trim(),
+      notes: note.title || 'Untitled',
+      noteId: note.id,
+      noteTitle: note.title || 'Untitled',
       fileName: fileName.trim(),
       updated: Date.now()
     };
     save();
+    if (window.PalinodeQuests && typeof PalinodeQuests.applyEpicSubmission === 'function') {
+      PalinodeQuests.applyEpicSubmission(learnQuestId, {
+        noteId: note.id,
+        noteTitle: note.title || 'Untitled',
+        submitted: true
+      });
+    }
     toast('Quest submitted.');
     renderLearn();
     setTimeout(() => {
@@ -907,13 +964,25 @@
       }
       const questBtn = e.target.closest('[data-mkt-quest]');
       if (questBtn) {
-        const notes = $('#mkt-quest-notes');
         const file = $('#mkt-quest-file');
+        const noteSel = $('#mkt-quest-note');
         const en = enrollment(focusId);
-        if (en && learnQuestId && notes && !notes.readOnly) {
-          en.quests[learnQuestId].notes = notes.value;
-          en.quests[learnQuestId].fileName = (file && file.value) || '';
+        if (en && learnQuestId && noteSel && !noteSel.disabled) {
+          const noteId = noteSel.value || null;
+          const note = noteId && window.PalinodeStore && PalinodeStore.Notes
+            ? PalinodeStore.Notes.get(noteId)
+            : null;
+          en.quests[learnQuestId] = Object.assign({}, en.quests[learnQuestId] || {}, {
+            noteId,
+            noteTitle: note ? (note.title || 'Untitled') : '',
+            notes: note ? (note.title || 'Untitled') : '',
+            fileName: (file && file.value) || '',
+            updated: Date.now()
+          });
           save();
+          if (window.PalinodeQuests && noteId) {
+            PalinodeQuests.selectNote(learnQuestId, noteId);
+          }
         }
         learnQuestId = questBtn.dataset.mktQuest;
         renderLearn();
@@ -1009,6 +1078,29 @@
     if (chatInput) chatInput.addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
     });
+
+    document.addEventListener('change', e => {
+      const sel = e.target.closest('#mkt-quest-note');
+      if (!sel || !focusId || !learnQuestId) return;
+      const en = enrollment(focusId);
+      if (!en) return;
+      const noteId = sel.value || null;
+      const note = noteId && window.PalinodeStore && PalinodeStore.Notes
+        ? PalinodeStore.Notes.get(noteId)
+        : null;
+      const cur = en.quests[learnQuestId] || { status: 'Draft', fileName: '' };
+      cur.noteId = noteId;
+      cur.noteTitle = note ? (note.title || 'Untitled') : '';
+      cur.notes = cur.noteTitle;
+      cur.updated = Date.now();
+      en.quests[learnQuestId] = cur;
+      save();
+      if (window.PalinodeQuests) {
+        if (noteId) PalinodeQuests.selectNote(learnQuestId, noteId);
+        else PalinodeQuests.clearSelectedNote(learnQuestId);
+      }
+      renderLearn();
+    });
   }
 
   function epicsForGraph(q, limit) {
@@ -1095,6 +1187,7 @@
     questsForGraph,
     freeQuestsForGraph,
     isEnrolled,
+    syncQuestSubmission,
     hydrateEpic: id => Data().hydrateEpic(Data().epicOf(id)),
     hydrateMentor: id => Data().hydrateMentor(Data().mentorOf(id)),
     hydrateQuest: id => Data().hydrateQuest(Data().questOf(id)),

@@ -20,6 +20,7 @@ await mockKhora(page);
 await page.goto('http://localhost:8765/index.html', { waitUntil: 'networkidle' });
 await page.evaluate(() => localStorage.clear());
 await page.reload({ waitUntil: 'networkidle' });
+await page.waitForSelector('#graph:not([hidden])', { timeout: 8000 });
 
 /* Collapsing takes the Reading rail's column to zero, so reopening it is a
    question of whether its chevron is still reachable at all. An unreachable
@@ -84,9 +85,11 @@ check('six destinations', geo.items.length === 6,
   geo.items.map(i => i.id).join(','));
 check('the destinations are the contracted six, in order',
   actual === CONTRACT, actual);
-check('Notes is the only one marked active',
-  geo.onIds.length === 1 && geo.onIds[0] === 'btn-rail',
+check('Explore is the only one marked active',
+  geo.onIds.length === 1 && geo.onIds[0] === 'btn-explore',
   geo.onIds.join(',') || 'none');
+check('Explore is the default view', await page.evaluate(
+  () => !document.getElementById('graph').hidden));
 check('destinations are 56px tall', geo.items.every(i => i.h === 56),
   geo.items.map(i => i.h).join(','));
 /* 56 wide, not the 40 of the pill: a 40px target leaves 'Explore' hanging

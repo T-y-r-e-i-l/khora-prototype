@@ -132,15 +132,134 @@ const detailOpen = await page.evaluate(id => {
 }, freeId);
 check('Selecting a quest opens it in the centre', detailOpen);
 
+const playShape = await page.evaluate(id => {
+  const q = window.PalinodeMarketData.hydrateQuest(window.PalinodeMarketData.questOf(id));
+  const cards = [...document.querySelectorAll('.quest-node-card')];
+  const locked = cards.filter(c => c.classList.contains('locked')).length;
+  const current = cards.filter(c => c.classList.contains('current')).length;
+  const write = document.querySelector('[data-quest-write-step]');
+  const submit = document.querySelector('[data-quest-submit-step]');
+  const openNode = document.querySelector('[data-quest-open-node]');
+  const learn = document.querySelector('[data-quest-learn]');
+  const constel = document.querySelector('.quest-constel');
+  return {
+    stepCount: (q.steps || []).length,
+    uiSteps: cards.length,
+    locked,
+    current,
+    writeLabel: write ? write.textContent.trim() : '',
+    hasSubmit: !!submit,
+    hasOpenNode: !!openNode,
+    hasLearn: !!learn,
+    hasConstel: !!constel,
+    noBottomResponse: !document.querySelector('.quest-response-card'),
+    conceptIds: (q.conceptIds || []).length
+  };
+}, freeId);
+check('Hydrated quest exposes node steps', playShape.stepCount >= 1 && playShape.stepCount === playShape.conceptIds,
+  JSON.stringify(playShape));
+check('Quest detail is linear with Write/Submit Response',
+  playShape.uiSteps >= 1 && playShape.current === 1
+    && playShape.writeLabel === 'Write Response' && playShape.hasSubmit
+    && playShape.hasOpenNode && playShape.hasLearn && playShape.hasConstel
+    && playShape.noBottomResponse,
+  JSON.stringify(playShape));
+
+const promptQuality = await page.evaluate(() => {
+  const samples = ['q-prompt-veil', 'q-free-eudaimonia', 'q-free-dichotomy']
+    .map(id => window.PalinodeMarketData.hydrateQuest(window.PalinodeMarketData.questOf(id)))
+    .filter(Boolean)
+    .map(q => ({ id: q.id, prompt: q.prompt }));
+  const bad = samples.filter(s => /on (the )?map|on Explore/i.test(s.prompt || ''));
+  const veil = samples.find(s => s.id === 'q-prompt-veil');
+  return {
+    samples,
+    noneAreMapTasks: bad.length === 0,
+    veilIsWritePrompt: !!(veil && /\?/.test(veil.prompt) && !/on the map/i.test(veil.prompt))
+  };
+});
+check('Quest prompts inspire writing, not map chores',
+  promptQuality.noneAreMapTasks && promptQuality.veilIsWritePrompt,
+  JSON.stringify(promptQuality));
+
+/* Linear note submission unlocks next / completes */
+const visitSubmit = await page.evaluate(id => {
+  const q = window.PalinodeMarketData.hydrateQuest(window.PalinodeMarketData.questOf(id));
+  const steps = q.steps || [];
+  const results = [];
+  steps.forEach((s, i) => {
+    const note = window.PalinodeStore.Notes.create({
+      title: 'Step ' + (i + 1) + ' response',
+      body: 'Verify note for ' + s.id
+    });
+    const ok = PalinodeQuests.submitStepNote(id, s.id, note.id);
+    const st = JSON.parse(localStorage.getItem('palinode.quests.v1') || '{}');
+    results.push({
+      ok,
+      step: s.id,
+      done: !!st.entries?.[id]?.stepDone?.[s.id],
+      status: st.entries?.[id]?.status
+    });
+  });
+  const after = JSON.parse(localStorage.getItem('palinode.quests.v1') || '{}');
+  return {
+    results,
+    allOk: results.every(r => r.ok && r.done),
+    status: after.entries?.[id]?.status,
+    progress: after.entries?.[id]?.progress
+  };
+}, freeId);
+check('Submitting a note per step unlocks progression',
+  visitSubmit.allOk, JSON.stringify(visitSubmit));
+check('Submitting the final step note completes the quest',
+  visitSubmit.status === 'completed' && visitSubmit.progress === 1,
+  JSON.stringify(visitSubmit));
+
+/* Multi-step lock check on a fresh quest */
+const lockCheck = await page.evaluate(() => {
+  const q = window.PalinodeMarketData.hydrateQuest(
+    window.PalinodeMarketData.questOf('q-free-eudaimonia'));
+  if (!q || (q.steps || []).length < 2) return { ok: false, reason: 'need multi-step quest' };
+  PalinodeQuests.accept(q.id, 'explore');
+  PalinodeQuests.open(q.id);
+  const cards = [...document.querySelectorAll('.quest-node-card')];
+  const locked = cards.filter(c => c.classList.contains('locked')).length;
+  const lockCopy = (document.querySelector('.quest-node-lock-inner p') || {}).textContent || '';
+  return {
+    ok: locked === cards.length - 1 && /Complete/.test(lockCopy),
+    locked,
+    total: cards.length,
+    lockCopy
+  };
+});
+check('Later steps stay locked until prior is complete',
+  lockCheck.ok, JSON.stringify(lockCheck));
+
+/* Re-accept path: abandon another quest for legacy abandon check */
+const abandonId = freeId2 || freeId;
 await page.evaluate(id => {
-  PalinodeQuests.abandon(id);
-  PalinodeQuests.renderLog();
-}, freeId);
-const abandoned = await page.evaluate(id => {
+  if (!PalinodeQuests.get(id) || PalinodeQuests.get(id).status === 'completed') {
+    // ensure an active quest to abandon
+    const q = window.PalinodeMarketData.freeQuests().find(x => {
+      const e = PalinodeQuests.get(x.id);
+      return !e || e.status === 'abandoned';
+    });
+    if (q) PalinodeQuests.accept(q.id, 'explore');
+    return q ? q.id : id;
+  }
+  return id;
+}, abandonId);
+const abandonTarget = await page.evaluate(() => {
   const st = JSON.parse(localStorage.getItem('palinode.quests.v1') || '{}');
-  return (st.entries || {})[id]?.status;
-}, freeId);
-check('Abandon moves quest to abandoned', abandoned === 'abandoned', abandoned);
+  const active = Object.keys(st.entries || {}).find(id => st.entries[id].status === 'active');
+  if (active) {
+    PalinodeQuests.abandon(active);
+    PalinodeQuests.renderLog();
+    return { id: active, status: JSON.parse(localStorage.getItem('palinode.quests.v1')).entries[active].status };
+  }
+  return { id: null, status: null };
+});
+check('Abandon moves quest to abandoned', abandonTarget.status === 'abandoned', JSON.stringify(abandonTarget));
 
 await page.evaluate(() => {
   if (window.PalinodeGraph) PalinodeGraph.close();

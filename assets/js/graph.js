@@ -1043,7 +1043,7 @@
     else if (n.type === 'quest') {
       const q = window.PalinodeMarketplace && PalinodeMarketplace.hydrateQuest(n.ref);
       const epic = q && q.epicId && window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(q.epicId);
-      const typeLab = q && q.type === 'elenchos' ? 'Elenchos'
+      const typeLab = q && q.type === 'elenchos' ? 'Quest'
         : q && q.type === 'special' ? 'Special'
         : q && q.access === 'free' ? 'Free quest' : 'Course quest';
       body = q ? `
@@ -1297,6 +1297,10 @@
     detail(id);
     centreOn(n);
     notify();
+    if (n.type === 'concept' && n.ref && window.PalinodeQuests
+      && typeof PalinodeQuests.markVisited === 'function') {
+      PalinodeQuests.markVisited(n.ref);
+    }
     if (grow) {
       expandLive(n);
       if (added === 0 && n.type !== 'note' && n.type !== 'epic' && n.type !== 'mentor' && n.type !== 'quest' && !liveUuid(n))
@@ -2430,6 +2434,22 @@
       corpusEq = true;
       await redrawCorpus();
       const id = 'quest:' + questId;
+      if (nodes.has(id)) select(id);
+    },
+    async focusConcept(conceptId) {
+      if (!isCorpus() || !conceptId) return;
+      const id = cid(conceptId);
+      if (!nodes.has(id) && CONCEPT[conceptId]) {
+        addNode({
+          id,
+          type: 'concept',
+          ref: conceptId,
+          px: 0,
+          py: 0,
+          depth: 2
+        });
+        markDirty();
+      }
       if (nodes.has(id)) select(id);
     },
     refreshDetail() {

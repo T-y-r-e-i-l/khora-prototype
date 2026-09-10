@@ -569,15 +569,90 @@
   function mentorOf(id) { return MENTORS[id] || null; }
   function questOf(id) { return QUESTS.find(q => q.id === id) || null; }
 
+  function isMapVisitObjective(text) {
+    const t = String(text || '').trim();
+    if (!t) return true;
+    return /^(show|visit|open|place)\b/i.test(t)
+      || /\bon (the )?map\b/i.test(t)
+      || /\bon explore\b/i.test(t)
+      || /\bin your belief profile\b/i.test(t);
+  }
+
+  function isWritingObjective(text) {
+    const t = String(text || '').trim();
+    if (!t || isMapVisitObjective(t)) return false;
+    if (/\?/.test(t)) return true;
+    return /^(write|describe|name|rewrite|list|catch|pick|map|treat|notice|capture|caption|mark|decide|test|strip|check|answer|stand|face|pressure|commit|draft|present|underline|replace|break|publish|split|find|catalogue|bring|choose|photograph|design|retell|retest)\b/i.test(t);
+  }
+
+  function conceptTurn(conceptId) {
+    const list = window.PalinodeCorpus && PalinodeCorpus.CONCEPTS;
+    if (!list || !conceptId) return '';
+    const c = list.find(x => x.id === conceptId);
+    return (c && c.turn) || '';
+  }
+
+  function pickQuestPrompt(q, objectives, conceptIds) {
+    if (q.prompt && String(q.prompt).trim()) return String(q.prompt).trim();
+    const writing = (objectives || []).filter(isWritingObjective);
+    const question = writing.find(o => /\?/.test(o));
+    if (question) return question;
+    // Corpus turns are built as response prompts; prefer them over map leftovers
+    // or thin checklist lines like "Name the unfairness claim".
+    for (const id of (conceptIds || [])) {
+      const turn = conceptTurn(id);
+      if (turn) return turn;
+    }
+    if (writing.length) return writing[0];
+    const desc = String(q.description || '').trim();
+    if (desc && !isMapVisitObjective(desc)) return desc;
+    return 'After visiting these nodes, what claim are you willing to stand behind in your own words?';
+  }
+
+  function buildSteps(q) {
+    const objectives = (q.objectives && q.objectives.length)
+      ? q.objectives
+      : (q.description ? [q.description] : []);
+    if (q.steps && q.steps.length) {
+      return q.steps.map((s, i) => {
+        const raw = s.prompt || objectives[i] || null;
+        const prompt = raw && !isMapVisitObjective(raw) ? raw : (conceptTurn(s.conceptId) || raw);
+        return {
+          id: s.id || ('s' + (i + 1)),
+          conceptId: s.conceptId,
+          prompt
+        };
+      }).filter(s => s.conceptId);
+    }
+    const ids = q.conceptIds || [];
+    return ids.map((cid, i) => {
+      const raw = objectives[i] || null;
+      const prompt = raw && !isMapVisitObjective(raw) ? raw : (conceptTurn(cid) || raw);
+      return {
+        id: 's' + (i + 1),
+        conceptId: cid,
+        prompt
+      };
+    });
+  }
+
   function hydrateQuest(q) {
     if (!q) return null;
     const access = q.access || (q.epicId ? 'epic_required' : 'free');
+    const conceptIds = q.conceptIds || [];
+    const objectives = (q.objectives && q.objectives.length)
+      ? q.objectives
+      : (q.description ? [q.description] : []);
+    const steps = buildSteps(Object.assign({}, q, { conceptIds, objectives }));
+    const prompt = pickQuestPrompt(q, objectives, conceptIds);
     return Object.assign({}, q, {
       kind: 'quest',
       type: q.type || (access === 'free' ? 'elenchos' : 'course'),
       access,
-      conceptIds: q.conceptIds || [],
-      objectives: (q.objectives && q.objectives.length) ? q.objectives : (q.description ? [q.description] : []),
+      conceptIds,
+      objectives,
+      steps,
+      prompt,
       rewards: q.rewards || { exp: 25 }
     });
   }
