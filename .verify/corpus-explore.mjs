@@ -44,6 +44,8 @@ check('kind filter lists node types', await page.evaluate(() => {
   return !!(cat && [...cat.options].some(o => o.value === 'IDEA')
     && [...cat.options].some(o => o.value === 'PERSON'));
 }));
+check('Epics & Quests filter is present', await page.evaluate(
+  () => !!document.getElementById('gx-eq-filter')));
 check('tradition filter lists the local traditions', await page.evaluate(() => {
   const trad = document.getElementById('gx-trad');
   return !!(trad && [...trad.options].some(o => o.value === 'buddhist')

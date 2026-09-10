@@ -78,11 +78,11 @@ check('the body starts at the top now', geo.bodyTop === 0, geo.bodyTop + 'px');
 // the DOM contract Tasks 3 and 6 consume: these exact ids, carrying these
 // exact data-views, in this order. A typo in either would ship green
 // against a bare count, so name them.
-const CONTRACT = 'btn-rail:write,btn-explore:explore,btn-market:market,btn-pathways:pathways,btn-profile:profile';
+const CONTRACT = 'btn-rail:write,btn-explore:explore,btn-market:market,btn-pathways:pathways,btn-quests:quests,btn-profile:profile';
 const actual = geo.items.map(i => i.id + ':' + i.view).join(',');
-check('five destinations', geo.items.length === 5,
+check('six destinations', geo.items.length === 6,
   geo.items.map(i => i.id).join(','));
-check('the destinations are the contracted five, in order',
+check('the destinations are the contracted six, in order',
   actual === CONTRACT, actual);
 check('Notes is the only one marked active',
   geo.onIds.length === 1 && geo.onIds[0] === 'btn-rail',
@@ -142,6 +142,34 @@ check('Pathways is not an overlay', await page.evaluate(
 const afterPath = await viewState();
 check('Pathways marks itself active', JSON.parse(afterPath).active.includes('btn-pathways'),
   JSON.parse(afterPath).active);
+await page.click('#btn-quests');
+await page.waitForTimeout(300);
+check('Quests opens the page', await page.evaluate(() => {
+  const body = document.getElementById('body');
+  const empty = document.getElementById('quest-empty');
+  const list = document.getElementById('quest-list');
+  return body.classList.contains('quests-mode')
+    && empty && !empty.hidden
+    && list && !list.hidden
+    && !body.classList.contains('pathways-mode')
+    && document.getElementById('graph').hidden;
+}));
+check('Quests is not inside Marketplace', await page.evaluate(() => {
+  const wrap = document.getElementById('quests-wrap');
+  const market = document.getElementById('market-wrap');
+  const lab = document.querySelector('.rail-lab-quests');
+  return !!(lab && getComputedStyle(lab).display !== 'none'
+    && (!market || market.hidden)
+    && !document.querySelector('#mkt-tabs [data-mkt-tab="quests"]')
+    && wrap && wrap.hidden);
+}));
+check('Quests rail shows status filters', await page.evaluate(() => {
+  const filters = document.getElementById('quest-log-filters');
+  return !!(filters && !filters.hidden && filters.querySelector('[data-quest-log-filter="active"].on'));
+}));
+const afterQuests = await viewState();
+check('Quests marks itself active', JSON.parse(afterQuests).active.includes('btn-quests'),
+  JSON.parse(afterQuests).active);
 await page.click('#btn-profile');
 await page.waitForTimeout(300);
 const afterProfile = await viewState();
@@ -151,6 +179,7 @@ check('Profile opens the page and leaves Pathways', await page.evaluate(() => {
   return body.classList.contains('profile-mode')
     && view && !view.hidden
     && !body.classList.contains('pathways-mode')
+    && !body.classList.contains('quests-mode')
     && document.getElementById('graph').hidden;
 }));
 check('Profile marks itself active', JSON.parse(afterProfile).active.includes('btn-profile'),

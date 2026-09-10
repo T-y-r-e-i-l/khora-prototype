@@ -297,11 +297,42 @@ aside.rail .skip-track { margin-left: 0; }
 .body.pathways-mode #prompt-card,
 .body.pathways-mode #btn-new-list,
 .body.pathways-mode .rail-head .search,
-.body.pathways-mode #note-list { display: none; }
+.body.pathways-mode #note-list,
+.body.pathways-mode #quest-list,
+.body.pathways-mode #quest-log-filters { display: none; }
 .body.pathways-mode #path-list { display: block; }
 .rail-lab-paths { display: none; }
 .body.pathways-mode .rail-lab-notes { display: none; }
+.body.pathways-mode .rail-lab-quests { display: none; }
 .body.pathways-mode .rail-lab-paths { display: inline; }
+
+.body.quests-mode #prompt-card,
+.body.quests-mode #btn-new-list,
+.body.quests-mode .rail-head .search,
+.body.quests-mode #note-list,
+.body.quests-mode #path-list { display: none; }
+.body.quests-mode #quest-list { display: block; }
+.body.quests-mode #quest-log-filters { display: grid; }
+.rail-lab-quests { display: none; }
+#quest-log-filters {
+  display: none;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 10px 0 0;
+  padding: 2px;
+  gap: 2px;
+}
+#quest-log-filters .seg-btn {
+  padding: 5px 2px;
+  font-size: 8.5px;
+  letter-spacing: .05em;
+}
+.body.quests-mode .rail-lab-notes { display: none; }
+.body.quests-mode .rail-lab-paths { display: none; }
+.body.quests-mode .rail-lab-quests { display: inline; }
+.body.quests-mode aside.insights { display: none; }
+.body.quests-mode { grid-template-columns: var(--rail-l) minmax(0,1fr) 0; }
+.body.quests-mode.rail-closed { grid-template-columns: 0 minmax(0,1fr) 0; }
 
 /* ---------- centre: prompt + editor ---------------------------- */
 main.centre { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
@@ -760,7 +791,15 @@ aside.insights {
   .body,
   .body.rail-closed,
   .body.insights-closed,
-  .body.rail-closed.insights-closed { grid-template-columns: 1fr; }
+  .body.rail-closed.insights-closed,
+  .body.market-mode,
+  .body.quests-mode,
+  .body.market-mode.rail-closed,
+  .body.quests-mode.rail-closed,
+  .body.market-mode.insights-closed,
+  .body.quests-mode.insights-closed,
+  .body.market-mode.rail-closed.insights-closed,
+  .body.quests-mode.rail-closed.insights-closed { grid-template-columns: 1fr; }
   .centre-inner { padding-bottom: calc(110px + var(--bar) + env(safe-area-inset-bottom, 0px)); }
   aside.rail, aside.insights { display: none; }
   .body.show-rail aside.rail {
@@ -1113,6 +1152,20 @@ body.exploring { overflow: hidden; }
 .gx-corpus-row[hidden] { display: none; }
 #gx-cat-wrap { display: none; }
 #gx-trad-wrap { display: inline-flex; }
+.gx-eq-filter {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; padding: 0 12px; border-radius: var(--pill);
+  border: 1px solid var(--hairline); background: rgba(0,0,0,.34);
+  font-family: var(--sans); font-size: 9.5px; letter-spacing: .12em;
+  text-transform: uppercase; font-weight: 700; color: var(--ink-3);
+  cursor: pointer; transition: color .18s var(--ease), border-color .18s var(--ease), background .18s var(--ease);
+}
+.gx-eq-filter .gx-tool-ico { display: none; }
+.gx-eq-filter:hover { color: var(--ink-2); border-color: rgba(255,255,255,.22); }
+.gx-eq-filter.on {
+  color: var(--ink); border-color: color-mix(in srgb, var(--clarity) 45%, var(--hairline));
+  background: color-mix(in srgb, var(--clarity) 16%, rgba(0,0,0,.34));
+}
 .gx-corpus-row .filters {
   padding: 0;
   align-items: center;
@@ -1122,7 +1175,7 @@ body.exploring { overflow: hidden; }
   height: 28px;
   box-sizing: border-box;
 }
-#graph.corpus-mode .gx-trail-row { top: 108px; }
+#graph.corpus-mode .gx-trail-row { top: 140px; }
 .gx-sort {
   display: inline-flex; align-items: center; gap: 7px; height: 28px;
   font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-4);
@@ -1631,6 +1684,8 @@ body.dim3 .gx-top, body.dim3 .gx-trail-row { right: 0; }
    ============================================================ */
 
 #pathway-wrap[hidden], #path-empty[hidden], #path-list[hidden],
+#quests-wrap[hidden], #quest-empty[hidden], #quest-list[hidden],
+#quest-log-filters[hidden],
 #profile-view[hidden] { display: none; }
 .walk-kicker {
   display: flex; align-items: center; gap: 14px;
@@ -2162,6 +2217,7 @@ nav.sidenav {
   #gx-cat-wrap, #gx-trad-wrap { display: grid; }
   .gx-cat-lab, .gx-corpus-row .gx-sort > span { display: none; }
   #gx-filters { display: none; }
+  .gx-eq-filter { display: none; }
   .gx-corpus-row .gx-sort {
     position: relative;
     width: 34px; height: 28px; min-width: 34px;
@@ -2273,10 +2329,21 @@ nav.sidenav {
 .body.market-mode #btn-new-list,
 .body.market-mode .rail-head .search,
 .body.market-mode #note-list,
-.body.market-mode #path-list { display: none; }
+.body.market-mode #path-list,
+.body.market-mode #quest-list,
+.body.market-mode #quest-log-filters { display: none; }
 .body.market-mode aside.insights { display: none; }
 .body.market-mode { grid-template-columns: var(--rail-l) minmax(0,1fr) 0; }
 .body.market-mode.rail-closed { grid-template-columns: 0 minmax(0,1fr) 0; }
+
+#quests-wrap {
+  max-width: 760px; margin: 0 auto;
+}
+#quests-wrap .mkt-title { margin-top: 0; }
+.quest-detail-meta {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 14px;
+}
+.quest-detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
 
 #market-wrap { max-width: 920px; }
 .mkt-head { margin-bottom: 22px; }
@@ -2356,18 +2423,18 @@ nav.sidenav {
   margin: 22px 0 10px; font-size: 9px; letter-spacing: .2em;
   text-transform: uppercase; color: var(--ink-4); font-weight: 700;
 }
-.mkt-lessons { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.mkt-lesson-row {
+.mkt-quests, .mkt-lessons { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mkt-quest-row, .mkt-lesson-row {
   display: grid; grid-template-columns: 28px 1fr; gap: 4px 10px; width: 100%;
   text-align: left; background: rgba(0,0,0,.28); border: 1px solid var(--hairline-2);
   border-radius: var(--r-sm); padding: 10px 12px; color: inherit; font: inherit; cursor: pointer;
 }
-.mkt-lesson-row.static { cursor: default; }
-.mkt-lesson-row .n {
+.mkt-quest-row.static, .mkt-lesson-row.static { cursor: default; }
+.mkt-quest-row .n, .mkt-lesson-row .n {
   grid-row: 1 / span 2; align-self: start; font-size: 11px; color: var(--ink-4); padding-top: 2px;
 }
-.mkt-lesson-row .t { font-family: var(--serif); font-size: 14px; color: var(--ink); }
-.mkt-lesson-row .d { grid-column: 2; font-size: 12px; line-height: 1.5; color: var(--ink-3); }
+.mkt-quest-row .t, .mkt-lesson-row .t { font-family: var(--serif); font-size: 14px; color: var(--ink); }
+.mkt-quest-row .d, .mkt-lesson-row .d { grid-column: 2; font-size: 12px; line-height: 1.5; color: var(--ink-3); }
 .mkt-ov-act { margin-top: 22px; max-width: 320px; }
 
 .mkt-progress-lab { font-size: 11px; color: var(--ink-3); margin: 10px 0 6px; }
@@ -2440,6 +2507,10 @@ nav.sidenav {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--lineage) 55%, transparent),
     0 0 18px color-mix(in srgb, var(--lineage) 35%, transparent);
 }
+.gx-node.gx-quest .gx-orb {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--clarity) 55%, transparent),
+    0 0 18px color-mix(in srgb, var(--clarity) 32%, transparent);
+}
 .gx-node.gx-mentor .gx-orb {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--stance) 55%, transparent),
     0 0 18px color-mix(in srgb, var(--stance) 30%, transparent);
@@ -2474,7 +2545,41 @@ nav.sidenav {
 }
 .gx-hover-acts button:hover { color: var(--ink); border-color: rgba(255,255,255,.24); }
 
+.gx-node.gx-mercurial .gx-orb {
+  animation: mercurial-pulse 2.4s ease-in-out infinite;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--clarity) 70%, transparent),
+    0 0 22px color-mix(in srgb, var(--clarity) 45%, transparent);
+}
+@keyframes mercurial-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: .92; }
+}
+
+.quest-overview .quest-ov-kicker {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.quest-overview .quest-ov-access {
+  font-size: 11px; letter-spacing: .06em; color: var(--ink-3); text-transform: uppercase;
+}
+.quest-objectives {
+  margin: 0 0 14px; padding-left: 1.15em; color: var(--ink-2);
+  font-size: 13px; line-height: 1.55;
+}
+.quest-ov-act { margin-top: 18px; }
+.mkt-quest-log { margin-top: 8px; }
+.quest-log-filters { margin-bottom: 14px; }
+.quest-log-grid { margin-top: 4px; }
+#quest-overview-scrim { z-index: 70; }
+
 @media (max-width: 900px) {
+  .body.market-mode,
+  .body.quests-mode,
+  .body.market-mode.rail-closed,
+  .body.quests-mode.rail-closed,
+  .body.market-mode.insights-closed,
+  .body.quests-mode.insights-closed,
+  .body.market-mode.rail-closed.insights-closed,
+  .body.quests-mode.rail-closed.insights-closed { grid-template-columns: 1fr; }
   .mkt-learn-split { grid-template-columns: 1fr; }
   .mkt-chat { width: 100%; }
   #mkt-tabs { flex-wrap: wrap; }

@@ -90,7 +90,7 @@ await page.click('#mkt-pay');
 await page.waitForTimeout(400);
 const afterPay = await page.evaluate(() => {
   const tab = (document.querySelector('#mkt-tabs .seg-btn.on') || {}).dataset.mktTab;
-  const mine = Object.keys(JSON.parse(localStorage.getItem('palinode.market.v2') || '{}').enrollments || {});
+  const mine = Object.keys(JSON.parse(localStorage.getItem('palinode.market.v3') || '{}').enrollments || {});
   const learnOrOv = !document.getElementById('mkt-overview').hidden
     || !document.getElementById('mkt-learn').hidden;
   return { tab, enrolled: mine.length, learnOrOv };
@@ -116,11 +116,15 @@ const learn = await page.evaluate(() => {
   const host = document.getElementById('mkt-learn');
   return {
     shown: !!(host && !host.hidden),
-    lessons: document.querySelectorAll('[data-mkt-lesson]').length,
+    lessons: document.querySelectorAll('[data-mkt-quest]').length,
     chat: !!document.querySelector('#mkt-learn [data-mkt-chat]')
   };
 });
 check('Continue opens learning view', learn.shown && learn.lessons >= 1, JSON.stringify(learn));
+check('localStorage uses quest progress', await page.evaluate(() => {
+  const en = Object.values(JSON.parse(localStorage.getItem('palinode.market.v3') || '{}').enrollments || {})[0];
+  return !!(en && en.quests && Object.keys(en.quests).length);
+}));
 
 await page.click('#mkt-learn [data-mkt-chat]');
 await page.waitForTimeout(200);
@@ -172,6 +176,41 @@ if (epicNodes.count) {
     return !!(wrap && !wrap.hidden && ov && !ov.hidden);
   }));
 }
+
+await page.evaluate(() => {
+  if (window.PalinodeMarketplace && PalinodeMarketplace.isOpen()) PalinodeMarketplace.leave();
+});
+await page.click('#btn-explore');
+await page.waitForSelector('#graph:not([hidden])');
+await page.waitForFunction(() => {
+  const row = document.getElementById('gx-corpus-row');
+  const btn = document.getElementById('gx-eq-filter');
+  return !!(row && !row.hidden && btn);
+});
+await page.click('#gx-eq-filter');
+await page.waitForFunction(() => {
+  const eq = document.getElementById('gx-eq-filter');
+  return eq && eq.getAttribute('aria-pressed') === 'true'
+    && document.querySelectorAll('.gx-node.gx-quest').length >= 1
+    && document.querySelectorAll('.gx-node.gx-epic').length >= 1;
+}, null, { timeout: 8000 });
+const questField = await page.evaluate(() => {
+  const quests = [...document.querySelectorAll('.gx-node.gx-quest')];
+  const epics = [...document.querySelectorAll('.gx-node.gx-epic')];
+  const mentors = [...document.querySelectorAll('.gx-node.gx-mentor')];
+  const concepts = [...document.querySelectorAll('.gx-node.gx-concept')];
+  return {
+    quests: quests.length,
+    epics: epics.length,
+    mentors: mentors.length,
+    concepts: concepts.length,
+    pressed: document.getElementById('gx-eq-filter').getAttribute('aria-pressed')
+  };
+});
+check('Epics & Quests filter activates', questField.pressed === 'true');
+check('filter shows epics and quests only',
+  questField.quests >= 3 && questField.epics >= 1 && questField.mentors === 0 && questField.concepts === 0,
+  JSON.stringify(questField));
 
 if (problems.length) problems.forEach(p => check(p, false));
 console.log(`\n${pass} passed, ${fail} failed, ${problems.length} runtime issues`);

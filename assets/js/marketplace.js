@@ -6,7 +6,7 @@
   const Data = () => window.PalinodeMarketData;
   const Pathways = () => window.PalinodeStore && window.PalinodeStore.Pathways;
 
-  const KEY = 'palinode.market.v2';
+  const KEY = 'palinode.market.v3';
   const $ = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
   const esc = s => String(s || '').replace(/[&<>"']/g, c => (
@@ -47,7 +47,7 @@
   let view = 'board'; // board | mentor | overview | learn
   let focusId = null; // epic or mentor id
   let focusKind = 'epic'; // epic | mentor
-  let learnLessonId = null;
+  let learnQuestId = null;
   let checkoutTarget = null;
   let bookMentorId = null;
   let active = false;
@@ -61,15 +61,15 @@
     const e = Data().epicOf(epicId);
     if (!e) return null;
     if (!state.enrollments[epicId]) {
-      const lessons = {};
-      (e.lessons || []).forEach(l => {
-        lessons[l.id] = { status: 'Draft', notes: '', fileName: '', updated: Date.now() };
+      const quests = {};
+      (e.questIds || []).forEach(qid => {
+        quests[qid] = { status: 'Draft', notes: '', fileName: '', updated: Date.now() };
       });
       state.enrollments[epicId] = {
         epicId,
         enrolledAt: Date.now(),
         complete: false,
-        lessons
+        quests
       };
       if (!state.chat[epicId]) {
         const mentor = Data().mentorOf(e.mentorId);
@@ -82,6 +82,7 @@
         }];
       }
       save();
+      if (window.PalinodeQuests) PalinodeQuests.activateForEpic(epicId);
     }
     return state.enrollments[epicId];
   }
@@ -123,7 +124,7 @@
       <p class="mkt-meta"><span class="mkt-stars" aria-label="${item.rating} of 5">${stars(item.rating)}</span>
         <span>${item.rating.toFixed(1)}</span>
         <span>·</span>
-        <span>${item.moduleCount} module${item.moduleCount === 1 ? '' : 's'}</span></p>
+        <span>${item.questCount} quest${item.questCount === 1 ? '' : 's'}</span></p>
       <p class="mkt-langs">${esc((item.languages || []).join(' · '))}</p>
       <p class="mkt-desc">${esc(item.description)}</p>
       <div class="mkt-tags">${tagsHtml(item.tags)}</div>
@@ -235,10 +236,10 @@
   function renderBoard() {
     const grid = $('#mkt-grid');
     const empty = $('#mkt-empty');
-    const html = boardItemsHtml();
-    const count = (html.match(/mkt-card/g) || []).length;
     $$('#mkt-tabs .seg-btn').forEach(b => b.classList.toggle('on', b.dataset.mktTab === tab));
     syncFilterChrome();
+    const html = boardItemsHtml();
+    const count = (html.match(/mkt-card/g) || []).length;
     if (grid) {
       grid.innerHTML = html;
       grid.hidden = !count;
@@ -277,10 +278,10 @@
 
   function progressOf(epicId) {
     const en = enrollment(epicId);
-    const e = Data().epicOf(epicId);
+    const e = Data().hydrateEpic(Data().epicOf(epicId));
     if (!en || !e) return { done: 0, total: 0, pct: 0 };
-    const total = (e.lessons || []).length;
-    const done = (e.lessons || []).filter(l => en.lessons[l.id] && en.lessons[l.id].status === 'Completed').length;
+    const total = (e.quests || []).length;
+    const done = (e.quests || []).filter(q => en.quests[q.id] && en.quests[q.id].status === 'Completed').length;
     return { done, total, pct: total ? Math.round((done / total) * 100) : 0 };
   }
 
@@ -330,14 +331,14 @@
       </ul>
 
       <h4 class="mkt-ov-h">Epics they offer</h4>
-      <ol class="mkt-lessons">
+      <ol class="mkt-quests">
         ${(m.epics || []).map((e, i) => {
           const enrolled = isEnrolled(e.id);
           return `<li>
-            <button type="button" class="mkt-lesson-row" data-mkt-open="epic:${esc(e.id)}">
+            <button type="button" class="mkt-quest-row" data-mkt-open="epic:${esc(e.id)}">
               <span class="n">${i + 1}</span>
               <span class="t">${esc(e.title)}</span>
-              <span class="d">${e.moduleCount} modules · ${priceLabel(e.price)}${enrolled ? ' · Enrolled' : ''}</span>
+              <span class="d">${e.questCount} quests · ${priceLabel(e.price)}${enrolled ? ' · Enrolled' : ''}</span>
             </button>
           </li>`;
         }).join('')}
@@ -382,14 +383,14 @@
       ${enrolled ? `<p class="mkt-progress-lab">Progress ${prog.done}/${prog.total} · ${prog.pct}%</p>
         <div class="mkt-progress"><i style="width:${prog.pct}%"></i></div>` : ''}
       <h4 class="mkt-ov-h">Quests</h4>
-      <ol class="mkt-lessons">
-        ${(e.lessons || []).map((l, i) => {
-          const st = en && en.lessons[l.id] ? en.lessons[l.id].status : '';
+      <ol class="mkt-quests">
+        ${(e.quests || []).map((q, i) => {
+          const st = en && en.quests[q.id] ? en.quests[q.id].status : '';
           return `<li>
-            <div class="mkt-lesson-row static">
+            <div class="mkt-quest-row static">
               <span class="n">${i + 1}</span>
-              <span class="t">${esc(l.name)}</span>
-              <span class="d">${esc(l.description)}</span>
+              <span class="t">${esc(q.title)}</span>
+              <span class="d">${esc(q.description)}</span>
               ${st ? `<span class="mkt-status ${esc(st.toLowerCase().replace(/\s/g, '-'))}">${esc(st)}</span>` : ''}
             </div>
           </li>`;
@@ -522,6 +523,7 @@
     if (!checkoutTarget) return;
     const id = checkoutTarget;
     ensureEnrollment(id);
+    if (window.PalinodeQuests) PalinodeQuests.activateForEpic(id);
     closeCheckout();
     toast('Enrolled. Opening My Epics.');
     tab = 'mine';
@@ -537,9 +539,9 @@
     const e = Data().hydrateEpic(Data().epicOf(focusId));
     const en = ensureEnrollment(focusId);
     if (!e || !en) return;
-    if (!learnLessonId && e.lessons.length) learnLessonId = e.lessons[0].id;
-    const lesson = (e.lessons || []).find(l => l.id === learnLessonId) || e.lessons[0];
-    const sub = en.lessons[lesson.id] || { status: 'Draft', notes: '', fileName: '' };
+    if (!learnQuestId && e.quests.length) learnQuestId = e.quests[0].id;
+    const quest = (e.quests || []).find(q => q.id === learnQuestId) || e.quests[0];
+    const sub = en.quests[quest.id] || { status: 'Draft', notes: '', fileName: '' };
     const prog = progressOf(e.id);
     const locked = sub.status === 'Submitted' || sub.status === 'Under Review' || sub.status === 'Completed';
     const allDone = prog.total > 0 && prog.done === prog.total;
@@ -555,34 +557,34 @@
       <div class="mkt-progress"><i style="width:${prog.pct}%"></i></div>
       <div class="mkt-learn-split">
         <ol class="mkt-learn-nav">
-          ${(e.lessons || []).map((l, i) => {
-            const st = en.lessons[l.id] ? en.lessons[l.id].status : 'Draft';
-            return `<li><button type="button" class="mkt-learn-nav-btn${l.id === lesson.id ? ' on' : ''}"
-              data-mkt-lesson="${esc(l.id)}"><span class="n">${i + 1}</span>
-              <span class="t">${esc(l.name)}</span>
+          ${(e.quests || []).map((q, i) => {
+            const st = en.quests[q.id] ? en.quests[q.id].status : 'Draft';
+            return `<li><button type="button" class="mkt-learn-nav-btn${q.id === quest.id ? ' on' : ''}"
+              data-mkt-quest="${esc(q.id)}"><span class="n">${i + 1}</span>
+              <span class="t">${esc(q.title)}</span>
               <span class="mkt-status ${esc(st.toLowerCase().replace(/\s/g, '-'))}">${esc(st)}</span>
             </button></li>`;
           }).join('')}
         </ol>
         <div class="mkt-learn-detail">
-          <h3>${esc(lesson.name)}</h3>
-          <p class="mkt-desc">${esc(lesson.description)}</p>
+          <h3>${esc(quest.title)}</h3>
+          <p class="mkt-desc">${esc(quest.description)}</p>
           <label class="mkt-field">
             <span>Your turn-in</span>
-            <textarea id="mkt-lesson-notes" ${locked ? 'readonly' : ''} rows="5"
+            <textarea id="mkt-quest-notes" ${locked ? 'readonly' : ''} rows="5"
               placeholder="Notes, reflections, links…">${esc(sub.notes)}</textarea>
           </label>
           <label class="mkt-field">
             <span>Attachment (name only — mock)</span>
-            <input type="text" id="mkt-lesson-file" ${locked ? 'readonly' : ''}
+            <input type="text" id="mkt-quest-file" ${locked ? 'readonly' : ''}
               value="${esc(sub.fileName)}" placeholder="essay.pdf">
           </label>
           <p class="mkt-status-line">Status: <strong class="mkt-status ${esc(sub.status.toLowerCase().replace(/\s/g, '-'))}">${esc(sub.status)}</strong></p>
           <div class="gx-act">
-            ${!locked ? `<button class="ghost solid" data-mkt-submit-lesson>Turn in quest</button>` : ''}
+            ${!locked ? `<button class="ghost solid" data-mkt-submit-quest>Turn in quest</button>` : ''}
             ${sub.status === 'Submitted' || sub.status === 'Under Review'
               ? `<button class="ghost" data-mkt-simulate-review>Simulate mentor review</button>` : ''}
-            <button class="ghost" data-mkt-discuss-lesson="${esc(lesson.id)}">Discuss this quest</button>
+            <button class="ghost" data-mkt-discuss-quest="${esc(quest.id)}">Discuss this quest</button>
           </div>
           <div class="gx-act" style="margin-top:18px">
             <button class="ghost solid" data-mkt-complete-epic ${allDone && !en.complete ? '' : 'disabled'}>
@@ -593,13 +595,13 @@
       </div>`;
   }
 
-  function submitLesson() {
+  function submitQuest() {
     const en = enrollment(focusId);
-    if (!en || !learnLessonId) return;
-    const notes = ($('#mkt-lesson-notes') || {}).value || '';
+    if (!en || !learnQuestId) return;
+    const notes = ($('#mkt-quest-notes') || {}).value || '';
     if (!notes.trim()) { toast('Add notes before turning in.'); return; }
-    const fileName = ($('#mkt-lesson-file') || {}).value || '';
-    en.lessons[learnLessonId] = {
+    const fileName = ($('#mkt-quest-file') || {}).value || '';
+    en.quests[learnQuestId] = {
       status: 'Submitted',
       notes: notes.trim(),
       fileName: fileName.trim(),
@@ -610,9 +612,9 @@
     renderLearn();
     setTimeout(() => {
       const cur = enrollment(focusId);
-      if (!cur || !cur.lessons[learnLessonId]) return;
-      if (cur.lessons[learnLessonId].status !== 'Submitted') return;
-      cur.lessons[learnLessonId].status = 'Under Review';
+      if (!cur || !cur.quests[learnQuestId]) return;
+      if (cur.quests[learnQuestId].status !== 'Submitted') return;
+      cur.quests[learnQuestId].status = 'Under Review';
       save();
       if (view === 'learn') renderLearn();
     }, 1600);
@@ -620,13 +622,14 @@
 
   function simulateReview() {
     const en = enrollment(focusId);
-    if (!en || !learnLessonId) return;
-    const sub = en.lessons[learnLessonId];
+    if (!en || !learnQuestId) return;
+    const sub = en.quests[learnQuestId];
     if (!sub) return;
     if (sub.status === 'Under Review' || sub.status === 'Submitted') {
       sub.status = 'Completed';
       sub.updated = Date.now();
       save();
+      if (window.PalinodeQuests) PalinodeQuests.complete(learnQuestId);
       toast('Mentor marked this quest complete.');
       renderLearn();
     }
@@ -749,12 +752,16 @@
     const path = $('#pathway-wrap');
     const pe = $('#path-empty');
     const profile = $('#profile-view');
+    const quests = $('#quests-wrap');
+    const qe = $('#quest-empty');
     if (ed) ed.hidden = true;
     if (empty) { empty.hidden = true; empty.style.display = 'none'; }
     if (read) read.hidden = true;
     if (path) path.hidden = true;
     if (pe) pe.hidden = true;
     if (profile) profile.hidden = true;
+    if (quests) quests.hidden = true;
+    if (qe) qe.hidden = true;
   }
 
   function enter(opts) {
@@ -767,7 +774,7 @@
       insightsWasClosed = body.classList.contains('insights-closed');
     if (body) {
       body.classList.add('market-mode', 'insights-closed');
-      body.classList.remove('pathways-mode', 'show-rail', 'show-insights');
+      body.classList.remove('pathways-mode', 'quests-mode', 'show-rail', 'show-insights');
     }
     tab = (opts && opts.tab) || 'mentors';
     query = '';
@@ -780,6 +787,8 @@
     renderFilters();
     if (opts && opts.mentorId) {
       showMentor(opts.mentorId);
+    } else if (opts && opts.questId) {
+      openQuest(opts.questId);
     } else if (opts && opts.epicId) {
       showEpicOverview(opts.epicId);
     } else {
@@ -875,7 +884,7 @@
       if (learn) {
         focusId = learn.dataset.mktLearn;
         focusKind = 'epic';
-        learnLessonId = null;
+        learnQuestId = null;
         ensureEnrollment(focusId);
         showView('learn');
         return;
@@ -896,21 +905,21 @@
         else showView('board');
         return;
       }
-      const lesson = e.target.closest('[data-mkt-lesson]');
-      if (lesson) {
-        const notes = $('#mkt-lesson-notes');
-        const file = $('#mkt-lesson-file');
+      const questBtn = e.target.closest('[data-mkt-quest]');
+      if (questBtn) {
+        const notes = $('#mkt-quest-notes');
+        const file = $('#mkt-quest-file');
         const en = enrollment(focusId);
-        if (en && learnLessonId && notes && !notes.readOnly) {
-          en.lessons[learnLessonId].notes = notes.value;
-          en.lessons[learnLessonId].fileName = (file && file.value) || '';
+        if (en && learnQuestId && notes && !notes.readOnly) {
+          en.quests[learnQuestId].notes = notes.value;
+          en.quests[learnQuestId].fileName = (file && file.value) || '';
           save();
         }
-        learnLessonId = lesson.dataset.mktLesson;
+        learnQuestId = questBtn.dataset.mktQuest;
         renderLearn();
         return;
       }
-      if (e.target.closest('[data-mkt-submit-lesson]')) { submitLesson(); return; }
+      if (e.target.closest('[data-mkt-submit-quest]')) { submitQuest(); return; }
       if (e.target.closest('[data-mkt-simulate-review]')) { simulateReview(); return; }
       if (e.target.closest('[data-mkt-complete-epic]')) { completeEpic(); return; }
       const chat = e.target.closest('[data-mkt-chat]');
@@ -933,11 +942,11 @@
         else if (kind === 'mentor') toast('Book a session or open one of their epics to discuss.');
         return;
       }
-      const dl = e.target.closest('[data-mkt-discuss-lesson]');
+      const dl = e.target.closest('[data-mkt-discuss-quest]');
       if (dl) {
-        const epic = Data().epicOf(focusId);
-        const lessonObj = epic && (epic.lessons || []).find(l => l.id === dl.dataset.mktDiscussLesson);
-        openChat(focusId, lessonObj ? ('Re: ' + lessonObj.name + ' — ') : '');
+        const epic = Data().hydrateEpic(Data().epicOf(focusId));
+        const questObj = epic && (epic.quests || []).find(q => q.id === dl.dataset.mktDiscussQuest);
+        openChat(focusId, questObj ? ('Re: ' + questObj.title + ' — ') : '');
       }
     });
 
@@ -1002,12 +1011,61 @@
     });
   }
 
-  function epicsForGraph() {
-    return Data().allEpics().slice(0, 4);
+  function epicsForGraph(q, limit) {
+    let list = Data().allEpics();
+    const needle = String(q || '').trim().toLowerCase();
+    if (needle) {
+      list = list.filter(e =>
+        [e.title, e.description, e.mentorName, ...(e.tags || [])].join(' ').toLowerCase().includes(needle));
+    }
+    const lim = typeof limit === 'number' ? limit : (needle ? 12 : 4);
+    return list.slice(0, lim);
   }
 
-  function mentorsForGraph() {
-    return Data().allMentors().slice(0, 4);
+  function mentorsForGraph(q) {
+    let list = Data().allMentors();
+    const needle = String(q || '').trim().toLowerCase();
+    if (needle) {
+      list = list.filter(m =>
+        [m.name, m.bio, m.education, ...(m.tags || [])].join(' ').toLowerCase().includes(needle));
+    }
+    return list.slice(0, needle ? 8 : 4);
+  }
+
+  function questsForGraph(q, limit) {
+    let list = Data().allQuests();
+    const needle = String(q || '').trim().toLowerCase();
+    if (needle) {
+      list = list.filter(quest => {
+        const epic = Data().epicOf(quest.epicId);
+        return [quest.title, quest.description, epic && epic.title]
+          .filter(Boolean).join(' ').toLowerCase().includes(needle);
+      });
+    }
+    const lim = typeof limit === 'number' ? limit : 18;
+    return list.slice(0, lim);
+  }
+
+  function freeQuestsForGraph() {
+    return Data().freeQuests().slice(0, 6);
+  }
+
+  function openQuest(questId) {
+    const q = Data().questOf(questId);
+    if (!q) return;
+    const epicId = q.epicId;
+    if (isEnrolled(epicId)) {
+      focusKind = 'epic';
+      focusId = epicId;
+      learnQuestId = questId;
+      ensureEnrollment(epicId);
+      tab = 'mine';
+      showView('learn');
+      renderLearn();
+    } else {
+      showEpicOverview(epicId);
+      toast('Sign up for the epic to work this quest.');
+    }
   }
 
   window.PalinodeMarketplace = {
@@ -1016,14 +1074,18 @@
     isOpen,
     openMentor: id => { if (!active) enter({ mentorId: id }); else showMentor(id); },
     openEpic: id => { if (!active) enter({ epicId: id }); else showEpicOverview(id); },
+    openQuest: id => { if (!active) enter({ questId: id }); else openQuest(id); },
     shareEpic,
     shareMentor,
     bookmarkEpic,
     epicsForGraph,
     mentorsForGraph,
+    questsForGraph,
+    freeQuestsForGraph,
     isEnrolled,
     hydrateEpic: id => Data().hydrateEpic(Data().epicOf(id)),
     hydrateMentor: id => Data().hydrateMentor(Data().mentorOf(id)),
+    hydrateQuest: id => Data().hydrateQuest(Data().questOf(id)),
     onChrome: null,
     bind
   };

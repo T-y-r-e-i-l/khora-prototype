@@ -242,7 +242,18 @@
         out.push({ id: cid(c), type: 'concept', ref: c, kind: 'within' }));
       return out;
     }
-    if (node.type === 'epic') return out;
+    if (node.type === 'epic') {
+      const s = window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(node.ref);
+      (s && s.quests || []).forEach(q =>
+        out.push({ id: 'quest:' + q.id, type: 'quest', ref: q.id, kind: 'within' }));
+      return out;
+    }
+    if (node.type === 'quest') {
+      const q = window.PalinodeMarketplace && PalinodeMarketplace.hydrateQuest(node.ref);
+      if (q && q.epicId)
+        out.push({ id: 'epic:' + q.epicId, type: 'epic', ref: q.epicId, kind: 'within' });
+      return out;
+    }
     if (node.type === 'mentor') {
       const m = window.PalinodeMarketplace && PalinodeMarketplace.hydrateMentor(node.ref);
       (m && m.epics || []).forEach(e =>
@@ -274,6 +285,10 @@
       const s = window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(n.ref);
       return s ? s.title : (n.label || n.ref);
     }
+    if (n.type === 'quest') {
+      const q = window.PalinodeMarketplace && PalinodeMarketplace.hydrateQuest(n.ref);
+      return q ? q.title : (n.label || n.ref);
+    }
     if (n.type === 'mentor') {
       const m = window.PalinodeMarketplace && PalinodeMarketplace.hydrateMentor(n.ref);
       return m ? m.name : (n.label || n.ref);
@@ -294,6 +309,11 @@
     if (n.type === 'epic') {
       const s = window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(n.ref);
       return (s && s.category) || 'lineage';
+    }
+    if (n.type === 'quest') {
+      const q = window.PalinodeMarketplace && PalinodeMarketplace.hydrateQuest(n.ref);
+      const epic = q && window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(q.epicId);
+      return (epic && epic.category) || 'clarity';
     }
     if (n.type === 'mentor') return 'lineage';
     return 'resonance';       // notes, other notes and media are yours
@@ -316,6 +336,11 @@
     if (n.type === 'epic') {
       const s = window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(n.ref);
       return s ? ('Epic · ' + s.mentorName) : 'Epic';
+    }
+    if (n.type === 'quest') {
+      const q = window.PalinodeMarketplace && PalinodeMarketplace.hydrateQuest(n.ref);
+      const epic = q && window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(q.epicId);
+      return epic ? ('Quest · ' + epic.title) : 'Quest';
     }
     if (n.type === 'mentor') {
       const m = window.PalinodeMarketplace && PalinodeMarketplace.hydrateMentor(n.ref);
@@ -534,7 +559,7 @@
     n.type === 'note' ? 34 :
     n.type === 'media' ? (n._url ? 46 : 14) :
     n.type === 'note-other' ? 22 :
-    n.type === 'epic' || n.type === 'mentor' ? 18 :
+    n.type === 'epic' || n.type === 'mentor' || n.type === 'quest' ? 18 :
     n.type === 'tradition' ? 11 :
     n.type === 'spectrum' ? (leanOf(n.ref) ? 16 : 12) :
     n.type === 'link' ? 12 :
@@ -547,10 +572,11 @@
   let corpusCats = new Set();
   let corpusTradition = '';
   let corpusSort = 'name';
+  let corpusEq = false; // Epics & Quests filter — market nodes only
 
   const showLabel = n =>
     n.type === 'note' || n.type === 'note-other' || n.type === 'link' ||
-    n.type === 'spectrum' || n.type === 'epic' || n.type === 'mentor' ||
+    n.type === 'spectrum' || n.type === 'epic' || n.type === 'mentor' || n.type === 'quest' ||
     n.inNote || n.state === 'open' ||
     n.id === selected || n.id === hoverId || isSaved(n.id);
 
@@ -595,6 +621,12 @@
               <button type="button" data-epic-bookmark="${escapeHtml(n.ref)}">Bookmark</button>
             </span>`);
         }
+        if (n.type === 'quest') {
+          el.insertAdjacentHTML('beforeend',
+            `<span class="gx-hover-acts">
+              <button type="button" data-quest-open="${escapeHtml(n.ref)}">Open</button>
+            </span>`);
+        }
         if (n.type === 'mentor') {
           el.insertAdjacentHTML('beforeend',
             `<span class="gx-hover-acts">
@@ -611,6 +643,10 @@
       n.fresh = false;
       const lab = showLabel(n);
       const cls = ['gx-node', 'gx-' + n.type];
+      if (n.type === 'quest') {
+        const q = window.PalinodeMarketplace && PalinodeMarketplace.hydrateQuest(n.ref);
+        if (q && q.access === 'free') cls.push('gx-mercurial');
+      }
       if (n.id === selected) cls.push('sel');
       if (n.inNote) cls.push('in-note');
       if (isSaved(n.id)) cls.push('saved');
@@ -982,7 +1018,7 @@
         <h3>${escapeHtml(s.title)}</h3>
         <p class="gx-author">${escapeHtml(s.mentorName)}</p>
         <p class="gx-lede">${escapeHtml(s.description)}</p>
-        <p class="gx-fine">${s.moduleCount} quests · ${escapeHtml((s.languages || []).join(' · '))} · $${s.price}</p>
+        <p class="gx-fine">${s.questCount} quests · ${escapeHtml((s.languages || []).join(' · '))} · $${s.price}</p>
         <div class="gx-act">
           <button class="ghost solid" data-act="epic-open" data-ref="${escapeHtml(s.id)}">View epic details</button>
           <button class="ghost" data-act="epic-share" data-ref="${escapeHtml(s.id)}">Share</button>
@@ -990,6 +1026,27 @@
         </div>
         ${more}` : `
         <div class="gx-kicker">${orb('lineage')}Epic</div>
+        <h3>${escapeHtml(n.label || n.ref)}</h3>`;
+    }
+
+    else if (n.type === 'quest') {
+      const q = window.PalinodeMarketplace && PalinodeMarketplace.hydrateQuest(n.ref);
+      const epic = q && q.epicId && window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(q.epicId);
+      const typeLab = q && q.type === 'elenchos' ? 'Elenchos'
+        : q && q.type === 'special' ? 'Special'
+        : q && q.access === 'free' ? 'Free quest' : 'Course quest';
+      body = q ? `
+        <div class="gx-kicker">${orb((epic && epic.category) || 'clarity')}${escapeHtml(typeLab)}</div>
+        <h3>${escapeHtml(q.title)}</h3>
+        <p class="gx-author">${escapeHtml(epic ? epic.title : (q.access === 'free' ? 'Discoverable on the map' : 'Quest'))}</p>
+        <p class="gx-lede">${escapeHtml(q.description)}</p>
+        <p class="gx-fine">${epic ? (escapeHtml(epic.mentorName) + ' · ' + epic.questCount + ' quests in epic') : 'Accept to add this quest to your log'}</p>
+        <div class="gx-act">
+          <button class="ghost solid" data-act="quest-open" data-ref="${escapeHtml(q.id)}">View quest</button>
+          ${epic ? `<button class="ghost" data-act="epic-open" data-ref="${escapeHtml(epic.id)}">View epic</button>` : ''}
+        </div>
+        ${more}` : `
+        <div class="gx-kicker">${orb('clarity')}Quest</div>
         <h3>${escapeHtml(n.label || n.ref)}</h3>`;
     }
 
@@ -1231,9 +1288,9 @@
     notify();
     if (grow) {
       expandLive(n);
-      if (added === 0 && n.type !== 'note' && n.type !== 'epic' && n.type !== 'mentor' && !liveUuid(n))
+      if (added === 0 && n.type !== 'note' && n.type !== 'epic' && n.type !== 'mentor' && n.type !== 'quest' && !liveUuid(n))
         toast('Everything this leads to is already on the canvas.');
-    } else if (added === 0 && n.type !== 'note' && n.type !== 'epic' && n.type !== 'mentor') {
+    } else if (added === 0 && n.type !== 'note' && n.type !== 'epic' && n.type !== 'mentor' && n.type !== 'quest') {
       toast('Everything this leads to is already on the canvas.');
     }
   }
@@ -1313,6 +1370,7 @@
       corpusCats = new Set();
       corpusTradition = '';
       corpusSort = 'name';
+      corpusEq = false;
       corpusLive = false;
       syncCorpusControls();
       await seedCorpus();
@@ -1334,7 +1392,7 @@
   }
 
   function corpusReady() {
-    return !!(String(corpusQ || '').trim() || corpusCats.size || corpusTradition || corpusLive);
+    return !!(String(corpusQ || '').trim() || corpusCats.size || corpusTradition || corpusLive || corpusEq);
   }
 
   const LOAD_ORB = {
@@ -1574,7 +1632,7 @@
     corpusUsingApi = false;
     corpusLive = false;
     const empty = document.getElementById('gx-empty');
-    if (!String(corpusQ || '').trim() && !corpusCats.size && !corpusTradition) {
+    if (!String(corpusQ || '').trim() && !corpusCats.size && !corpusTradition && !corpusEq) {
       setGraphEmpty('msg', 'Search or filter to draw the field');
       if (elPanel) { setPanelLoading(false); elPanel.hidden = true; }
       markDirty();
@@ -1613,6 +1671,11 @@
     const empty = document.getElementById('gx-empty');
     const gen = ++corpusGen;
     corpusUsingApi = !!(Khora && typeof fetch === 'function');
+
+    if (corpusEq) {
+      seedMarketField();
+      return;
+    }
 
     // Tradition is a local-corpus axis — live Khora nodes rarely carry it.
     if (corpusTradition || !corpusUsingApi) {
@@ -1736,11 +1799,16 @@
     }
     const tradWrap = document.getElementById('gx-trad-wrap');
     if (tradWrap) tradWrap.classList.toggle('on', !!corpusTradition);
+    const eqBtn = document.getElementById('gx-eq-filter');
+    if (eqBtn) {
+      eqBtn.setAttribute('aria-pressed', corpusEq ? 'true' : 'false');
+      eqBtn.classList.toggle('on', corpusEq);
+    }
     if (filters && on) {
       filters.innerHTML = Object.keys(CATEGORIES).map(id => {
         const cat = CATEGORIES[id];
         const pressed = corpusCats.has(id);
-        const dim = corpusCats.size && !pressed;
+        const dim = (corpusCats.size || corpusEq) && !pressed;
         return `<button type="button" class="chip${dim ? ' off' : ''}" data-cat="${id}"
           aria-label="${escapeHtml(cat.label)}. ${escapeHtml(cat.blurb)}">
           <span class="orb sm" style="--c:var(--${id})"></span>${cat.label}</button>`;
@@ -1804,8 +1872,16 @@
   function injectMarketNodes(anchorId) {
     const M = window.PalinodeMarketplace;
     if (!M) return;
-    const mentors = typeof M.mentorsForGraph === 'function' ? M.mentorsForGraph() : [];
-    const epics = typeof M.epicsForGraph === 'function' ? M.epicsForGraph() : [];
+    const showMentors = !corpusEq;
+    const showEpics = true;
+    const showQuests = !!corpusEq;
+    const q = corpusQ;
+    const mentors = showMentors && typeof M.mentorsForGraph === 'function' ? M.mentorsForGraph(q) : [];
+    const epics = showEpics && typeof M.epicsForGraph === 'function'
+      ? M.epicsForGraph(q, corpusEq ? 24 : 4) : [];
+    const quests = showQuests && typeof M.questsForGraph === 'function'
+      ? M.questsForGraph(q, 32)
+      : ((!corpusEq && typeof M.freeQuestsForGraph === 'function') ? M.freeQuestsForGraph() : []);
     const rBase = isCorpus() ? 300 : 250;
 
     mentors.forEach((m, i) => {
@@ -1816,7 +1892,7 @@
       const n = addNode({
         id, type: 'mentor', ref: m.id,
         px: Math.cos(angle) * r, py: Math.sin(angle) * r,
-        spawnR: 0, depth: 0
+        spawnR: 0, force: 0
       });
       n.x = Math.cos(angle) * r;
       n.y = Math.sin(angle) * r;
@@ -1830,11 +1906,11 @@
       const id = 'epic:' + s.id;
       if (nodes.has(id)) return;
       const angle = Math.PI * 0.15 + (i / Math.max(1, epics.length)) * Math.PI * 0.75;
-      const r = rBase + 40;
+      const r = rBase + (corpusEq ? 80 : 40);
       const n = addNode({
         id, type: 'epic', ref: s.id,
         px: Math.cos(angle) * r, py: Math.sin(angle) * r,
-        spawnR: 0, depth: 0
+        spawnR: 0, force: 0
       });
       n.x = Math.cos(angle) * r;
       n.y = Math.sin(angle) * r;
@@ -1845,6 +1921,43 @@
       if (nodes.has(mentorNode)) addEdge(mentorNode, id, 'offers');
       else if (anchorId && nodes.has(anchorId)) addEdge(anchorId, id, 'offers');
     });
+
+    quests.forEach((quest, i) => {
+      const id = 'quest:' + quest.id;
+      if (nodes.has(id)) return;
+      const angle = -Math.PI / 2 + (i / Math.max(1, quests.length)) * Math.PI * 2;
+      const r = rBase + 40 + (i % 3) * 28;
+      const epic = typeof M.hydrateEpic === 'function' ? M.hydrateEpic(quest.epicId) : null;
+      const n = addNode({
+        id, type: 'quest', ref: quest.id,
+        px: Math.cos(angle) * r, py: Math.sin(angle) * r,
+        spawnR: 0, force: 0
+      });
+      n.x = Math.cos(angle) * r;
+      n.y = Math.sin(angle) * r;
+      n.state = 'open';
+      n.label = quest.title;
+      n.category = (epic && epic.category) || 'clarity';
+      const epicNode = 'epic:' + quest.epicId;
+      if (nodes.has(epicNode)) addEdge(epicNode, id, 'within');
+      else if (anchorId && nodes.has(anchorId)) addEdge(anchorId, id, 'within');
+    });
+  }
+
+  function seedMarketField() {
+    corpusUsingApi = false;
+    corpusLive = false;
+    setGraphEmpty('hide');
+    injectMarketNodes(null);
+    const first = [...nodes.values()].find(n => n.type === 'epic')
+      || [...nodes.values()].find(n => n.type === 'quest');
+    if (first) {
+      selected = first.id;
+      pushTrail(selected);
+      detail(selected);
+    } else if (elPanel) { setPanelLoading(false); elPanel.hidden = true; }
+    markDirty();
+    kick(0.45);
   }
 
   function injectEpics(anchorId) {
@@ -2069,6 +2182,7 @@
         const book = e.target.closest('[data-epic-bookmark]');
         const mShare = e.target.closest('[data-mentor-share]');
         const mOpen = e.target.closest('[data-mentor-open]');
+        const qOpen = e.target.closest('[data-quest-open]');
         if (share && window.PalinodeMarketplace) {
           PalinodeMarketplace.shareEpic(share.getAttribute('data-epic-share'));
         } else if (book && window.PalinodeMarketplace) {
@@ -2077,8 +2191,12 @@
           PalinodeMarketplace.shareMentor(mShare.getAttribute('data-mentor-share'));
         } else if (mOpen && ctx.onOpenMentor) {
           ctx.onOpenMentor(mOpen.getAttribute('data-mentor-open'));
+        } else if (qOpen && ctx.onOpenQuest) {
+          ctx.onOpenQuest(qOpen.getAttribute('data-quest-open'));
         } else if (drag.node.type === 'epic' && ctx.onOpenEpic) {
           ctx.onOpenEpic(drag.node.ref);
+        } else if (drag.node.type === 'quest' && ctx.onOpenQuest) {
+          ctx.onOpenQuest(drag.node.ref);
         } else if (drag.node.type === 'mentor' && ctx.onOpenMentor) {
           ctx.onOpenMentor(drag.node.ref);
         } else {
@@ -2164,6 +2282,10 @@
         if (ctx.onOpenEpic) ctx.onOpenEpic(act.dataset.ref);
         return;
       }
+      if (kind === 'quest-open') {
+        if (ctx.onOpenQuest) ctx.onOpenQuest(act.dataset.ref);
+        return;
+      }
       if (kind === 'epic-share') {
         if (window.PalinodeMarketplace) PalinodeMarketplace.shareEpic(act.dataset.ref);
         return;
@@ -2208,12 +2330,29 @@
     const gt = document.getElementById('gx-trad');
     if (gt) gt.addEventListener('change', () => {
       corpusTradition = gt.value || '';
+      if (corpusTradition) corpusEq = false;
       redrawCorpus();
     });
     const gc = document.getElementById('gx-cat');
     if (gc) gc.addEventListener('change', () => {
       corpusCats = new Set();
-      if (gc.value) corpusCats.add(gc.value);
+      if (gc.value) {
+        corpusCats.add(gc.value);
+        corpusEq = false;
+      }
+      redrawCorpus();
+    });
+    const geq = document.getElementById('gx-eq-filter');
+    if (geq) geq.addEventListener('click', () => {
+      corpusEq = !corpusEq;
+      if (corpusEq) {
+        corpusCats = new Set();
+        corpusTradition = '';
+        const cat = document.getElementById('gx-cat');
+        if (cat) cat.value = '';
+        const trad = document.getElementById('gx-trad');
+        if (trad) trad.value = '';
+      }
       redrawCorpus();
     });
     const gf = document.getElementById('gx-filters');
@@ -2223,6 +2362,7 @@
       const id = chip.dataset.cat;
       if (corpusCats.has(id)) corpusCats.delete(id);
       else corpusCats.add(id);
+      if (corpusCats.size) corpusEq = false;
       hideFilterTip();
       redrawCorpus();
     });
@@ -2274,6 +2414,13 @@
     open, close, isOpen: () => !!root,
     isPage: () => !!(root && isCorpus()),
     trailSteps, setConnections,
+    async focusQuest(questId) {
+      if (!isCorpus()) return;
+      corpusEq = true;
+      await redrawCorpus();
+      const id = 'quest:' + questId;
+      if (nodes.has(id)) select(id);
+    },
     refreshDetail() {
       if (!root || !selected) return;
       markDirty();
@@ -2376,6 +2523,18 @@
               { act: 'epic-open', ref: n.ref, label: 'View epic details', primary: true },
               { act: 'epic-share', ref: n.ref, label: 'Share' },
               { act: 'epic-bookmark', ref: n.ref, label: 'Bookmark' }
+            ]
+          });
+        }
+        if (n.type === 'quest') {
+          const q = window.PalinodeMarketplace && PalinodeMarketplace.hydrateQuest(n.ref);
+          const epic = q && window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(q.epicId);
+          return Object.assign(base, {
+            sub: epic ? epic.title : 'Quest',
+            line: q ? q.description : '',
+            actions: [
+              { act: 'quest-open', ref: n.ref, label: 'Open quest', primary: true },
+              ...(epic ? [{ act: 'epic-open', ref: epic.id, label: 'View epic' }] : [])
             ]
           });
         }

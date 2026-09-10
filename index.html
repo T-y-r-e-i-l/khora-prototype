@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/app.css?v=61">
+<link rel="stylesheet" href="assets/css/app.css?v=72">
 </head>
 <body>
 
@@ -73,6 +73,13 @@
       <span class="nav-lab">Pathways</span>
     </button>
 
+    <button class="nav-item" id="btn-quests" data-view="quests">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 3.5l2.1 4.3 4.7.7-3.4 3.3.8 4.7L12 14.3 7.8 16.5l.8-4.7-3.4-3.3 4.7-.7L12 3.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+      </svg>
+      <span class="nav-lab">Quests</span>
+    </button>
+
     <button class="nav-item" id="btn-profile" data-view="profile">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M4 8h16M4 13h16M4 18h16" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
@@ -114,6 +121,7 @@
             <span class="nav-lab-m">Notes</span>
           </span>
           <span class="rail-lab-paths">Pathways</span>
+          <span class="rail-lab-quests">Quests</span>
         </div>
         <div class="search">
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
@@ -122,10 +130,16 @@
           </svg>
           <input id="q" type="search" placeholder="Search notes and concepts…" autocomplete="off">
         </div>
+        <div class="seg quest-log-filters" id="quest-log-filters" role="tablist" hidden>
+          <button type="button" class="seg-btn on" data-quest-log-filter="active">Active</button>
+          <button type="button" class="seg-btn" data-quest-log-filter="completed">Completed</button>
+          <button type="button" class="seg-btn" data-quest-log-filter="abandoned">Abandoned</button>
+        </div>
       </div>
 
       <div class="note-list" id="note-list"></div>
       <div class="note-list" id="path-list" hidden></div>
+      <div class="note-list" id="quest-list" hidden></div>
       <button class="rail-new" id="btn-new-list">New note</button>
     </aside>
 
@@ -148,6 +162,15 @@
           </svg>
         </button>
         <span id="path-back-label">Untitled pathway</span>
+      </div>
+      <div class="page-back" id="quest-back" hidden>
+        <button type="button" id="btn-quest-back" aria-label="Back to quests">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <span id="quest-back-label">Quest</span>
       </div>
       <div class="centre-inner" id="centre-inner">
 
@@ -249,8 +272,18 @@
           <p id="path-empty-copy">No pathways yet. Explore a note, trim the trail, and save it.</p>
         </section>
 
+        <section class="empty-state" id="quest-empty" hidden>
+          <h2>Nothing open</h2>
+          <p id="quest-empty-copy">No quests yet. Discover free quests on Explore, or enroll in an epic.</p>
+        </section>
+
         <!-- standing belief profile -->
         <section id="profile-view" hidden></section>
+
+        <!-- selected quest (centre detail) -->
+        <section id="quests-wrap" hidden>
+          <div id="quests-detail"></div>
+        </section>
 
         <!-- marketplace -->
         <section id="market-wrap" hidden>
@@ -439,6 +472,12 @@
           <option value="">All</option>
         </select>
       </label>
+      <button type="button" class="gx-eq-filter" id="gx-eq-filter" aria-pressed="false" aria-label="Epics and Quests">
+        <span class="gx-eq-lab">Epics &amp; Quests</span>
+        <svg class="gx-tool-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3.5l2.1 4.3 4.7.7-3.4 3.3.8 4.7L12 14.3 7.8 16.5l.8-4.7-3.4-3.3 4.7-.7L12 3.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+      </button>
       <label class="gx-sort" id="gx-cat-wrap">
         <span class="gx-cat-lab">Kind</span>
         <svg class="gx-tool-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -610,6 +649,12 @@
   </div>
 </div>
 
+<div id="quest-overview-scrim" class="scrim">
+  <div class="modal mkt-checkout quest-overview" role="dialog" aria-labelledby="quest-overview-title">
+    <div id="quest-overview-body"></div>
+  </div>
+</div>
+
 <div id="mkt-book-scrim" class="scrim">
   <div class="modal mkt-checkout" role="dialog" aria-labelledby="mkt-book-title">
     <h3 id="mkt-book-title">Book a session</h3>
@@ -661,13 +706,14 @@
 <script src="assets/js/engine.js"></script>
 <script src="assets/js/store.js"></script>
 <script src="assets/js/khora.js?v=4"></script>
-<script src="assets/js/marketplace-data.js?v=4"></script>
-<script src="assets/js/marketplace.js?v=9"></script>
+<script src="assets/js/marketplace-data.js?v=6"></script>
+<script src="assets/js/quests.js?v=3"></script>
+<script src="assets/js/marketplace.js?v=15"></script>
 <script src="assets/vendor/three.min.js"></script>
-<script src="assets/js/graph.js?v=41"></script>
+<script src="assets/js/graph.js?v=45"></script>
 <script src="assets/js/graph3d.js"></script>
 <script src="assets/js/pathways.js?v=34"></script>
 <script src="assets/js/profile.js?v=1"></script>
-<script src="assets/js/app.js?v=40"></script>
+<script src="assets/js/app.js?v=45"></script>
 </body>
 </html>

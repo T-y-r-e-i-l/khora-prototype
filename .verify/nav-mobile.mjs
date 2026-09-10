@@ -48,6 +48,7 @@ const bar = await page.evaluate(() => {
     height: Math.round(r.height), items,
     brandShown: shown(document.querySelector('.nav-brand')),
     pathwaysShown: shown(document.getElementById('btn-pathways')),
+    questsShown: shown(document.getElementById('btn-quests')),
     profileShown: shown(document.getElementById('btn-profile')),
     insightsShown: shown(document.getElementById('btn-nav-insights')),
     writeShown: shown(document.getElementById('btn-rail')),
@@ -65,11 +66,12 @@ check('visible items share one row',
   new Set(bar.items.map(i => i.top)).size === 1, bar.items.map(i => i.top).join(','));
 check('items are ordered left to right', bar.items.every((it, k) =>
   k === 0 || it.left > bar.items[k - 1].left), bar.items.map(i => i.id + '@' + i.left).join(','));
-check('the destinations are Notes, Explore, Market, Pathways, Profile',
-  bar.items.map(i => i.id).join(',') === 'btn-rail,btn-explore,btn-market,btn-pathways,btn-profile',
+check('the destinations are Notes, Explore, Market, Pathways, Quests, Profile',
+  bar.items.map(i => i.id).join(',') === 'btn-rail,btn-explore,btn-market,btn-pathways,btn-quests,btn-profile',
   bar.items.map(i => i.id).join(','));
 check('the brand is hidden on a phone', !bar.brandShown);
 check('Pathways is on the bar', bar.pathwaysShown);
+check('Quests is on the bar', bar.questsShown);
 check('Profile is on the bar', bar.profileShown);
 check('Notes is on the bar', bar.writeShown);
 check('Market is on the bar', await page.evaluate(() => {
@@ -438,6 +440,43 @@ check('the back control returns to the pathway library', await page.evaluate(() 
     && getComputedStyle(list).display !== 'none'
     && back.hidden;
 }));
+
+await page.click('#btn-quests');
+await page.waitForTimeout(300);
+const questsPage = await page.evaluate(() => {
+  const empty = document.getElementById('quest-empty');
+  const list = document.getElementById('quest-list');
+  const body = document.getElementById('body');
+  const market = document.getElementById('market-wrap');
+  const rail = document.querySelector('aside.rail');
+  const r = rail.getBoundingClientRect();
+  const nav = document.querySelector('nav.sidenav').getBoundingClientRect();
+  const shown = el => !!(el && getComputedStyle(el).display !== 'none' && !el.hidden);
+  return {
+    mode: body.classList.contains('quests-mode'),
+    rail: body.classList.contains('show-rail'),
+    listShown: shown(list),
+    emptyShown: shown(empty),
+    marketHidden: !!(market && market.hidden),
+    title: (document.querySelector('.rail-lab-quests') || {}).textContent,
+    filters: shown(document.getElementById('quest-log-filters')),
+    width: Math.round(r.width),
+    top: Math.round(r.top),
+    bottom: Math.round(r.bottom),
+    navTop: Math.round(nav.top),
+    on: (document.querySelector('nav.sidenav .nav-item.on') || {}).id
+  };
+});
+check('Quests is a page, not a Marketplace tab',
+  questsPage.mode && questsPage.rail && questsPage.listShown && questsPage.marketHidden);
+check('the Quests tray title is Quests', (questsPage.title || '').trim() === 'Quests', questsPage.title);
+check('Quests shows status filters in the tray', questsPage.filters);
+check('Quests opens on the empty tray', questsPage.emptyShown);
+check('the Quests tray is full width', questsPage.width === 390, questsPage.width + 'px');
+check('the Quests tray starts at the top', questsPage.top === 0, questsPage.top + 'px');
+check('and Quests stops above the bar', questsPage.bottom <= questsPage.navTop + 1,
+  questsPage.bottom + ' vs bar at ' + questsPage.navTop);
+check('Quests marks itself active', questsPage.on === 'btn-quests', questsPage.on);
 
 await page.click('#btn-profile');
 await page.waitForTimeout(300);

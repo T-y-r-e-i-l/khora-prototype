@@ -355,11 +355,26 @@
     }
   }
 
+  function closeQuests() {
+    if (!window.PalinodeQuests || !PalinodeQuests.isOpen()) return;
+    PalinodeQuests.leave();
+    paintFieldFromAnalysis();
+    el.empty.hidden = false;
+    if (activeId) {
+      el.editorWrap.hidden = false;
+      el.empty.style.display = 'none';
+    } else {
+      el.editorWrap.hidden = true;
+      el.empty.style.display = '';
+    }
+  }
+
   function newNote() {
     closeExplore();
     closePathways();
     closeProfile();
     closeMarket();
+    closeQuests();
     el.body.classList.remove('show-insights', 'show-rail');
     syncNav('write');
     const n = Notes.create({});
@@ -1056,6 +1071,7 @@
              : which === 'explore' ? 'btn-explore'
              : which === 'market' ? 'btn-market'
              : which === 'pathways' ? 'btn-pathways'
+             : which === 'quests' ? 'btn-quests'
              : which === 'profile' ? 'btn-profile'
              : 'btn-rail';
     const btn = document.getElementById(id);
@@ -1066,6 +1082,7 @@
   function phoneTab() {
     if (exploring()) return 'explore';
     if (window.PalinodeMarketplace && PalinodeMarketplace.isOpen()) return 'market';
+    if (window.PalinodeQuests && PalinodeQuests.isOpen()) return 'quests';
     if (window.PalinodeProfile && PalinodeProfile.isOpen()) return 'profile';
     if (window.PalinodePathways && (PalinodePathways.isListOpen() || PalinodePathways.isWalkOpen()))
       return 'pathways';
@@ -1090,6 +1107,7 @@
     if (back) back.hidden = !onNote;
     if (!phone()) el.body.classList.remove('show-rail');
     syncPathPage();
+    syncQuestPage();
   }
 
   function pathPageLabel() {
@@ -1106,6 +1124,24 @@
     const onWalk = !!(onPath && !el.body.classList.contains('show-rail') && wrap && !wrap.hidden);
     if (label) label.textContent = pathPageLabel();
     if (back) back.hidden = !onWalk;
+  }
+
+  function questPageLabel() {
+    if (!window.PalinodeQuests) return 'Quest';
+    const id = PalinodeQuests.selected && PalinodeQuests.selected();
+    if (!id) return 'Quest';
+    const q = window.PalinodeMarketData && PalinodeMarketData.questOf(id);
+    return ((q && q.title) || '').trim() || 'Quest';
+  }
+
+  function syncQuestPage() {
+    const back = document.getElementById('quest-back');
+    const label = document.getElementById('quest-back-label');
+    const wrap = document.getElementById('quests-wrap');
+    const onQuests = phone() && phoneTab() === 'quests';
+    const onDetail = !!(onQuests && !el.body.classList.contains('show-rail') && wrap && !wrap.hidden);
+    if (label) label.textContent = questPageLabel();
+    if (back) back.hidden = !onDetail;
   }
 
   function syncKeyboardNav() {
@@ -1435,6 +1471,7 @@
     closePathways();
     closeProfile();
     closeMarket();
+    closeQuests();
     el.body.classList.remove('show-insights', 'show-rail');
     await window.PalinodeGraph.open({
       note: Notes.get(activeId),
@@ -1472,6 +1509,9 @@
         if (window.PalinodeMarketplace) PalinodeMarketplace.enter({ epicId });
         syncNav('market');
       },
+      onOpenQuest: questId => {
+        if (window.PalinodeQuests) PalinodeQuests.openOverview(questId);
+      },
       onOpenMentor: mentorId => {
         window.PalinodeGraph.close();
         document.body.classList.remove('exploring');
@@ -1493,6 +1533,7 @@
     closePathways();
     closeProfile();
     closeMarket();
+    closeQuests();
     el.body.classList.remove('show-insights', 'show-rail');
     await window.PalinodeGraph.open({
       mode: 'corpus',
@@ -1533,6 +1574,9 @@
         el.body.classList.remove('show-insights', 'show-rail');
         if (window.PalinodeMarketplace) PalinodeMarketplace.enter({ epicId });
         syncNav('market');
+      },
+      onOpenQuest: questId => {
+        if (window.PalinodeQuests) PalinodeQuests.openOverview(questId);
       },
       onOpenMentor: mentorId => {
         window.PalinodeGraph.close();
@@ -1855,6 +1899,12 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
     el.body.classList.add('show-rail');
     syncNotePage();
   });
+  const btnQuestBack = document.getElementById('btn-quest-back');
+  if (btnQuestBack) btnQuestBack.addEventListener('click', () => {
+    if (!phone()) return;
+    el.body.classList.add('show-rail');
+    syncNotePage();
+  });
   window.addEventListener('resize', syncNotePage);
   $('#btn-nav-insights').addEventListener('click', () => {
     closeExplore();
@@ -1891,16 +1941,29 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
     closeExplore();
     closeProfile();
     closeMarket();
+    closeQuests();
     el.body.classList.remove('show-insights');
     if (window.PalinodePathways) PalinodePathways.enter();
     if (phone()) el.body.classList.add('show-rail');
     syncNav('pathways');
+  });
+  $('#btn-quests').addEventListener('click', () => {
+    if (window.PalinodeQuests && PalinodeQuests.isOpen()) return;
+    closeExplore();
+    closePathways();
+    closeProfile();
+    closeMarket();
+    el.body.classList.remove('show-insights');
+    if (window.PalinodeQuests) PalinodeQuests.enter();
+    if (phone()) el.body.classList.add('show-rail');
+    syncNav('quests');
   });
   $('#btn-market').addEventListener('click', () => {
     if (window.PalinodeMarketplace && PalinodeMarketplace.isOpen()) return;
     closeExplore();
     closePathways();
     closeProfile();
+    closeQuests();
     el.body.classList.remove('show-insights', 'show-rail');
     if (window.PalinodeMarketplace) PalinodeMarketplace.enter();
     syncNav('market');
@@ -1910,6 +1973,7 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
     closeExplore();
     closePathways();
     closeMarket();
+    closeQuests();
     el.body.classList.remove('show-insights', 'show-rail');
     if (window.PalinodeProfile) PalinodeProfile.enter();
     syncNav('profile');
@@ -1929,6 +1993,14 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
         if (phone()) el.body.classList.add('show-rail');
       } else if (window.PalinodePathways && PalinodePathways.isListOpen()) {
         closePathways();
+        syncNav('write');
+      } else if (window.PalinodeQuests && PalinodeQuests.isDetailOpen()) {
+        PalinodeQuests.showList();
+        syncNav('quests');
+        if (phone()) el.body.classList.add('show-rail');
+        syncNotePage();
+      } else if (window.PalinodeQuests && PalinodeQuests.isOpen()) {
+        closeQuests();
         syncNav('write');
       }
     }
@@ -2045,11 +2117,21 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
       };
       PalinodePathways.onChrome = () => syncNotePage();
     }
+    if (window.PalinodeQuests) {
+      PalinodeQuests.onChange = () => {
+        if (PalinodeQuests.isOpen()) PalinodeQuests.renderLog();
+      };
+      PalinodeQuests.onChrome = () => syncNotePage();
+    }
+    if (window.PalinodeMarketplace) {
+      PalinodeMarketplace.onChrome = () => syncNotePage();
+    }
     renderList();
     paintPrompt();
     closeExplore();
     closePathways();
     closeProfile();
+    closeQuests();
     el.body.classList.remove('show-insights', 'show-rail');
     const id = decodeURIComponent(marketHash[1]);
     const kind = marketKind && marketKind[1];
@@ -2082,6 +2164,8 @@ What I actually want is for someone to see how hard it has been. That is a small
         closeExplore();
         closePathways();
         closeProfile();
+        closeMarket();
+        closeQuests();
         openNote(id);
         syncNav('write');
       };
@@ -2090,6 +2174,8 @@ What I actually want is for someone to see how hard it has been. That is a small
         closeExplore();
         closePathways();
         closeProfile();
+        closeMarket();
+        closeQuests();
         const n = Notes.create({ promptText: concept.turn, title: '' });
         openNote(n.id);
         renderList();
@@ -2102,13 +2188,23 @@ What I actually want is for someone to see how hard it has been. That is a small
         closeExplore();
         closePathways();
         closeProfile();
+        closeMarket();
+        closeQuests();
         openWork(workId);
         syncNav('write');
       };
     }
+    if (window.PalinodeQuests) {
+      PalinodeQuests.onChange = () => {
+        if (PalinodeQuests.isOpen()) PalinodeQuests.renderLog();
+      };
+      PalinodeQuests.onChrome = () => syncNotePage();
+    }
 
     if (window.PalinodeProfile)
       PalinodeProfile.onPlace = axisId => openPlace(axisId, 'profile');
+
+    window.PalinodeApp = { openCorpus };
 
     renderPrompt();
     renderList();
