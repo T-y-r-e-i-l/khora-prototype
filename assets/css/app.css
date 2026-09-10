@@ -1409,6 +1409,38 @@ body.exploring { overflow: hidden; }
   width: 100%;
   text-align: center;
 }
+.gx-act-lenses {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline-2);
+}
+.gx-lens-back {
+  align-self: flex-start;
+  width: auto !important;
+  margin: 0 0 12px;
+  padding-left: 0;
+  padding-right: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 12px;
+  letter-spacing: .04em;
+  text-align: left !important;
+  cursor: pointer;
+}
+.gx-lens-back:hover { color: var(--ink); }
+.gx-lens-block {
+  margin: 0 0 14px;
+}
+.gx-lens-block:last-child { margin-bottom: 0; }
+.gx-lens-block-title {
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
 .gx-fine { margin: 14px 0 0; font-size: 11px; line-height: 1.7; color: var(--ink-3); }
 
 /* the continuum reads small inside the 3D card */

@@ -115,6 +115,7 @@
   let edges = [];
   let ctx = null;          // { note, analysis, onWrite, onRead, onReadingRoom }
   let selected = null;
+  let panelView = null; // { kind: 'cultural'|'opposing'|'analyze'|'contemporary', conceptId }
   let trail = [];
   let trailCursor = -1;
   let connectionsOn = false;
@@ -728,6 +729,160 @@
   const escapeHtml = s => String(s).replace(/[&<>"']/g, c =>
     ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
+  const LENS = () => window.PalinodeConceptLenses;
+
+  function lensGotoRow(item, sub) {
+    const c = item.category || 'resonance';
+    return `<button class="gx-more-row" data-goto="${cid(item.id)}" data-type="concept" data-ref="${escapeHtml(item.id)}">
+      <span class="orb sm" style="--c:var(--${c})"></span>
+      <span class="t">${escapeHtml(item.label)}</span>
+      ${sub ? `<span class="s">${escapeHtml(sub)}</span>` : ''}</button>`;
+  }
+
+  function conceptLensActions(ref) {
+    return `
+      <div class="gx-act gx-act-lenses">
+        <button type="button" class="ghost" data-act="lens-cultural" data-ref="${escapeHtml(ref)}">Cultural perspectives</button>
+        <button type="button" class="ghost" data-act="lens-opposing" data-ref="${escapeHtml(ref)}">Opposing perspectives</button>
+        <button type="button" class="ghost" data-act="lens-analyze" data-ref="${escapeHtml(ref)}">Analyze arguments</button>
+        <button type="button" class="ghost" data-act="lens-contemporary" data-ref="${escapeHtml(ref)}">Contemporary issues</button>
+      </div>`;
+  }
+
+  function renderConceptLens(kind, conceptId) {
+    const API = LENS();
+    if (!API) {
+      return `<p class="gx-lede">Lens helpers failed to load.</p>`;
+    }
+    const back = `<button type="button" class="gx-lens-back ghost" data-act="lens-back">← Concept</button>`;
+    const empty = msg => `${back}<p class="gx-lede">${escapeHtml(msg)}</p>`;
+
+    if (kind === 'cultural') {
+      const d = API.cultural(conceptId);
+      if (!d) return empty('No cultural readings for this concept yet.');
+      const same = d.sameTradition.length
+        ? `<div class="gx-sec"><h4>In this tradition</h4><div class="gx-more">${
+            d.sameTradition.map(x => lensGotoRow(x, x.tradition)).join('')
+          }</div></div>`
+        : `<div class="gx-sec"><h4>In this tradition</h4><p class="gx-fine">No other local concepts share this tradition yet.</p></div>`;
+      const other = d.otherTraditions.length
+        ? `<div class="gx-sec"><h4>Parallel readings</h4><div class="gx-more">${
+            d.otherTraditions.map(x => lensGotoRow(x, x.tradition)).join('')
+          }</div></div>`
+        : `<div class="gx-sec"><h4>Parallel readings</h4><p class="gx-fine">No cross-tradition parallels seeded yet.</p></div>`;
+      return `
+        ${back}
+        <div class="gx-kicker"><span class="orb sm" style="--c:var(--lineage)"></span>Cultural perspectives</div>
+        <h3>${escapeHtml(d.label)}</h3>
+        <p class="gx-fine">${escapeHtml(d.tradition || 'Unknown tradition')}</p>
+        ${d.reading ? `<div class="gx-sec"><h4>Home tradition</h4><p class="gx-lede">${escapeHtml(d.reading)}</p></div>` : ''}
+        ${same}
+        ${other}`;
+    }
+
+    if (kind === 'opposing') {
+      const d = API.opposing(conceptId);
+      if (!d) return empty('No opposing readings for this concept yet.');
+      const kin = d.againstKin.length
+        ? `<div class="gx-sec"><h4>Read against</h4><div class="gx-more">${
+            d.againstKin.map(x => lensGotoRow(x, x.category)).join('')
+          }</div></div>`
+        : '';
+      const axes = d.axes.length
+        ? `<div class="gx-sec"><h4>On the spectra</h4>${d.axes.map(ax => `
+            <div class="gx-lens-block">
+              <div class="gx-lens-block-title">${escapeHtml(ax.title)}</div>
+              <p class="gx-fine">${escapeHtml(ax.left)} ↔ ${escapeHtml(ax.right)}</p>
+              ${ax.note ? `<p class="gx-lede">${escapeHtml(ax.note)}</p>` : ''}
+              ${ax.against ? `<p class="gx-lede"><em>Read against ${escapeHtml(ax.against.name)}.</em> ${escapeHtml(ax.against.capsule)}</p>` : ''}
+            </div>`).join('')}</div>`
+        : '';
+      const counters = d.counters.length
+        ? `<div class="gx-sec"><h4>Works that counter the sources</h4>${d.counters.map(w => `
+            <div class="gx-lens-block">
+              <div class="gx-lens-block-title">${escapeHtml(w.title)}</div>
+              <p class="gx-fine">${escapeHtml(w.author)}</p>
+              <p class="gx-lede">${escapeHtml(w.counter)}</p>
+            </div>`).join('')}</div>`
+        : '';
+      const body = kin || axes || counters
+        ? `${kin}${axes}${counters}`
+        : `<p class="gx-lede">No tension kin, spectrum oppositions, or source counters are seeded for this concept yet.</p>`;
+      return `
+        ${back}
+        <div class="gx-kicker"><span class="orb sm" style="--c:var(--tension)"></span>Opposing perspectives</div>
+        <h3>${escapeHtml(d.label)}</h3>
+        ${body}`;
+    }
+
+    if (kind === 'analyze') {
+      const d = API.analyze(conceptId);
+      if (!d) return empty('Nothing to analyze for this concept yet.');
+      const evidence = d.evidence.length
+        ? `<div class="gx-sec"><h4>Evidence</h4><div class="gx-more">${d.evidence.map(ev => {
+            if (ev.workId) {
+              return `<button class="gx-more-row" data-goto="${wid(ev.workId)}" data-type="work" data-ref="${escapeHtml(ev.workId)}">
+                <span class="orb sm" style="--c:var(--lineage)"></span>
+                <span class="t">${escapeHtml(ev.title)}</span>
+                <span class="s">${escapeHtml(ev.author || ev.note || '')}</span></button>`;
+            }
+            return `<div class="gx-lens-block"><div class="gx-lens-block-title">${escapeHtml(ev.title)}</div>
+              <p class="gx-fine">${escapeHtml(ev.author || '')}</p>
+              ${ev.note ? `<p class="gx-lede">${escapeHtml(ev.note)}</p>` : ''}</div>`;
+          }).join('')}</div></div>`
+        : `<div class="gx-sec"><h4>Evidence</h4><p class="gx-fine">No sources listed.</p></div>`;
+      const moves = d.moves.length
+        ? `<div class="gx-sec"><h4>Adjacent moves</h4><div class="gx-more">${
+            d.moves.map(x => lensGotoRow(x, x.tradition || x.category)).join('')
+          }</div></div>`
+        : '';
+      return `
+        ${back}
+        <div class="gx-kicker"><span class="orb sm" style="--c:var(--stance)"></span>Analyze arguments</div>
+        <h3>${escapeHtml(d.label)}</h3>
+        ${d.claim ? `<div class="gx-sec"><h4>Claim</h4><p class="gx-lede">${escapeHtml(d.claim)}</p></div>` : ''}
+        ${d.turn ? `<div class="gx-sec"><h4>Turn</h4><p class="gx-question">${escapeHtml(d.turn)}</p></div>` : ''}
+        ${evidence}
+        ${moves}
+        <div class="gx-act">
+          <button type="button" class="ghost solid" data-act="write" data-ref="${escapeHtml(d.conceptId)}">Write on this</button>
+        </div>`;
+    }
+
+    if (kind === 'contemporary') {
+      const d = API.contemporary(conceptId);
+      if (!d) return empty('No contemporary overlay for this concept yet.');
+      const issues = d.issues.length
+        ? `<div class="gx-sec"><h4>Live questions</h4>${d.issues.map((iss, i) => `
+            <div class="gx-lens-block">
+              <div class="gx-lens-block-title">${escapeHtml(iss.label)}</div>
+              <p class="gx-question">${escapeHtml(iss.prompt)}</p>
+              <div class="gx-act">
+                <button type="button" class="ghost solid" data-act="write" data-ref="${escapeHtml(d.conceptId)}" data-prompt="${escapeHtml(iss.prompt)}">Write on this</button>
+              </div>
+            </div>`).join('')}</div>`
+        : `<div class="gx-sec"><h4>Live questions</h4><p class="gx-fine">No seeded issues; use the concept turn below.</p>
+            ${d.fallbackTurn ? `<p class="gx-question">${escapeHtml(d.fallbackTurn)}</p>
+            <div class="gx-act"><button type="button" class="ghost solid" data-act="write" data-ref="${escapeHtml(d.conceptId)}">Write on this</button></div>` : ''}</div>`;
+      const quests = d.quests.length
+        ? `<div class="gx-sec"><h4>Related free quests</h4><div class="gx-more">${d.quests.map(q =>
+            `<button type="button" class="gx-more-row" data-act="quest-open" data-ref="${escapeHtml(q.id)}">
+              <span class="orb sm" style="--c:var(--resonance)"></span>
+              <span class="t">${escapeHtml(q.title)}</span>
+              <span class="s">${escapeHtml((q.description || '').slice(0, 72))}</span></button>`
+          ).join('')}</div></div>`
+        : '';
+      return `
+        ${back}
+        <div class="gx-kicker"><span class="orb sm" style="--c:var(--resonance)"></span>Contemporary issues</div>
+        <h3>${escapeHtml(d.label)}</h3>
+        ${issues}
+        ${quests}`;
+    }
+
+    return empty('Unknown lens.');
+  }
+
   function loop() {
     if (!root) return;
     tick();
@@ -867,6 +1022,8 @@
           <div class="gx-kicker">${orb(n.category || 'resonance')}Opening</div>
           <h3>${escapeHtml(n.label || n.ref)}</h3>
           <p class="gx-lede">Fetching this concept from Khora…</p>`;
+      } else if (panelView && panelView.conceptId === n.ref && panelView.kind) {
+        body = renderConceptLens(panelView.kind, n.ref);
       } else {
         const ins = (ctx.analysis.insights || []).find(i => i.conceptId === n.ref);
         const kickerText = TRADITIONS[c.tradition] || c.node_type || '';
@@ -883,6 +1040,7 @@
             <button class="ghost" data-act="save">${isSaved(n.id) ? 'On a note ✓' : 'Add to note'}</button>
             <button class="ghost" data-act="path">Add to pathway</button>
           </div>
+          ${conceptLensActions(n.ref)}
           ${more}`;
       }
     }
@@ -1281,6 +1439,7 @@
     const n = nodes.get(id);
     if (!n) return;
     selected = id;
+    panelView = null;
     markDirty();
     if (window.PalinodeField) PalinodeField.paint(category(n));
 
@@ -2097,6 +2256,7 @@
   function close() {
     if (!root) return;
     hideFilterTip();
+    panelView = null;
     if (dim === '3' && window.PalinodeGraph3D) { window.PalinodeGraph3D.unmount(); }
     document.body.classList.remove('dim3');
     root.hidden = true;
@@ -2289,7 +2449,20 @@
       if (kind === 'open-note') { if (ctx.onOpenNote) ctx.onOpenNote(act.dataset.ref); return; }
       if (kind === 'write') {
         const rec = conceptOf(act.dataset.ref) || { label: act.dataset.ref, turn: 'What follows from this?' };
-        if (ctx.onWrite) ctx.onWrite(rec);
+        const prompt = act.dataset.prompt;
+        if (ctx.onWrite) ctx.onWrite(prompt ? Object.assign({}, rec, { turn: prompt }) : rec);
+        return;
+      }
+      if (kind === 'lens-back') {
+        panelView = null;
+        detail(selected);
+        return;
+      }
+      if (kind === 'lens-cultural' || kind === 'lens-opposing'
+          || kind === 'lens-analyze' || kind === 'lens-contemporary') {
+        const conceptId = act.dataset.ref || (nodes.get(selected) || {}).ref;
+        panelView = { kind: kind.replace('lens-', ''), conceptId };
+        detail(selected);
         return;
       }
       if (kind === 'read')  { if (ctx.onRead) ctx.onRead(act.dataset.ref); return; }
@@ -2415,6 +2588,12 @@
     window.addEventListener('resize', resize);
     document.addEventListener('keydown', e => {
       if (e.key !== 'Escape' || !root) return;
+      // Lens sub-view clears first (including on Explore).
+      if (panelView) {
+        panelView = null;
+        if (selected) detail(selected);
+        return;
+      }
       // The Explore page is a destination — leave it from the nav.
       if (isCorpus()) return;
       // An item overlay on top of the graph takes the key first; escaping
