@@ -134,12 +134,44 @@
     };
     delete state.dismissed[questId];
     save();
-    toast('Quest added to your log.');
-    if (active) {
-      logFilter = 'active';
-      open(questId);
-    }
     return true;
+  }
+
+  function showAcceptedChoice(questId) {
+    const q = questOf(questId);
+    const host = $('#quest-overview-body');
+    const scrim = $('#quest-overview-scrim');
+    if (!q || !host || !scrim) return;
+    overviewId = questId;
+    const firstObj = (q.objectives && q.objectives[0]) || 'Begin the first objective in your journal.';
+    host.innerHTML = `
+      <div class="quest-ov-kicker">
+        <span class="mkt-badge">${esc(typeLabel(q.type))}</span>
+        <span class="quest-ov-access">Added to your log</span>
+      </div>
+      <h3 id="quest-overview-title">${esc(q.title)}</h3>
+      <p class="lede">Quest accepted. Keep exploring the map, or start now in your Quests tray.</p>
+      <p class="gx-fine">Next · ${esc(firstObj)}</p>
+      <div class="gx-act quest-ov-act quest-accept-choice">
+        <button type="button" class="ghost solid" data-quest-start="${esc(q.id)}">Start Quest</button>
+        <button type="button" class="ghost" data-quest-keep-exploring>Keep exploring</button>
+      </div>`;
+    scrim.classList.add('on');
+  }
+
+  function keepExploring() {
+    closeOverview();
+    toast('Quest saved to your log.');
+  }
+
+  function startQuest(questId) {
+    closeOverview();
+    if (typeof window.PalinodeQuests.onStartQuest === 'function') {
+      window.PalinodeQuests.onStartQuest(questId);
+      return;
+    }
+    enter();
+    open(questId);
   }
 
   function decline(questId) {
@@ -229,7 +261,7 @@
       if (enrolled && q.epicId) {
         primary = `<button type="button" class="ghost solid" data-quest-continue="${esc(q.id)}">Continue in epic</button>`;
       } else {
-        primary = `<button type="button" class="ghost solid" data-quest-close>In your log</button>`;
+        primary = `<button type="button" class="ghost solid" data-quest-start="${esc(q.id)}">Start Quest</button>`;
       }
     } else if (entry && entry.status === 'completed') {
       primary = `<button type="button" class="ghost solid" data-quest-close>Completed</button>`;
@@ -493,8 +525,17 @@
         if (e.target === scrim) closeOverview();
         const acceptBtn = e.target.closest('[data-quest-accept]');
         if (acceptBtn) {
-          accept(acceptBtn.dataset.questAccept, 'explore');
-          closeOverview();
+          const id = acceptBtn.dataset.questAccept;
+          if (accept(id, 'explore')) showAcceptedChoice(id);
+          return;
+        }
+        const startBtn = e.target.closest('[data-quest-start]');
+        if (startBtn) {
+          startQuest(startBtn.dataset.questStart);
+          return;
+        }
+        if (e.target.closest('[data-quest-keep-exploring]')) {
+          keepExploring();
           return;
         }
         if (e.target.closest('[data-quest-decline]') || e.target.closest('[data-quest-close]')) {
@@ -566,6 +607,9 @@
     canAccept,
     openOverview,
     closeOverview,
+    showAcceptedChoice,
+    keepExploring,
+    startQuest,
     renderLog: renderAll,
     renderList,
     open,
@@ -579,6 +623,7 @@
     isDetailOpen,
     selected,
     onChrome: null,
+    onStartQuest: null,
     bind
   };
 

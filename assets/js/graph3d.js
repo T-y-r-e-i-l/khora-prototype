@@ -258,6 +258,7 @@
       const rr = node.type === 'note' || node.type === 'note-other' ? 0.32
                : node.type === 'work' ? 0.24
                : node.type === 'media' ? 0.3
+               : node.type === 'quest' ? 0.34
                : node.type === 'tradition' ? 0.18 : 0.26;
       const pos = trailPose(i, stack.length);
 
@@ -267,7 +268,7 @@
         disposables.push(geo);
         m = new T.Mesh(geo, thumbnailMaterial(node._url, hue));
       } else {
-        m = world(hue, rr, 0.22);
+        m = world(hue, rr, node.type === 'quest' ? 0.42 : 0.22);
       }
       m.position.copy(pos);
       m.userData.id = node.id;
@@ -307,7 +308,9 @@
     const hue = HUE[model.category(node)] || 0xF6A244;
 
     // the centre: a lit world with a ring
-    const cr = node.type === 'note' ? 0.9 : 0.8;
+    const cr = node.type === 'note' ? 0.9
+             : node.type === 'quest' ? 0.92
+             : 0.8;
     centreR = cr;
 
     // The orb you clicked is the thing that becomes the centre, so it grows
@@ -323,7 +326,7 @@
       disposables.push(geo);
       centre = new T.Mesh(geo, thumbnailMaterial(node._url, hue));
     } else {
-      centre = world(hue, cr, 0.42);
+      centre = world(hue, cr, node.type === 'quest' ? 0.62 : 0.42);
     }
     centre.userData.id = id;
     centreGroup.add(centre);
@@ -332,7 +335,7 @@
     ringMesh = ring(cr, hue);
     centreGroup.add(ringMesh);
 
-    const glow = new T.PointLight(hue, 1.5, 26, 2);
+    const glow = new T.PointLight(hue, node.type === 'quest' ? 2.1 : 1.5, 26, 2);
     centreGroup.add(glow);
 
     const lab = labelSprite(model.kicker(node), model.label(node), hue);
@@ -354,6 +357,7 @@
       const rr = k.type === 'note' || k.type === 'note-other' ? 0.36
                : k.type === 'work' ? 0.28
                : k.type === 'media' ? 0.34
+               : k.type === 'quest' ? 0.38
                : k.type === 'tradition' ? 0.2 : 0.3;
 
       let m;
@@ -362,7 +366,7 @@
         disposables.push(geo);
         m = new T.Mesh(geo, thumbnailMaterial(k._url, kh));
       } else {
-        m = world(kh, rr, 0.2);
+        m = world(kh, rr, k.type === 'quest' ? 0.48 : 0.2);
       }
       m.position.set(Math.cos(a) * R, wobble, Math.sin(a) * R);
       m.userData.id = k.id;

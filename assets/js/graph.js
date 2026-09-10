@@ -196,6 +196,12 @@
             out.push({ id: sid(a.id), type: 'spectrum', ref: a.id, kind: 'sits-on' }));
         }
         if (c.tradition) out.push({ id: tid(c.tradition), type: 'tradition', ref: c.tradition, kind: 'tradition' });
+        if (window.PalinodeMarketData) {
+          PalinodeMarketData.allQuests().forEach(q => {
+            if ((q.conceptIds || []).includes(c.id))
+              out.push({ id: 'quest:' + q.id, type: 'quest', ref: q.id, kind: 'practices' });
+          });
+        }
       }
       const uuid = liveUuid(node);
       if (uuid && Khora) {
@@ -252,6 +258,8 @@
       const q = window.PalinodeMarketplace && PalinodeMarketplace.hydrateQuest(node.ref);
       if (q && q.epicId)
         out.push({ id: 'epic:' + q.epicId, type: 'epic', ref: q.epicId, kind: 'within' });
+      (q && q.conceptIds || []).forEach(c => conceptOf(c) &&
+        out.push({ id: cid(c), type: 'concept', ref: c, kind: 'practices' }));
       return out;
     }
     if (node.type === 'mentor') {
@@ -312,8 +320,10 @@
     }
     if (n.type === 'quest') {
       const q = window.PalinodeMarketplace && PalinodeMarketplace.hydrateQuest(n.ref);
-      const epic = q && window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(q.epicId);
-      return (epic && epic.category) || 'clarity';
+      const epic = q && q.epicId && window.PalinodeMarketplace && PalinodeMarketplace.hydrateEpic(q.epicId);
+      if (epic && epic.category) return epic.category;
+      const first = q && q.conceptIds && q.conceptIds[0] && conceptOf(q.conceptIds[0]);
+      return (first && first.category) || 'clarity';
     }
     if (n.type === 'mentor') return 'lineage';
     return 'resonance';       // notes, other notes and media are yours
@@ -559,7 +569,8 @@
     n.type === 'note' ? 34 :
     n.type === 'media' ? (n._url ? 46 : 14) :
     n.type === 'note-other' ? 22 :
-    n.type === 'epic' || n.type === 'mentor' || n.type === 'quest' ? 18 :
+    n.type === 'quest' ? 22 :
+    n.type === 'epic' || n.type === 'mentor' ? 18 :
     n.type === 'tradition' ? 11 :
     n.type === 'spectrum' ? (leanOf(n.ref) ? 16 : 12) :
     n.type === 'link' ? 12 :

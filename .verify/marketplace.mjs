@@ -209,7 +209,7 @@ const questField = await page.evaluate(() => {
 });
 check('Epics & Quests filter activates', questField.pressed === 'true');
 check('filter shows epics and quests only',
-  questField.quests >= 3 && questField.epics >= 1 && questField.mentors === 0 && questField.concepts === 0,
+  questField.quests >= 20 && questField.epics >= 1 && questField.mentors === 0 && questField.concepts === 0,
   JSON.stringify(questField));
 
 if (problems.length) problems.forEach(p => check(p, false));

@@ -369,6 +369,29 @@
     }
   }
 
+  function startAcceptedQuest(questId) {
+    closeExplore();
+    closePathways();
+    closeProfile();
+    closeMarket();
+    el.body.classList.remove('show-insights', 'show-rail');
+    if (window.PalinodeQuests) {
+      PalinodeQuests.enter();
+      PalinodeQuests.open(questId);
+    }
+    syncNav('quests');
+    syncNotePage();
+  }
+
+  function wireQuestsChrome() {
+    if (!window.PalinodeQuests) return;
+    PalinodeQuests.onChange = () => {
+      if (PalinodeQuests.isOpen()) PalinodeQuests.renderLog();
+    };
+    PalinodeQuests.onChrome = () => syncNotePage();
+    PalinodeQuests.onStartQuest = startAcceptedQuest;
+  }
+
   function newNote() {
     closeExplore();
     closePathways();
@@ -2118,10 +2141,7 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
       PalinodePathways.onChrome = () => syncNotePage();
     }
     if (window.PalinodeQuests) {
-      PalinodeQuests.onChange = () => {
-        if (PalinodeQuests.isOpen()) PalinodeQuests.renderLog();
-      };
-      PalinodeQuests.onChrome = () => syncNotePage();
+      wireQuestsChrome();
     }
     if (window.PalinodeMarketplace) {
       PalinodeMarketplace.onChrome = () => syncNotePage();
@@ -2195,10 +2215,7 @@ What I actually want is for someone to see how hard it has been. That is a small
       };
     }
     if (window.PalinodeQuests) {
-      PalinodeQuests.onChange = () => {
-        if (PalinodeQuests.isOpen()) PalinodeQuests.renderLog();
-      };
-      PalinodeQuests.onChrome = () => syncNotePage();
+      wireQuestsChrome();
     }
 
     if (window.PalinodeProfile)

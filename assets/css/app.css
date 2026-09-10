@@ -1572,13 +1572,14 @@ body.exploring { overflow: hidden; }
    treatment and keep a single gradient with a rim. Cheaper, and identical
    to the eye at that size. */
 /* media is excluded: the shorthand below resets background-size, which
-   would drop `cover` and render a photograph as a top-left crop */
-.gx-node:not(.labelled):not(.sel):not(.gx-media) .gx-orb::before,
-.gx-node:not(.labelled):not(.sel):not(.gx-media) .gx-orb::after,
+   would drop `cover` and render a photograph as a top-left crop.
+   Quests are excluded: they keep the caustic layers at every scale. */
+.gx-node:not(.labelled):not(.sel):not(.gx-media):not(.gx-quest) .gx-orb::before,
+.gx-node:not(.labelled):not(.sel):not(.gx-media):not(.gx-quest) .gx-orb::after,
 .orb.sm::before, .orb.sm::after,
 .mini-orb::before, .mini-orb::after { content: none; }
 
-.gx-node:not(.labelled):not(.sel):not(.gx-media) .gx-orb,
+.gx-node:not(.labelled):not(.sel):not(.gx-media):not(.gx-quest) .gx-orb,
 .orb.sm {
   background: radial-gradient(circle at 36% 29%,
     color-mix(in srgb, var(--c) 14%, #ffffff) 0%,
@@ -2507,10 +2508,91 @@ nav.sidenav {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--lineage) 55%, transparent),
     0 0 18px color-mix(in srgb, var(--lineage) 35%, transparent);
 }
+
+/* Quests: MetalForge-style caustic glass orb, remapped to category hues */
 .gx-node.gx-quest .gx-orb {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--clarity) 55%, transparent),
-    0 0 18px color-mix(in srgb, var(--clarity) 32%, transparent);
+  --pearl: color-mix(in srgb, var(--c) 10%, #ffffff);
+  --shell: color-mix(in srgb, var(--c) 38%, #ffffff);
+  --deep: color-mix(in oklab, var(--c) 48%, #08070a);
+  --caustic-a: color-mix(in srgb, var(--clarity) 55%, transparent);
+  --caustic-b: color-mix(in srgb, var(--resonance) 45%, transparent);
+  --caustic-c: color-mix(in srgb, var(--lineage) 40%, transparent);
+  isolation: isolate;
+  overflow: visible;
+  background:
+    radial-gradient(circle at 34% 28%,
+      rgba(255,255,255,.55) 0%,
+      color-mix(in srgb, var(--c) 28%, #ffffff) 14%,
+      color-mix(in oklab, var(--c) 42%, #120a22) 42%,
+      color-mix(in oklab, var(--c) 28%, #08070a) 72%,
+      #05040a 100%);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--c) 70%, transparent),
+    0 0 14px color-mix(in srgb, var(--c) 48%, transparent),
+    0 0 28px color-mix(in srgb, var(--clarity) 22%, transparent),
+    inset 0 0 10px color-mix(in srgb, var(--c) 18%, transparent);
 }
+.gx-node.gx-quest .gx-orb::before {
+  content: '';
+  position: absolute; inset: -28%;
+  border-radius: 50%;
+  z-index: -1;
+  opacity: .92;
+  background:
+    conic-gradient(from 210deg at 50% 50%,
+      transparent 0deg,
+      var(--caustic-a) 48deg,
+      transparent 86deg,
+      var(--caustic-b) 128deg,
+      transparent 168deg,
+      var(--caustic-c) 210deg,
+      transparent 255deg,
+      color-mix(in srgb, var(--c) 50%, transparent) 300deg,
+      transparent 340deg),
+    radial-gradient(ellipse 42% 20% at 28% 36%, color-mix(in srgb, var(--c) 55%, transparent), transparent 70%),
+    radial-gradient(ellipse 28% 48% at 72% 58%, color-mix(in srgb, var(--clarity) 40%, transparent), transparent 68%),
+    radial-gradient(ellipse 50% 16% at 48% 82%, color-mix(in srgb, var(--resonance) 32%, transparent), transparent 72%);
+  filter: blur(.35px);
+}
+.gx-node.gx-quest .gx-orb::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 36% 28% at 34% 24%, rgba(255,255,255,.82), rgba(255,255,255,.12) 55%, transparent 72%),
+    radial-gradient(ellipse 18% 12% at 68% 78%, rgba(255,255,255,.32), transparent 70%),
+    radial-gradient(circle at 50% 50%,
+      transparent 48%,
+      color-mix(in srgb, var(--c) 18%, transparent) 62%,
+      color-mix(in srgb, var(--shell) 70%, transparent) 78%,
+      color-mix(in srgb, var(--c) 88%, transparent) 88%,
+      color-mix(in srgb, var(--clarity) 55%, transparent) 94%,
+      color-mix(in srgb, var(--c) 25%, transparent) 98%,
+      transparent 100%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--shell) 45%, transparent);
+}
+.gx-node.gx-quest.sel .gx-orb {
+  box-shadow:
+    0 0 0 1.5px color-mix(in srgb, var(--c) 85%, transparent),
+    0 0 22px color-mix(in srgb, var(--c) 62%, transparent),
+    0 0 40px color-mix(in srgb, var(--clarity) 34%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--c) 24%, transparent);
+}
+@keyframes quest-caustic {
+  from { transform: rotate(0deg) scale(1); }
+  50%  { transform: rotate(180deg) scale(1.12); }
+  to   { transform: rotate(360deg) scale(1); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gx-node.gx-quest.labelled .gx-orb::before,
+  .gx-node.gx-quest.sel .gx-orb::before,
+  .gx-node.gx-quest.gx-mercurial .gx-orb::before {
+    animation: quest-caustic 14s linear infinite;
+  }
+  .gx-node.gx-quest.sel .gx-orb::before { animation-duration: 9s; }
+  .gx-node.gx-quest.gx-mercurial .gx-orb::before { animation-duration: 11s; }
+}
+
 .gx-node.gx-mentor .gx-orb {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--stance) 55%, transparent),
     0 0 18px color-mix(in srgb, var(--stance) 30%, transparent);
@@ -2546,13 +2628,15 @@ nav.sidenav {
 .gx-hover-acts button:hover { color: var(--ink); border-color: rgba(255,255,255,.24); }
 
 .gx-node.gx-mercurial .gx-orb {
-  animation: mercurial-pulse 2.4s ease-in-out infinite;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--clarity) 70%, transparent),
-    0 0 22px color-mix(in srgb, var(--clarity) 45%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--c) 78%, transparent),
+    0 0 18px color-mix(in srgb, var(--c) 52%, transparent),
+    0 0 32px color-mix(in srgb, var(--clarity) 30%, transparent),
+    inset 0 0 10px color-mix(in srgb, var(--c) 20%, transparent);
 }
-@keyframes mercurial-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.08); opacity: .92; }
+.gx-node.gx-quest.gx-mercurial .gx-orb {
+  /* caustic motion carries the “alive” cue; no extra scale pulse */
+  animation: none;
 }
 
 .quest-overview .quest-ov-kicker {
@@ -2565,7 +2649,8 @@ nav.sidenav {
   margin: 0 0 14px; padding-left: 1.15em; color: var(--ink-2);
   font-size: 13px; line-height: 1.55;
 }
-.quest-ov-act { margin-top: 18px; }
+.quest-accept-choice { flex-wrap: wrap; }
+.quest-accept-choice .ghost.solid { min-width: 8.5rem; }
 .mkt-quest-log { margin-top: 8px; }
 .quest-log-filters { margin-bottom: 14px; }
 .quest-log-grid { margin-top: 4px; }

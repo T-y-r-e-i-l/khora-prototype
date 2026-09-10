@@ -1038,21 +1038,33 @@
     if (needle) {
       list = list.filter(quest => {
         const epic = Data().epicOf(quest.epicId);
-        return [quest.title, quest.description, epic && epic.title]
+        const concepts = (quest.conceptIds || []).join(' ');
+        return [quest.title, quest.description, epic && epic.title, concepts]
           .filter(Boolean).join(' ').toLowerCase().includes(needle);
       });
+    } else {
+      // Prefer free quests on the open field, then epic-packaged ones.
+      list = list.slice().sort((a, b) => {
+        const af = a.access === 'free' ? 0 : 1;
+        const bf = b.access === 'free' ? 0 : 1;
+        return af - bf;
+      });
     }
-    const lim = typeof limit === 'number' ? limit : 18;
+    const lim = typeof limit === 'number' ? limit : 32;
     return list.slice(0, lim);
   }
 
   function freeQuestsForGraph() {
-    return Data().freeQuests().slice(0, 6);
+    return Data().freeQuests();
   }
 
   function openQuest(questId) {
     const q = Data().questOf(questId);
     if (!q) return;
+    if (!q.epicId || q.access === 'free') {
+      if (window.PalinodeQuests) PalinodeQuests.openOverview(questId);
+      return;
+    }
     const epicId = q.epicId;
     if (isEnrolled(epicId)) {
       focusKind = 'epic';

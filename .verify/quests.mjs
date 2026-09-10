@@ -28,13 +28,29 @@ await page.waitForFunction(() => {
 });
 await page.click('#gx-eq-filter');
 await page.waitForFunction(() =>
-  document.querySelectorAll('.gx-node.gx-quest.gx-mercurial').length >= 1, null, { timeout: 8000 });
+  document.querySelectorAll('.gx-node.gx-quest.gx-mercurial').length >= 3, null, { timeout: 8000 });
 
 const freeId = await page.evaluate(() => {
   const el = document.querySelector('.gx-node.gx-quest.gx-mercurial');
   return el ? el.dataset.id.replace(/^quest:/, '') : null;
 });
 check('Mercurial free quests appear under Epics & Quests', !!freeId, freeId);
+
+const linked = await page.evaluate(() => {
+  const all = window.PalinodeMarketData.allQuests();
+  const withConcepts = all.filter(q => (q.conceptIds || []).length > 0).length;
+  const free = all.filter(q => q.access === 'free');
+  return {
+    total: all.length,
+    withConcepts,
+    free: free.length,
+    freeLinked: free.filter(q => (q.conceptIds || []).length > 0).length
+  };
+});
+check('All quests carry conceptIds', linked.withConcepts === linked.total,
+  JSON.stringify(linked));
+check('Free concept/prompt/spectrum pack is seeded', linked.free >= 23,
+  JSON.stringify(linked));
 
 await page.evaluate(id => {
   if (window.PalinodeQuests) PalinodeQuests.openOverview(id);
@@ -43,24 +59,35 @@ await page.waitForSelector('#quest-overview-scrim.on');
 check('quest overview opens', await page.evaluate(
   () => document.getElementById('quest-overview-scrim').classList.contains('on')));
 
-await page.evaluate(id => {
-  PalinodeQuests.accept(id, 'explore');
-  PalinodeQuests.closeOverview();
-}, freeId);
-await page.waitForTimeout(200);
-const afterAccept = await page.evaluate(id => {
-  const st = JSON.parse(localStorage.getItem('palinode.quests.v1') || '{}');
-  const entry = (st.entries || {})[id];
-  return entry && entry.status;
-}, freeId);
-check('Accept adds quest to active log', afterAccept === 'active', afterAccept);
+await page.click('[data-quest-accept]');
+await page.waitForSelector('[data-quest-start]');
+const choice = await page.evaluate(() => ({
+  start: !!document.querySelector('[data-quest-start]'),
+  keep: !!document.querySelector('[data-quest-keep-exploring]'),
+  copy: (document.querySelector('#quest-overview-body .lede') || {}).textContent || ''
+}));
+check('Accept offers Start Quest or Keep exploring',
+  choice.start && choice.keep && /accepted/i.test(choice.copy), JSON.stringify(choice));
 
-await page.evaluate(() => {
-  if (window.PalinodeGraph) PalinodeGraph.close();
-  document.body.classList.remove('exploring');
-  if (window.PalinodeQuests) PalinodeQuests.enter();
-});
-await page.waitForTimeout(250);
+await page.click('[data-quest-start]');
+await page.waitForTimeout(300);
+const afterStart = await page.evaluate(id => {
+  const st = JSON.parse(localStorage.getItem('palinode.quests.v1') || '{}');
+  const wrap = document.getElementById('quests-wrap');
+  const body = document.getElementById('body');
+  return {
+    status: st.entries?.[id]?.status,
+    questsMode: body.classList.contains('quests-mode'),
+    detail: !!(wrap && !wrap.hidden),
+    activeItem: !!document.querySelector(`#quest-list .note-item.active[data-open-quest="${id}"]`),
+    scrimOff: !document.getElementById('quest-overview-scrim').classList.contains('on')
+  };
+}, freeId);
+check('Accept adds quest to active log', afterStart.status === 'active', afterStart.status);
+check('Start Quest opens the Quests tray detail',
+  afterStart.questsMode && afterStart.detail && afterStart.activeItem && afterStart.scrimOff,
+  JSON.stringify(afterStart));
+
 const logActive = await page.evaluate(id => {
   const item = document.querySelector(`#quest-list [data-open-quest="${id}"]`);
   const body = document.getElementById('body');
@@ -70,6 +97,29 @@ const logActive = await page.evaluate(id => {
     && /Quests/.test((document.querySelector('.rail-lab-quests') || {}).textContent || ''));
 }, freeId);
 check('Quests page lists the active quest', logActive);
+
+/* Keep-exploring path on a second free quest */
+const freeId2 = await page.evaluate(id => {
+  const q = window.PalinodeMarketData.freeQuests().find(x => x.id !== id);
+  return q ? q.id : null;
+}, freeId);
+if (freeId2) {
+  await page.evaluate(id => PalinodeQuests.openOverview(id), freeId2);
+  await page.waitForSelector('#quest-overview-scrim.on');
+  await page.click('[data-quest-accept]');
+  await page.waitForSelector('[data-quest-keep-exploring]');
+  await page.click('[data-quest-keep-exploring]');
+  await page.waitForTimeout(200);
+  const kept = await page.evaluate(id => {
+    const st = JSON.parse(localStorage.getItem('palinode.quests.v1') || '{}');
+    return {
+      status: st.entries?.[id]?.status,
+      scrimOff: !document.getElementById('quest-overview-scrim').classList.contains('on')
+    };
+  }, freeId2);
+  check('Keep exploring leaves the quest in the log',
+    kept.status === 'active' && kept.scrimOff, JSON.stringify(kept));
+}
 
 await page.evaluate(id => {
   PalinodeQuests.open(id);
