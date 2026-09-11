@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Insight card — Khora Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="stylesheet" href="../assets/demos.css">
+</head>
+<body data-section="components" data-page="insight-card" data-prefix="../">
+<main class="ds-main">
+  <p class="ds-kicker">Components</p>
+  <h1>Insight card</h1>
+  <p class="ds-lede">List row inside the <a href="insight-side-sheet.html">insight side sheet</a>. Category color via <code>--c</code>. Open expands the quote and body.</p>
+  <div class="ds-status documented">Documented</div>
+
+    <div class="ds-demo">
+      <article class="insight open" style="--c:var(--resonance)">
+        <div class="ihead">
+          <span class="orb" style="--c:var(--resonance)"></span>
+          <div class="ititle">
+            <h4>Agency without guarantees</h4>
+            <div class="lineage-tag">Aristotle · Nicomachean Ethics</div>
+          </div>
+        </div>
+        <p class="quote">We deliberate about what is in our power — not the weather, but the walk.</p>
+      </article>
+    </div>
+
+  <h2>Class contract</h2>
+  <table class="ds-table">
+    <thead><tr><th>Class</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><code>.insight</code></td><td>Card shell</td></tr>
+      <tr><td><code>.insight.open</code></td><td>Expanded quote + <code>.ibody</code></td></tr>
+      <tr><td><code>.ihead</code> / <code>.quote</code></td><td>Header row and italic excerpt</td></tr>
+      <tr><td><code>--c</code></td><td>Category hue for border / orb / quote rule</td></tr>
+    </tbody>
+  </table>
+  <p>Lives in <code>.ins-list</code> inside the Reading rail — see <a href="insight-side-sheet.html">Insight side sheet</a>.</p>
+</main>
+<script src="../assets/nav.js"></script>
+</body>
+</html>

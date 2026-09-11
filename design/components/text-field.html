@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Text field — Khora Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="stylesheet" href="../assets/demos.css">
+</head>
+<body data-section="components" data-page="text-field" data-prefix="../">
+<main class="ds-main">
+  <p class="ds-kicker">Components</p>
+  <h1>Text field</h1>
+  <p class="ds-lede">Search sits in rails as a pill. Titles and prose use bare serif inputs — no box chrome.</p>
+  <div class="ds-status documented">Documented</div>
+  
+    <p class="ds-meta">Search</p>
+    <div class="ds-demo">
+      <label class="search"><input type="search" placeholder="Search notes" aria-label="Search notes"></label>
+    </div>
+    <p class="ds-meta">Title</p>
+    <div class="ds-demo stack">
+      <input class="title-input" placeholder="Untitled note" aria-label="Note title">
+    </div>
+    <h2>Class contract</h2>
+    <ul>
+      <li><code>.search</code> + inner <code>input</code></li>
+      <li><code>.title-input</code> for note titles</li>
+      <li>Editor body uses <code>.editor-stack textarea</code> in the product (serif prose)</li>
+    </ul>
+    
+</main>
+<script src="../assets/nav.js"></script>
+</body>
+</html>

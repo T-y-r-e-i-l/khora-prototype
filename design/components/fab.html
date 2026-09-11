@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAB — Khora Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="stylesheet" href="../assets/demos.css">
+</head>
+<body data-section="components" data-page="fab" data-prefix="../">
+<main class="ds-main">
+  <p class="ds-kicker">Components</p>
+  <h1>FAB</h1>
+  <p class="ds-lede">Phone navigation (≤900px): the desktop <a href="sidenav.html">sidenav</a> collapses into a bottom-right floating action button. Open state fans destinations in a 2–3–1 cluster.</p>
+  <div class="ds-status documented">Documented</div>
+
+  <p class="ds-meta">Interactive preview — tap the FAB</p>
+  <div class="ds-demo stack" style="padding:0; overflow:hidden">
+    <div class="fab-stage" id="fab-stage">
+      <div class="fab-stage-scrim" id="fab-scrim" hidden></div>
+      <div class="fab-demo" id="fab-demo" aria-label="FAB navigation demo">
+        <button class="nav-new" type="button" tabindex="-1" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+
+        <button class="nav-item" type="button" data-slot="explore" tabindex="-1">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2.4" stroke="currentColor" stroke-width="1.4"/><circle cx="12" cy="12" r="8.4" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 3"/></svg>
+          <span class="nav-lab">Explore</span>
+        </button>
+        <button class="nav-item" type="button" data-slot="notes" tabindex="-1">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M5 12h10M5 17h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span class="nav-lab">Notes</span>
+        </button>
+        <button class="nav-item" type="button" data-slot="market" tabindex="-1">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 8h12l-1 11H7L6 8zM9 8V6a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="nav-lab">Market</span>
+        </button>
+        <button class="nav-item" type="button" data-slot="pathways" tabindex="-1">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 17l5-5 3 3 6-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="nav-lab">Pathways</span>
+        </button>
+        <button class="nav-item" type="button" data-slot="quests" tabindex="-1">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.4"/><path d="M12 8v4l2.5 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <span class="nav-lab">Quests</span>
+        </button>
+        <button class="nav-item" type="button" data-slot="profile" tabindex="-1">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="9" r="3.2" stroke="currentColor" stroke-width="1.4"/><path d="M6.5 18.5c1.4-2.4 3.3-3.5 5.5-3.5s4.1 1.1 5.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <span class="nav-lab">Profile</span>
+        </button>
+
+        <button type="button" class="nav-fab-toggle" id="fab-toggle" aria-expanded="false" aria-label="Open navigation">
+          <span class="nav-fab-menu" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <span class="nav-fab-close" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M7 7l10 10M17 7L7 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <h2>When it appears</h2>
+  <ul>
+    <li>Viewport <code>≤ 900px</code> — desktop keeps the icon rail.</li>
+    <li>Pinned bottom-right with safe-area inset; z-index <code>--z-fab</code> (90).</li>
+    <li>Closed: 64px toggle + floating <code>.nav-new</code> above it.</li>
+    <li>Open: <code>html.fab-open</code> + <code>.nav-fab-scrim</code>; destinations stagger into a 2–3–1 fan.</li>
+  </ul>
+
+  <h2>Class contract</h2>
+  <table class="ds-table">
+    <thead><tr><th>Class / state</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><code>.nav-fab-toggle</code></td><td>64px circular open/close control</td></tr>
+      <tr><td><code>.nav-fab-menu</code> / <code>.nav-fab-close</code></td><td>Icon swap inside the toggle</td></tr>
+      <tr><td><code>.nav-fab-scrim</code></td><td>Dim + blur behind the fan (z 85)</td></tr>
+      <tr><td><code>html.fab-open</code></td><td>Opens cluster; hides standalone New</td></tr>
+      <tr><td><code>html.nav-hidden</code></td><td>Hides the whole FAB chrome</td></tr>
+      <tr><td><code>nav.sidenav .nav-item</code></td><td>Same items as desktop; absolute + transform when open</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Cluster layout</h2>
+  <table class="ds-table">
+    <thead><tr><th>Row</th><th>Destinations</th><th>Translate (from FAB)</th></tr></thead>
+    <tbody>
+      <tr><td>Top (2)</td><td>Explore, Notes</td><td><code>(-176,-216)</code>, <code>(-80,-216)</code></td></tr>
+      <tr><td>Middle (3)</td><td>Market, Pathways, Quests</td><td><code>(-224,-124)</code>, <code>(-128,-124)</code>, <code>(-32,-124)</code></td></tr>
+      <tr><td>Bottom (1)</td><td>Profile</td><td><code>(-128,-32)</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Clearance</h2>
+  <p>Explore graph reserves space left of the FAB via <code>--gx-fab-clear</code> / <code>--gx-fab-bottom</code> so bottom chrome does not collide with the 64px control.</p>
+</main>
+<script src="../assets/nav.js"></script>
+<script>
+(function () {
+  const stage = document.getElementById('fab-stage');
+  const demo = document.getElementById('fab-demo');
+  const toggle = document.getElementById('fab-toggle');
+  const scrim = document.getElementById('fab-scrim');
+  function setOpen(on) {
+    demo.classList.toggle('is-open', on);
+    stage.classList.toggle('is-open', on);
+    scrim.hidden = !on;
+    toggle.setAttribute('aria-expanded', on ? 'true' : 'false');
+    toggle.setAttribute('aria-label', on ? 'Close navigation' : 'Open navigation');
+  }
+  toggle.addEventListener('click', () => setOpen(!demo.classList.contains('is-open')));
+  scrim.addEventListener('click', () => setOpen(false));
+})();
+</script>
+</body>
+</html>

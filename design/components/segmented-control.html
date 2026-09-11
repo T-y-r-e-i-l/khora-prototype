@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Segmented control — Khora Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="stylesheet" href="../assets/demos.css">
+</head>
+<body data-section="components" data-page="segmented-control" data-prefix="../">
+<main class="ds-main">
+  <p class="ds-kicker">Components</p>
+  <h1>Segmented control</h1>
+  <p class="ds-lede">Equal-column toggle for sibling views. On narrow screens the product swaps to <code>.seg-select</code>.</p>
+  <div class="ds-status documented">Documented</div>
+  
+    <div class="ds-demo">
+      <div class="seg" role="tablist">
+        <button class="seg-btn on" type="button">Content <span class="seg-n">12</span></button>
+        <button class="seg-btn" type="button">Connections <span class="seg-n">5</span></button>
+        <button class="seg-btn" type="button">Saved</button>
+      </div>
+    </div>
+    <script>
+      document.querySelectorAll('.seg').forEach(seg => {
+        seg.addEventListener('click', e => {
+          const btn = e.target.closest('.seg-btn');
+          if (!btn) return;
+          seg.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('on'));
+          btn.classList.add('on');
+        });
+      });
+    </script>
+    
+</main>
+<script src="../assets/nav.js"></script>
+</body>
+</html>

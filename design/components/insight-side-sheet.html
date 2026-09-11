@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Insight side sheet — Khora Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="stylesheet" href="../assets/demos.css">
+</head>
+<body data-section="components" data-page="insight-side-sheet" data-prefix="../">
+<main class="ds-main">
+  <p class="ds-kicker">Components</p>
+  <h1>Insight side sheet</h1>
+  <p class="ds-lede">The Reading rail — right column of the app shell. Hosts score, segment tabs, category filters, and scrollable lists of <a href="insight-card.html">insight cards</a>. Can swap to a reference panel for a single work or concept.</p>
+  <div class="ds-status documented">Documented</div>
+
+  <p class="ds-meta">Reading mode</p>
+  <div class="ds-demo" style="align-items:flex-start">
+    <aside class="sheet-demo" id="sheet-reading" aria-label="Reading side sheet">
+      <div class="ins-head">
+        <div class="row">
+          <h3>Reading</h3>
+          <span class="spacer"></span>
+          <span class="micro" style="cursor:default">Dialectical</span>
+          <button class="ins-collapse" type="button" title="Hide the reading" aria-label="Hide the reading">
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M10 3.5L5.5 8l4.5 4.5" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="seg" role="tablist">
+          <button class="seg-btn on" type="button">Insights <span class="seg-n">3</span></button>
+          <button class="seg-btn" type="button">Readings</button>
+          <button class="seg-btn" type="button">Beliefs</button>
+        </div>
+        <div class="score">
+          <div class="ring">
+            <svg width="62" height="62" viewBox="0 0 62 62">
+              <circle cx="31" cy="31" r="26" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="3"/>
+              <circle cx="31" cy="31" r="26" fill="none" stroke="rgba(255,255,255,.72)" stroke-width="3" stroke-linecap="round" stroke-dasharray="163" stroke-dashoffset="48"/>
+            </svg>
+            <div class="val">72</div>
+          </div>
+          <div class="bars">
+            <div class="bar-row"><span>Resonance</span><div class="bar"><i style="width:80%"></i></div></div>
+            <div class="bar-row"><span>Tension</span><div class="bar"><i style="width:45%"></i></div></div>
+            <div class="bar-row"><span>Clarity</span><div class="bar"><i style="width:62%"></i></div></div>
+          </div>
+        </div>
+        <div class="filters">
+          <button class="chip" type="button"><span class="orb sm" style="--c:var(--resonance)"></span> Resonance</button>
+          <button class="chip" type="button"><span class="orb sm" style="--c:var(--tension)"></span> Tension</button>
+          <button class="chip off" type="button"><span class="orb sm" style="--c:var(--clarity)"></span> Clarity</button>
+        </div>
+      </div>
+      <div class="ins-list">
+        <article class="insight open" style="--c:var(--resonance)">
+          <div class="ihead">
+            <span class="orb" style="--c:var(--resonance)"></span>
+            <div class="ititle">
+              <h4>Agency without guarantees</h4>
+              <div class="lineage-tag">Aristotle · Nicomachean Ethics</div>
+            </div>
+          </div>
+          <p class="quote">We deliberate about what is in our power — not the weather, but the walk.</p>
+        </article>
+        <article class="insight" style="--c:var(--tension)">
+          <div class="ihead">
+            <span class="orb" style="--c:var(--tension)"></span>
+            <div class="ititle">
+              <h4>False dilemma</h4>
+              <div class="lineage-tag">Logical fallacy</div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </aside>
+  </div>
+
+  <p class="ds-meta">Reference mode — <code>aside.insights.ref-open</code></p>
+  <div class="ds-demo" style="align-items:flex-start">
+    <aside class="sheet-demo ref-open" aria-label="Reference panel">
+      <div class="ins-head"></div>
+      <div class="ins-list"></div>
+      <div class="ref-panel">
+        <div class="ref-panel-head">
+          <button type="button" class="ref-back">← Reading</button>
+        </div>
+        <div class="ref-panel-body">
+          <div class="ref-kicker"><span class="orb sm" style="--c:var(--lineage)"></span> Concept · Lineage</div>
+          <h2 class="ref-title">Free will</h2>
+          <p class="ref-author">From the note’s constellation</p>
+          <p class="ref-excerpt">The capacity to choose among live options — not merely to narrate what already happened.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <h2>Anatomy</h2>
+  <table class="ds-table">
+    <thead><tr><th>Region</th><th>Markup</th><th>Contains</th></tr></thead>
+    <tbody>
+      <tr><td>Shell</td><td><code>aside.insights</code></td><td>Column width <code>--rail-r</code> (380px)</td></tr>
+      <tr><td>Head</td><td><code>.ins-head</code></td><td>Title, engine name, collapse, seg, score, constellation, filters</td></tr>
+      <tr><td>Lists</td><td><code>.ins-list</code> ×3</td><td>Insights / Readings / Beliefs (one visible)</td></tr>
+      <tr><td>Reference</td><td><code>#ref-panel</code></td><td>Replaces head+list when <code>.ref-open</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>States</h2>
+  <ul>
+    <li><code>.body.insights-closed</code> — column width → 0; <code>.ins-collapse</code> stays visible on the edge.</li>
+    <li><code>aside.insights.ref-open</code> — hides head and lists; shows reference panel.</li>
+    <li>≤900px — sheet is a full-bleed overlay via <code>.body.show-insights</code>; seg becomes <code>.seg-select</code>.</li>
+    <li>Hidden entirely in market / quests modes.</li>
+  </ul>
+
+  <h2>Composed primitives</h2>
+  <ul>
+    <li><a href="segmented-control.html">Segmented control</a> — Insights / Readings / Beliefs</li>
+    <li><a href="progress.html">Progress</a> — score ring + bars</li>
+    <li><a href="chip.html">Chip</a> — category filters</li>
+    <li><a href="insight-card.html">Insight card</a> — list rows</li>
+    <li><a href="tooltip.html">Tooltip</a> — criteria / chip hover copy (<code>.read-tip</code>)</li>
+  </ul>
+
+  <h2>Class contract</h2>
+  <table class="ds-table">
+    <thead><tr><th>Class</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><code>aside.insights</code></td><td>Side sheet shell</td></tr>
+      <tr><td><code>.ins-head</code> / <code>.ins-list</code></td><td>Sticky chrome vs scroll region</td></tr>
+      <tr><td><code>.ins-collapse</code></td><td>Hide / reveal the rail</td></tr>
+      <tr><td><code>.ref-panel</code> / <code>.ref-back</code></td><td>In-place reference view</td></tr>
+      <tr><td><code>.constellation</code></td><td>Optional mini graph in the head</td></tr>
+    </tbody>
+  </table>
+</main>
+<script src="../assets/nav.js"></script>
+<script>
+document.querySelectorAll('.sheet-demo .seg').forEach(seg => {
+  seg.addEventListener('click', e => {
+    const btn = e.target.closest('.seg-btn');
+    if (!btn) return;
+    seg.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+  });
+});
+</script>
+</body>
+</html>

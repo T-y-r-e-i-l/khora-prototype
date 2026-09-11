@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motion — Khora Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="stylesheet" href="../assets/demos.css">
+</head>
+<body data-section="foundations" data-page="motion" data-prefix="../">
+<main class="ds-main">
+  <p class="ds-kicker">Foundations</p>
+  <h1>Motion</h1>
+  <p class="ds-lede">One shared easing curve. Durations alias the timings already in transitions.</p>
+  
+  
+    <table class="ds-table">
+      <thead><tr><th>Token</th><th>Value</th><th>Typical use</th></tr></thead>
+      <tbody>
+        <tr><td><code>--ease</code></td><td>cubic-bezier(.22,.61,.36,1)</td><td>All UI motion</td></tr>
+        <tr><td><code>--dur-fast</code></td><td>.16s</td><td>Tip, note hover</td></tr>
+        <tr><td><code>--dur-quick</code></td><td>.18s</td><td>Buttons, chips</td></tr>
+        <tr><td><code>--dur-enter</code></td><td>.22s</td><td>Modal fade</td></tr>
+        <tr><td><code>--dur-toast</code></td><td>.28s</td><td>Toast slide</td></tr>
+        <tr><td><code>--dur-bar</code></td><td>.6s</td><td>Score bars</td></tr>
+      </tbody>
+    </table>
+    <p>Ambient field and orb liquid use longer loops; honor <code>prefers-reduced-motion</code>.</p>
+    
+</main>
+<script src="../assets/nav.js"></script>
+</body>
+</html>

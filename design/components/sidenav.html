@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sidenav — Khora Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="stylesheet" href="../assets/demos.css">
+</head>
+<body data-section="components" data-page="sidenav" data-prefix="../">
+<main class="ds-main">
+  <p class="ds-kicker">Components</p>
+  <h1>Sidenav</h1>
+  <p class="ds-lede">Full desktop icon rail (<code>--nav</code> / 78px). Order matches the product: brand, New, then Explore → Notes → Market → Pathways → Quests → Profile. Phone collapses into the <a href="fab.html">FAB</a>.</p>
+  <div class="ds-status documented">Documented</div>
+
+  <p class="ds-meta">Desktop — click a destination to set <code>.on</code></p>
+  <div class="ds-demo" style="align-items:flex-start; min-height:560px">
+    <nav class="sidenav-demo" id="sidenav-demo" aria-label="Full sidenav">
+      <span class="nav-brand" title="Khora">
+        <img src="../assets/khora-logo.png" alt="Khora" width="40" height="47">
+      </span>
+
+      <button class="nav-new" type="button" title="New note" aria-label="New note">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
+
+      <span class="nav-rule"></span>
+
+      <button class="nav-item on" type="button" data-view="explore">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="2.4" stroke="currentColor" stroke-width="1.4"/>
+          <circle cx="12" cy="12" r="8.4" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 3"/>
+          <circle cx="18.5" cy="8" r="1.7" fill="currentColor"/>
+        </svg>
+        <span class="nav-lab">Explore</span>
+      </button>
+
+      <button class="nav-item" type="button" data-view="write">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M5 4h11l3 3v13H5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          <path d="M8 10h8M8 14h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <span class="nav-lab">Notes</span>
+      </button>
+
+      <button class="nav-item" type="button" data-view="market">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M5 8h14l-1.2 11H6.2L5 8z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          <path d="M9 8V6.5A3 3 0 0 1 12 3.5 3 3 0 0 1 15 6.5V8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <span class="nav-lab">Market</span>
+      </button>
+
+      <button class="nav-item" type="button" data-view="pathways">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="5" cy="12" r="2.1" fill="currentColor"/>
+          <circle cx="12" cy="12" r="2.1" fill="currentColor"/>
+          <circle cx="19" cy="12" r="2.1" fill="currentColor"/>
+          <path d="M7.2 12h2.6M14.2 12h2.6" stroke="currentColor" stroke-width="1.4"/>
+        </svg>
+        <span class="nav-lab">Pathways</span>
+      </button>
+
+      <button class="nav-item" type="button" data-view="quests">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3.5l2.1 4.3 4.7.7-3.4 3.3.8 4.7L12 14.3 7.8 16.5l.8-4.7-3.4-3.3 4.7-.7L12 3.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        </svg>
+        <span class="nav-lab">Quests</span>
+      </button>
+
+      <button class="nav-item" type="button" data-view="profile">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 8h16M4 13h16M4 18h16" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <circle cx="9" cy="8" r="2.1" fill="currentColor"/>
+          <circle cx="15.5" cy="13" r="2.1" fill="currentColor"/>
+          <circle cx="7.5" cy="18" r="2.1" fill="currentColor"/>
+        </svg>
+        <span class="nav-lab">Profile</span>
+      </button>
+    </nav>
+  </div>
+
+  <h2>Destinations</h2>
+  <table class="ds-table">
+    <thead><tr><th>Order</th><th>Control</th><th>View</th></tr></thead>
+    <tbody>
+      <tr><td>—</td><td><code>.nav-brand</code></td><td>Mark only</td></tr>
+      <tr><td>—</td><td><code>.nav-new</code></td><td>New note (action)</td></tr>
+      <tr><td>1</td><td>Explore</td><td><code>data-view="explore"</code></td></tr>
+      <tr><td>2</td><td>Notes</td><td><code>data-view="write"</code></td></tr>
+      <tr><td>3</td><td>Market</td><td><code>data-view="market"</code></td></tr>
+      <tr><td>4</td><td>Pathways</td><td><code>data-view="pathways"</code></td></tr>
+      <tr><td>5</td><td>Quests</td><td><code>data-view="quests"</code></td></tr>
+      <tr><td>6</td><td>Profile</td><td><code>data-view="profile"</code></td></tr>
+    </tbody>
+  </table>
+  <p><code>#btn-nav-insights</code> exists in markup but is <code>display: none</code> on desktop; phone uses the <a href="fab.html">FAB</a> cluster instead of a separate Insights item in the open fan.</p>
+
+  <h2>Class contract</h2>
+  <table class="ds-table">
+    <thead><tr><th>Class</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><code>nav.sidenav</code></td><td>Column shell</td></tr>
+      <tr><td><code>.nav-brand</code></td><td>Logo mark (hidden on phone)</td></tr>
+      <tr><td><code>.nav-new</code></td><td>New note — 40×40 square on desktop</td></tr>
+      <tr><td><code>.nav-item</code> / <code>.on</code></td><td>Destination; active fills a 40×40 behind the icon</td></tr>
+      <tr><td><code>.nav-lab</code></td><td>Uppercase label under the icon</td></tr>
+    </tbody>
+  </table>
+  <p>Active icon tints with <code>--stance</code>. Phone behavior: see <a href="fab.html">FAB</a>.</p>
+</main>
+<script src="../assets/nav.js"></script>
+<script>
+(function () {
+  const nav = document.getElementById('sidenav-demo');
+  nav.addEventListener('click', e => {
+    const item = e.target.closest('.nav-item');
+    if (!item) return;
+    nav.querySelectorAll('.nav-item').forEach(b => b.classList.remove('on'));
+    item.classList.add('on');
+  });
+})();
+</script>
+</body>
+</html>

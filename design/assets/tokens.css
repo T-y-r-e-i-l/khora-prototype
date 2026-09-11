@@ -1,0 +1,108 @@
+/* ============================================================
+   Khora Design System — tokens
+   Derived from assets/css/app.css. Aliases only; no restyle pass.
+   ============================================================ */
+
+:root {
+  /* ground */
+  --void:        #08070a;
+  --ink:         rgba(255,255,255,0.95);
+  --ink-2:       rgba(255,255,255,0.62);
+  --ink-3:       rgba(255,255,255,0.38);
+  --ink-4:       rgba(255,255,255,0.18);
+  --hairline:    rgba(255,255,255,0.10);
+  --hairline-2:  rgba(255,255,255,0.06);
+
+  /* glass */
+  --glass:       rgba(10,9,12,0.55);
+  --glass-2:     rgba(255,255,255,0.035);
+  --glass-3:     rgba(255,255,255,0.06);
+
+  /* category hues */
+  --resonance:   #F6A244;
+  --tension:     #E5484D;
+  --clarity:     #A78BFA;
+  --stance:      #D8C25A;
+  --lineage:     #5EC7C0;
+
+  /* type families */
+  --serif: 'Lora', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --sans:  'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+
+  /* radii (existing) */
+  --pill: 999px;
+  --r-lg: 20px;
+  --r-md: 14px;
+  --r-sm: 10px;
+
+  /* layout rails (existing) */
+  --nav: 78px;
+  --bar: 64px;
+  --rail-l: 268px;
+  --rail-r: 380px;
+
+  /* motion (existing + duration aliases) */
+  --ease: cubic-bezier(.22,.61,.36,1);
+  --dur-fast:   .16s;
+  --dur-quick:  .18s;
+  --dur-base:   .2s;
+  --dur-enter:  .22s;
+  --dur-soft:   .25s;
+  --dur-toast:  .28s;
+  --dur-bar:    .6s;
+  --dur-field:  1.2s;
+  --dur-mood:   1.6s;
+
+  /* spacing scale — values already used as literals in the app */
+  --space-1:  3px;
+  --space-2:  4px;
+  --space-3:  5px;
+  --space-4:  6px;
+  --space-5:  7px;
+  --space-6:  8px;
+  --space-7:  9px;
+  --space-8:  10px;
+  --space-9:  11px;
+  --space-10: 12px;
+  --space-11: 14px;
+  --space-12: 16px;
+  --space-13: 18px;
+  --space-14: 22px;
+  --space-15: 24px;
+  --space-16: 40px;
+
+  /* type scale — sizes already used as literals */
+  --text-micro:  9px;
+  --text-label:  9.5px;
+  --text-caps:   10px;
+  --text-meta:   11px;
+  --text-meta-2: 11.5px;
+  --text-sm:     12px;
+  --text-sm-2:   12.5px;
+  --text-body:   13px;
+  --text-body-2: 13.5px;
+  --text-ui:     14px;
+  --text-quote:  14.5px;
+  --text-prose:  17px;
+  --text-h3:     19px;
+  --text-h2:     22px;
+  --text-title:  30px;
+  --text-display: 32px;
+
+  /* elevation */
+  --shadow-tip:   0 12px 32px rgba(0,0,0,.5);
+  --shadow-toast: 0 16px 46px rgba(0,0,0,.6);
+  --shadow-modal: 0 30px 90px rgba(0,0,0,.7);
+  --glow-orb:     0 0 11px color-mix(in srgb, var(--c, var(--resonance)) 42%, transparent);
+  --glow-orb-lg:  0 0 28px color-mix(in srgb, var(--c, var(--resonance)) 55%, transparent);
+
+  /* z-index ladder */
+  --z-field:    0;
+  --z-vignette: 1;
+  --z-panel:    20;
+  --z-scrim:    40;
+  --z-forget:   56;
+  --z-toast:    60;
+  --z-tip:      80;
+  --z-fab:      90;
+}

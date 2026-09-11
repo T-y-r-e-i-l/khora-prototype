@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Layout — Khora Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="stylesheet" href="../assets/demos.css">
+</head>
+<body data-section="foundations" data-page="layout" data-prefix="../">
+<main class="ds-main">
+  <p class="ds-kicker">Foundations</p>
+  <h1>Layout</h1>
+  <p class="ds-lede">Fixed rails define the product shell: sidenav, notes rail, editor, insights.</p>
+  
+  
+    <table class="ds-table">
+      <thead><tr><th>Token</th><th>Value</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td><code>--nav</code></td><td>78px</td><td>Desktop sidenav column</td></tr>
+        <tr><td><code>--rail-l</code></td><td>268px</td><td>Notes / lists rail</td></tr>
+        <tr><td><code>--rail-r</code></td><td>380px</td><td>Insights / reading rail</td></tr>
+        <tr><td><code>--bar</code></td><td>64px</td><td>Secondary bars</td></tr>
+      </tbody>
+    </table>
+    <div class="ds-demo stack">
+      <div class="pattern-shell">
+        <div class="pattern-nav"><div class="pattern-label">nav</div></div>
+        <div class="pattern-body">
+          <div class="pattern-rail"><div class="pattern-label">rail-l</div></div>
+          <div class="pattern-centre">centre</div>
+          <div class="pattern-insights"><div class="pattern-label">reading<br>side sheet</div></div>
+        </div>
+      </div>
+    </div>
+    <p>Below 900px the shell collapses to a single column with a <a href="../components/fab.html">FAB</a>. See also <a href="../patterns/app-shell.html">App shell</a>.</p>
+    
+</main>
+<script src="../assets/nav.js"></script>
+</body>
+</html>

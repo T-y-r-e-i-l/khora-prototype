@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Khora — Khora Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./assets/tokens.css">
+<link rel="stylesheet" href="./assets/site.css">
+<link rel="stylesheet" href="./assets/demos.css">
+</head>
+<body data-section="home" data-page="index" data-prefix="./">
+<main class="ds-main">
+  <p class="ds-kicker">Design system</p>
+  <h1>Khora</h1>
+  <p class="ds-lede">A Base-shaped reference for the primitives that already live in the product — dark glass, category orbs, serif for thought and sans for chrome.</p>
+  
+  
+  <div class="hero-orbs">
+    <span class="orb lg" style="--c:var(--resonance)"></span>
+    <span class="orb lg" style="--c:var(--tension)"></span>
+    <span class="orb lg" style="--c:var(--clarity)"></span>
+    <span class="orb lg" style="--c:var(--stance)"></span>
+    <span class="orb lg" style="--c:var(--lineage)"></span>
+  </div>
+  <h2>Brand roles</h2>
+  <ul>
+    <li><strong style="color:var(--ink)">Serif (Lora)</strong> — thought: titles, prose, insight quotes.</li>
+    <li><strong style="color:var(--ink)">Sans (Nunito)</strong> — chrome: labels, buttons, nav, caps.</li>
+    <li><strong style="color:var(--ink)">Category orbs</strong> — meaning: Resonance, Tension, Clarity, Stance, Lineage.</li>
+  </ul>
+  <h2>Browse</h2>
+  <table class="ds-table">
+    <thead><tr><th>Section</th><th>What you get</th></tr></thead>
+    <tbody>
+      <tr><td><a href="foundations/tokens.html">Foundations</a></td><td>Color, type, spacing, layout, elevation, motion, icons, a11y, voice</td></tr>
+      <tr><td><a href="components/index.html">Components</a></td><td>Live demos of classes that ship in <code>app.css</code></td></tr>
+      <tr><td><a href="patterns/app-shell.html">Patterns</a></td><td>App shell and explore graph compositions</td></tr>
+    </tbody>
+  </table>
+  <p>This site does not invent Base Web components Khora does not ship. Product app stays at the repo root; this folder deploys separately.</p>
+  
+</main>
+<script src="./assets/nav.js"></script>
+</body>
+</html>

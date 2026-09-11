@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App shell — Khora Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="stylesheet" href="../assets/demos.css">
+</head>
+<body data-section="patterns" data-page="app-shell" data-prefix="../">
+<main class="ds-main">
+  <p class="ds-kicker">Patterns</p>
+  <h1>App shell</h1>
+  <p class="ds-lede">Desktop grid: sidenav + three-column body. Rails can collapse; phone overlays one panel at a time.</p>
+  <div class="ds-status documented">Documented</div>
+  
+  <div class="ds-demo stack">
+    <div class="pattern-shell">
+      <div class="pattern-nav"><div class="pattern-label">sidenav</div></div>
+      <div class="pattern-body">
+        <div class="pattern-rail"><div class="pattern-label">notes</div></div>
+        <div class="pattern-centre">editor</div>
+        <div class="pattern-insights"><div class="pattern-label">reading</div></div>
+      </div>
+    </div>
+  </div>
+  <h2>Structure</h2>
+  <ul>
+    <li><code>#app</code> → <code>nav.sidenav</code> + <code>.body</code></li>
+    <li><code>.body</code> columns: <code>--rail-l</code> / centre / <code>--rail-r</code> (<a href="../components/insight-side-sheet.html">insight side sheet</a>)</li>
+    <li>Modifiers: <code>.rail-closed</code>, <code>.insights-closed</code>, mode classes</li>
+  </ul>
+  
+</main>
+<script src="../assets/nav.js"></script>
+</body>
+</html>

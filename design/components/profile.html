@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profile — Khora Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="stylesheet" href="../assets/demos.css">
+</head>
+<body data-section="components" data-page="profile" data-prefix="../">
+<main class="ds-main">
+  <p class="ds-kicker">Components</p>
+  <h1>Profile</h1>
+  <p class="ds-lede">Journal-wide belief view at <code>#profile-view</code>. Opens via nav Profile; body takes <code>.profile-mode</code> (rails closed). Scores are read-only here — answers happen elsewhere.</p>
+  <div class="ds-status documented">Documented</div>
+
+  <div class="ds-demo stack" style="align-items:stretch; max-width:480px">
+    <div class="prof-head">
+      <div class="prof-cov"><b>4</b> of 27 spectra placed in this journal</div>
+      <p class="prof-lede">Only answered items are here. What your writing leans toward stays in the note it came from.</p>
+    </div>
+    <div class="prof-radar-demo" aria-hidden="true">
+      <svg viewBox="0 0 420 420">
+        <circle class="prof-ring" cx="210" cy="210" r="25.6"></circle>
+        <circle class="prof-ring" cx="210" cy="210" r="76.8"></circle>
+        <circle class="prof-ring" cx="210" cy="210" r="128"></circle>
+        <line class="prof-spoke" x1="210" y1="210" x2="210" y2="82"></line>
+        <line class="prof-spoke" x1="210" y1="210" x2="320.9" y2="274"></line>
+        <line class="prof-spoke" x1="210" y1="210" x2="99.1" y2="274"></line>
+        <path class="prof-poly" d="M210,118 L290,250 L130,250 Z"></path>
+        <g class="prof-vertex"><circle cx="210" cy="118" r="4.5"></circle><text x="210" y="64" text-anchor="middle">Agency</text></g>
+        <g class="prof-vertex"><circle cx="290" cy="250" r="4.5"></circle><text x="330" y="258" text-anchor="start">Duty</text></g>
+        <g class="prof-vertex"><circle cx="130" cy="250" r="4.5"></circle><text x="90" y="258" text-anchor="end">Care</text></g>
+      </svg>
+    </div>
+    <section class="prof-branch">
+      <div class="prof-branch-head">
+        <h3>Ethics</h3>
+        <span class="n">1 of 3</span>
+      </div>
+      <article class="prof-axis">
+        <div class="prof-axis-head">
+          <h4>Free will</h4>
+          <span class="prof-tag">Leans agency</span>
+        </div>
+        <div class="spec-track">
+          <span class="spec-band"></span>
+          <i class="spec-arg" style="left:22%"></i>
+          <i class="spec-arg" style="left:78%"></i>
+          <i class="spec-mark placed" style="left:72%"></i>
+        </div>
+        <div class="spec-poles"><i>Fate</i><i class="lean">Agency</i></div>
+        <p class="prof-line">Your answers sit toward agency — choice as a live option.</p>
+        <div class="prof-axis-foot">
+          <span class="n">3 of 5 answered</span>
+          <button class="ghost" type="button">Answer another</button>
+        </div>
+      </article>
+    </section>
+  </div>
+
+  <h2>Composition</h2>
+  <table class="ds-table">
+    <thead><tr><th>Part</th><th>Docs</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td>Head</td><td><code>.prof-head</code> <code>.prof-cov</code></td><td>Coverage count + lede</td></tr>
+      <tr><td>Radar</td><td><a href="profile-radar.html">Profile radar</a></td><td>Shape of placed spectra</td></tr>
+      <tr><td>Branches</td><td><code>.prof-branch</code></td><td>Grouped axis lists</td></tr>
+      <tr><td>Axis card</td><td><a href="profile-axis.html">Profile axis</a></td><td>One spectrum row</td></tr>
+      <tr><td>Continuum</td><td><a href="spectrum-track.html">Spectrum track</a></td><td>Shared placed / tentative marks</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Mode</h2>
+  <ul>
+    <li><code>.body.profile-mode</code> — also forces <code>insights-closed</code> + <code>rail-closed</code>.</li>
+    <li>Centre shows <code>#profile-view</code>; editor / empty / pathways hide.</li>
+    <li>Rendered by <code>assets/js/profile.js</code> from belief scores — never writes marks here.</li>
+  </ul>
+</main>
+<script src="../assets/nav.js"></script>
+</body>
+</html>

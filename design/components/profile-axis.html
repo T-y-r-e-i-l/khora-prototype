@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profile axis — Khora Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="stylesheet" href="../assets/demos.css">
+</head>
+<body data-section="components" data-page="profile-axis" data-prefix="../">
+<main class="ds-main">
+  <p class="ds-kicker">Components</p>
+  <h1>Profile axis</h1>
+  <p class="ds-lede">One spectrum row on the <a href="profile.html">Profile</a> page. Placed axes show a stance tag and filled journal mark; unplaced sit muted until the writer answers.</p>
+  <div class="ds-status documented">Documented</div>
+
+  <p class="ds-meta">Placed</p>
+  <div class="ds-demo stack" style="align-items:stretch">
+    <article class="prof-axis">
+      <div class="prof-axis-head">
+        <h4>Free will</h4>
+        <span class="prof-tag">Leans agency</span>
+      </div>
+      <div class="spec-track">
+        <span class="spec-band"></span>
+        <i class="spec-arg" style="left:18%"></i>
+        <i class="spec-arg" style="left:52%"></i>
+        <i class="spec-arg" style="left:82%"></i>
+        <i class="spec-mark placed" style="left:74%"></i>
+      </div>
+      <div class="spec-poles"><i>Fate</i><i class="lean">Agency</i></div>
+      <p class="prof-line">Your answers sit toward agency — choice as a live option, not only a story after the fact.</p>
+      <div class="prof-axis-foot">
+        <span class="n">3 of 5 answered</span>
+        <button class="ghost" type="button">Answer another</button>
+      </div>
+    </article>
+  </div>
+
+  <p class="ds-meta">Unplaced — <code>.prof-axis.unplaced</code></p>
+  <div class="ds-demo stack" style="align-items:stretch">
+    <article class="prof-axis unplaced">
+      <div class="prof-axis-head">
+        <h4>Moral luck</h4>
+      </div>
+      <div class="spec-track">
+        <span class="spec-band"></span>
+        <i class="spec-arg" style="left:30%"></i>
+        <i class="spec-arg" style="left:70%"></i>
+      </div>
+      <div class="spec-poles"><i>Outcome</i><i>Character</i></div>
+      <p class="prof-line">Do we own what chance does with our efforts?</p>
+      <div class="prof-axis-foot">
+        <span class="n">0 of 4 answered</span>
+        <button class="ghost" type="button">Place yourself</button>
+      </div>
+    </article>
+  </div>
+
+  <h2>Anatomy</h2>
+  <ul>
+    <li><code>.prof-axis-head</code> — serif title + optional <code>.prof-tag</code></li>
+    <li><a href="spectrum-track.html">Spectrum track</a> + <code>.spec-poles</code></li>
+    <li><code>.prof-line</code> — score description or unanswered question</li>
+    <li><code>.prof-axis-foot</code> — answered count + ghost CTA (<code>data-place</code>)</li>
+  </ul>
+  <p>Grouped under <code>.prof-branch</code> / <code>.prof-branch-head</code> by branch name.</p>
+</main>
+<script src="../assets/nav.js"></script>
+</body>
+</html>

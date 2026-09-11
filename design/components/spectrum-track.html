@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spectrum track — Khora Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/tokens.css">
+<link rel="stylesheet" href="../assets/site.css">
+<link rel="stylesheet" href="../assets/demos.css">
+</head>
+<body data-section="components" data-page="spectrum-track" data-prefix="../">
+<main class="ds-main">
+  <p class="ds-kicker">Components</p>
+  <h1>Spectrum track</h1>
+  <p class="ds-lede">Shared continuum for belief axes — used on <a href="profile-axis.html">Profile axis</a> cards and in Explore / Reading. Two marks must never look alike: dashed = this passage leans; filled = journal placement from answers.</p>
+  <div class="ds-status documented">Documented</div>
+
+  <div class="ds-demo stack" style="align-items:stretch; max-width:420px">
+    <div class="spec-track" style="margin:28px 6px 20px">
+      <span class="spec-band"></span>
+      <i class="spec-arg" style="left:20%"></i>
+      <i class="spec-arg" style="left:48%"></i>
+      <i class="spec-arg" style="left:78%"></i>
+      <i class="spec-mark tentative" style="left:38%"></i>
+      <i class="spec-mark placed" style="left:68%"></i>
+    </div>
+    <div class="spec-poles"><i class="lean">Fate</i><i>Agency</i></div>
+    <div class="spec-legend">
+      <span class="mark"><i class="spec-mark tentative"></i> Tentative (passage)</span>
+      <span class="mark"><i class="spec-mark placed"></i> Placed (journal)</span>
+      <span class="mark">Band = balanced zone</span>
+    </div>
+  </div>
+
+  <h2>Class contract</h2>
+  <table class="ds-table">
+    <thead><tr><th>Class</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><code>.spec-track</code></td><td>3px continuum with end caps</td></tr>
+      <tr><td><code>.spec-band</code></td><td>Center balanced region (40%–60%)</td></tr>
+      <tr><td><code>.spec-arg</code></td><td>Argument tick on the line</td></tr>
+      <tr><td><code>.spec-mark.tentative</code></td><td>Dashed ring — passage lean only</td></tr>
+      <tr><td><code>.spec-mark.placed</code></td><td>Filled pearl — answered journal mark</td></tr>
+      <tr><td><code>.spec-poles</code> / <code>i.lean</code></td><td>Left / right labels; lean highlights side</td></tr>
+    </tbody>
+  </table>
+  <p>Rendered by <code>PalinodeSpectrumUI</code> in <code>assets/js/spectrum-ui.js</code> so Profile and Explore stay honest about the same marks.</p>
+</main>
+<script src="../assets/nav.js"></script>
+</body>
+</html>
