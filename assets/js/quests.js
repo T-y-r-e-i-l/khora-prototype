@@ -673,6 +673,7 @@
     if (typeof window.PalinodeQuests.onWriteFromQuest === 'function') {
       window.PalinodeQuests.onWriteFromQuest({
         questId,
+        stepId: step.id,
         conceptId: step.conceptId,
         label: c ? c.label : step.conceptId,
         prompt,
@@ -682,7 +683,12 @@
     }
     const N = Notes();
     if (!N) return;
-    N.create({ promptText: prompt, title: prompt || '' });
+    N.create({
+      promptText: prompt,
+      title: prompt || '',
+      questId,
+      questStepId: step.id
+    });
     toast('Note created — open Write to continue.');
   }
 
@@ -806,8 +812,6 @@
     host.innerHTML = `
       <div class="quest-detail-meta">
         <span class="mkt-badge">${esc(typeLabel(q.type))}</span>
-        <span class="mkt-price">${esc(entry.status)}</span>
-        ${q.access === 'free' ? '<span class="quest-ov-access">Free on the map</span>' : ''}
       </div>
       <h2 class="mkt-title">${esc(q.title)}</h2>
       <p class="mkt-lede">${esc(q.description)}</p>
@@ -1084,10 +1088,13 @@
       if (writeConcept) {
         const c = conceptOf(writeConcept.dataset.questWriteConcept);
         const prompt = (c && c.turn) || '';
+        const q = questOf(selectedId);
+        const step = stepsOf(q).find(s => s.conceptId === writeConcept.dataset.questWriteConcept);
         closeLearnSheet();
         if (typeof window.PalinodeQuests.onWriteFromQuest === 'function') {
           window.PalinodeQuests.onWriteFromQuest({
             questId: selectedId,
+            stepId: step ? step.id : null,
             conceptId: writeConcept.dataset.questWriteConcept,
             label: c ? c.label : writeConcept.dataset.questWriteConcept,
             prompt,
@@ -1155,6 +1162,7 @@
     submitNote,
     submitStepNote,
     openStepSubmitPicker,
+    isStepDone: (questId, stepId) => stepIsDone(get(questId), stepId),
     applyEpicSubmission,
     isActive,
     isCompleted,

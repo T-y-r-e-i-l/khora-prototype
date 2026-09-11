@@ -388,12 +388,17 @@ main.centre { display: flex; flex-direction: column; min-height: 0; overflow-y: 
 .title-input::placeholder { color: var(--ink-4); }
 
 .doc-meta {
-  display: flex; align-items: center; gap: 14px; margin-bottom: 22px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 22px;
   font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-4);
   padding-bottom: 16px; border-bottom: 1px solid var(--hairline-2);
 }
 .doc-meta .live { display: flex; align-items: center; gap: 6px; }
 .doc-meta .spacer { flex: 1; }
+#btn-quest-submit {
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-size: 9.5px;
+}
 
 #btn-note-insights { display: none; }
 .pulse {

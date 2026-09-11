@@ -288,6 +288,7 @@
     renderList();
     if (phone()) el.body.classList.remove('show-rail');
     syncNotePage();
+    syncQuestSubmitBtn();
     run(true);
   }
 
@@ -393,24 +394,56 @@
     syncNav('write');
     const n = Notes.create({
       promptText: (opts && opts.prompt) || '',
-      title: (opts && opts.title) || (opts && opts.prompt) || ''
+      title: (opts && opts.title) || (opts && opts.prompt) || '',
+      questId: (opts && opts.questId) || null,
+      questStepId: (opts && opts.stepId) || null
     });
     openNote(n.id);
     renderList();
     if (el.title && n.title) el.title.value = n.title;
     if (el.input) el.input.focus();
     const label = (opts && opts.label) || 'this quest';
-    toast('New note for ' + label + '. Return to Quests to submit it.');
+    toast('Writing for ' + label + '. Submit to quest when you are ready.');
+  }
+
+  function questSubmitTarget() {
+    if (!activeId || !window.PalinodeQuests) return null;
+    const n = Notes.get(activeId);
+    if (!n || !n.questId || !n.questStepId) return null;
+    const entry = PalinodeQuests.get(n.questId);
+    if (!entry || entry.status !== 'active') return null;
+    if (PalinodeQuests.isStepDone(n.questId, n.questStepId)) return null;
+    return { questId: n.questId, stepId: n.questStepId };
+  }
+
+  function syncQuestSubmitBtn() {
+    const btn = document.getElementById('btn-quest-submit');
+    if (!btn) return;
+    btn.hidden = !questSubmitTarget();
+  }
+
+  function submitActiveNoteToQuest() {
+    const target = questSubmitTarget();
+    if (!target || !activeId || !window.PalinodeQuests) return;
+    persist();
+    const ok = PalinodeQuests.submitStepNote(target.questId, target.stepId, activeId);
+    if (!ok) return;
+    Notes.update(activeId, { questId: null, questStepId: null });
+    syncQuestSubmitBtn();
+    startAcceptedQuest(target.questId);
   }
 
   function wireQuestsChrome() {
     if (!window.PalinodeQuests) return;
     PalinodeQuests.onChange = () => {
       if (PalinodeQuests.isOpen()) PalinodeQuests.renderLog();
+      syncQuestSubmitBtn();
     };
     PalinodeQuests.onChrome = () => syncNotePage();
     PalinodeQuests.onStartQuest = startAcceptedQuest;
     PalinodeQuests.onWriteFromQuest = writeFromQuest;
+    const submitBtn = document.getElementById('btn-quest-submit');
+    if (submitBtn) submitBtn.addEventListener('click', submitActiveNoteToQuest);
   }
 
   function newNote() {
@@ -1164,6 +1197,7 @@
     if (label) label.textContent = notePageLabel();
     if (back) back.hidden = !onNote;
     if (!phone()) el.body.classList.remove('show-rail');
+    syncQuestSubmitBtn();
     syncPathPage();
     syncQuestPage();
   }

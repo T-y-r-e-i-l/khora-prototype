@@ -235,6 +235,66 @@ const lockCheck = await page.evaluate(() => {
 check('Later steps stay locked until prior is complete',
   lockCheck.ok, JSON.stringify(lockCheck));
 
+/* In-editor Submit to quest */
+const editorQuestId = await page.evaluate(() => {
+  const free = (window.PalinodeMarketData.freeQuests() || []).find(q => {
+    const e = PalinodeQuests.get(q.id);
+    return !e || e.status === 'abandoned';
+  });
+  if (!free) return null;
+  if (window.PalinodeGraph) {
+    PalinodeGraph.close();
+    document.body.classList.remove('exploring');
+  }
+  if (window.PalinodeMarketplace && PalinodeMarketplace.isOpen()) PalinodeMarketplace.leave();
+  PalinodeQuests.accept(free.id, 'explore');
+  PalinodeQuests.open(free.id);
+  return free.id;
+});
+check('Editor-submit quest opens', !!editorQuestId, String(editorQuestId));
+await page.waitForSelector('[data-quest-write-step]', { timeout: 5000 });
+await page.evaluate(() => {
+  const btn = document.querySelector('[data-quest-write-step]');
+  if (btn) btn.click();
+});
+await page.waitForSelector('#editor-wrap:not([hidden])');
+await page.waitForTimeout(200);
+const submitVisible = await page.evaluate(() => {
+  const btn = document.getElementById('btn-quest-submit');
+  const note = window.PalinodeStore.Notes.all()[0];
+  return {
+    shown: !!(btn && !btn.hidden && getComputedStyle(btn).display !== 'none'),
+    linked: !!(note && note.questId && note.questStepId),
+    noteId: note && note.id,
+    questId: note && note.questId,
+    stepId: note && note.questStepId
+  };
+});
+check('Quest-linked notes show Submit to quest',
+  submitVisible.shown && submitVisible.linked, JSON.stringify(submitVisible));
+await page.fill('#body-input', 'Enough words for an in-editor quest submission check.');
+await page.waitForTimeout(200);
+await page.click('#btn-quest-submit');
+await page.waitForTimeout(400);
+const afterEditorSubmit = await page.evaluate(({ noteId, questId, stepId }) => {
+  const st = JSON.parse(localStorage.getItem('palinode.quests.v1') || '{}');
+  const note = window.PalinodeStore.Notes.get(noteId);
+  const btn = document.getElementById('btn-quest-submit');
+  return {
+    done: !!st.entries?.[questId]?.stepDone?.[stepId],
+    noteCleared: !!(note && !note.questId && !note.questStepId),
+    btnHidden: !btn || btn.hidden,
+    questsMode: document.getElementById('body').classList.contains('quests-mode'),
+    detail: !document.getElementById('quests-wrap').hidden
+  };
+}, submitVisible);
+check('Submit to quest records the step from the editor',
+  afterEditorSubmit.done && afterEditorSubmit.noteCleared && afterEditorSubmit.btnHidden,
+  JSON.stringify(afterEditorSubmit));
+check('Submit to quest returns to the quest detail',
+  afterEditorSubmit.questsMode && afterEditorSubmit.detail,
+  JSON.stringify(afterEditorSubmit));
+
 /* Re-accept path: abandon another quest for legacy abandon check */
 const abandonId = freeId2 || freeId;
 await page.evaluate(id => {

@@ -76,6 +76,8 @@
         body: seed.body || '',
         promptId: seed.promptId || null,
         promptText: seed.promptText || null,
+        questId: seed.questId || null,
+        questStepId: seed.questStepId || null,
         created: now,
         updated: now,
         shared: false,
