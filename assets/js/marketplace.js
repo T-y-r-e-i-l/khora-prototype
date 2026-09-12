@@ -811,6 +811,7 @@
     const profile = $('#profile-view');
     const quests = $('#quests-wrap');
     const qe = $('#quest-empty');
+    const dash = $('#dashboard-wrap');
     if (ed) ed.hidden = true;
     if (empty) { empty.hidden = true; empty.style.display = 'none'; }
     if (read) read.hidden = true;
@@ -819,6 +820,7 @@
     if (profile) profile.hidden = true;
     if (quests) quests.hidden = true;
     if (qe) qe.hidden = true;
+    if (dash) dash.hidden = true;
   }
 
   function enter(opts) {
@@ -1187,6 +1189,12 @@
     questsForGraph,
     freeQuestsForGraph,
     isEnrolled,
+    enrolledEpics() {
+      return Object.keys(state.enrollments)
+        .map(id => Data().hydrateEpic(Data().epicOf(id)))
+        .filter(Boolean);
+    },
+    bookmarks() { return (state.bookmarks || []).slice(); },
     syncQuestSubmission,
     hydrateEpic: id => Data().hydrateEpic(Data().epicOf(id)),
     hydrateMentor: id => Data().hydrateMentor(Data().mentorOf(id)),

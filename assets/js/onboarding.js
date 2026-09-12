@@ -43,6 +43,27 @@
   }
 
   const TOURS = {
+    home: [
+      {
+        id: 'grid',
+        selector: '#dash-grid',
+        fallback: '#dashboard-wrap',
+        body: 'Home gathers every area of Khora — cards you can open into Explore, Notes, Market, and more.',
+        placement: 'bottom'
+      },
+      {
+        id: 'explore-card',
+        selector: '#dash-card-explore',
+        body: 'Start in the field from here — or dive back in when you already know the way.',
+        placement: 'bottom'
+      },
+      {
+        id: 'notes-card',
+        selector: '#dash-card-notes',
+        body: 'Today’s prompt lives here — the same card as Notes. Write or skip without leaving Home.',
+        placement: 'top'
+      }
+    ],
     explore: [
       {
         id: 'field',
@@ -239,7 +260,8 @@
     if (body.classList.contains('market-mode') ||
         body.classList.contains('quests-mode') ||
         body.classList.contains('profile-mode') ||
-        body.classList.contains('pathways-mode')) return false;
+        body.classList.contains('pathways-mode') ||
+        body.classList.contains('dashboard-mode')) return false;
     if (window.PalinodeMarketplace && PalinodeMarketplace.isOpen()) return false;
     if (window.PalinodeQuests && PalinodeQuests.isOpen()) return false;
     if (window.PalinodeProfile && PalinodeProfile.isOpen()) return false;

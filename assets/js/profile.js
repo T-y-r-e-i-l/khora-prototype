@@ -37,11 +37,13 @@
     const read = $('#reading-room');
     const walk = $('#pathway-wrap');
     const pe = $('#path-empty');
+    const dash = $('#dashboard-wrap');
     if (ed) ed.hidden = true;
     if (empty) { empty.hidden = true; empty.style.display = 'none'; }
     if (read) read.hidden = true;
     if (walk) walk.hidden = true;
     if (pe) pe.hidden = true;
+    if (dash) dash.hidden = true;
   }
 
   function poleLabel(axis, score) {
@@ -213,5 +215,8 @@
     });
   }
 
-  window.PalinodeProfile = { enter, leave, isOpen, render, onPlace: null };
+  window.PalinodeProfile = {
+    enter, leave, isOpen, render, onPlace: null,
+    radarHtml(placed) { return radarSvg(placed || []); }
+  };
 })();

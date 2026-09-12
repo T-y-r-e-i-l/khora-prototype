@@ -27,7 +27,18 @@
     prefs: {
       filters: { resonance:true, tension:true, clarity:true, stance:true, lineage:true },
       dismissed: {},
-      tours: { explore: false, write: false, insights: false, market: false, pathways: false, quests: false, profile: false }
+      tours: { home: false, explore: false, write: false, insights: false, market: false, pathways: false, quests: false, profile: false },
+      lastExploreAt: null,
+      dashLayout: {
+        panels: [
+          { id: 'd-explore', type: 'explore', x: 0, y: 0, w: 4, h: 4 },
+          { id: 'd-notes', type: 'notes', x: 4, y: 0, w: 5, h: 4 },
+          { id: 'd-pathways', type: 'pathways', x: 9, y: 0, w: 3, h: 2 },
+          { id: 'd-quests', type: 'quests', x: 9, y: 2, w: 3, h: 4 },
+          { id: 'd-library', type: 'library', x: 0, y: 4, w: 4, h: 3 },
+          { id: 'd-profile', type: 'profile', x: 4, y: 4, w: 5, h: 3 }
+        ]
+      }
     },
     // Only answered items live here. Scores are never stored — they are
     // recomputed from these responses plus the authored seed.
@@ -46,6 +57,13 @@
       next.prefs.filters = Object.assign(blank().prefs.filters, (parsed.prefs && parsed.prefs.filters) || {});
       next.prefs.dismissed = Object.assign({}, (parsed.prefs && parsed.prefs.dismissed) || {});
       next.prefs.tours = Object.assign(blank().prefs.tours, (parsed.prefs && parsed.prefs.tours) || {});
+      const seedLayout = blank().prefs.dashLayout;
+      const savedLayout = parsed.prefs && parsed.prefs.dashLayout;
+      next.prefs.dashLayout = {
+        panels: (savedLayout && Array.isArray(savedLayout.panels) && savedLayout.panels.length)
+          ? savedLayout.panels
+          : seedLayout.panels.slice()
+      };
       next.pathways = parsed.pathways || [];
       (next.notes || []).forEach(n => { if (!n.pathwayIds) n.pathwayIds = []; });
       return next;
@@ -187,6 +205,43 @@
       if (!state.prefs.tours) state.prefs.tours = {};
       state.prefs.tours[id] = true;
       save();
+    },
+    lastExploreAt() {
+      return state.prefs.lastExploreAt || null;
+    },
+    touchExplore() {
+      state.prefs.lastExploreAt = Date.now();
+      save();
+    },
+    dashLayout() {
+      const d = state.prefs.dashLayout || blank().prefs.dashLayout;
+      return {
+        panels: (d.panels || []).map(p => ({
+          id: p.id, type: p.type, x: +p.x || 0, y: +p.y || 0, w: +p.w || 2, h: +p.h || 2
+        }))
+      };
+    },
+    setDashLayout(panels) {
+      const list = Array.isArray(panels) ? panels : [];
+      state.prefs.dashLayout = {
+        panels: list.map(p => ({
+          id: String(p.id),
+          type: String(p.type),
+          x: +p.x || 0,
+          y: +p.y || 0,
+          w: Math.max(1, +p.w || 2),
+          h: Math.max(1, +p.h || 2)
+        }))
+      };
+      save();
+      return this.dashLayout();
+    },
+    resetDashLayout() {
+      state.prefs.dashLayout = {
+        panels: blank().prefs.dashLayout.panels.map(p => Object.assign({}, p))
+      };
+      save();
+      return this.dashLayout();
     }
   };
 

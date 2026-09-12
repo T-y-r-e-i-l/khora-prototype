@@ -95,6 +95,8 @@
   const esc = s => String(s).replace(/[&<>"']/g, c => (
     { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
+  const HOST = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
+
   const fmtDate = ts => new Date(ts).toLocaleDateString(undefined,
     { month:'short', day:'numeric', year:'numeric' });
 
@@ -265,8 +267,15 @@
   /* ================= editor ================= */
 
   function openNote(id) {
+    closeDashboard();
+    closeExplore();
+    closePathways();
+    closeProfile();
+    closeMarket();
+    closeQuests();
     const n = Notes.get(id);
     if (!n) return;
+    closeNoteRef();
     closeProfile();
     activeId = id;
     openKey = null;
@@ -287,6 +296,7 @@
     renderComposer();
     renderList();
     if (phone()) el.body.classList.remove('show-rail');
+    syncNav('write');
     syncNotePage();
     syncQuestSubmitBtn();
     run(true);
@@ -342,6 +352,20 @@
     }
   }
 
+  function closeDashboard() {
+    if (!window.PalinodeDashboard || !PalinodeDashboard.isOpen()) return;
+    PalinodeDashboard.leave();
+    paintFieldFromAnalysis();
+    el.empty.hidden = false;
+    if (activeId) {
+      el.editorWrap.hidden = false;
+      el.empty.style.display = 'none';
+    } else {
+      el.editorWrap.hidden = true;
+      el.empty.style.display = '';
+    }
+  }
+
   function closeMarket() {
     if (!window.PalinodeMarketplace || !PalinodeMarketplace.isOpen()) return;
     PalinodeMarketplace.leave();
@@ -372,6 +396,7 @@
 
   function startAcceptedQuest(questId) {
     closeExplore();
+    closeDashboard();
     closePathways();
     closeProfile();
     closeMarket();
@@ -386,6 +411,7 @@
 
   function writeFromQuest(opts) {
     closeExplore();
+    closeDashboard();
     closePathways();
     closeProfile();
     closeMarket();
@@ -1145,6 +1171,7 @@
   function syncNav(which) {
     $$('.nav-item').forEach(b => b.classList.remove('on'));
     const id = which === 'insights' ? 'btn-nav-insights'
+             : which === 'home' ? 'btn-home'
              : which === 'explore' ? 'btn-explore'
              : which === 'market' ? 'btn-market'
              : which === 'pathways' ? 'btn-pathways'
@@ -1156,6 +1183,7 @@
     syncNotePage();
 
     const tourId = which === 'insights' ? 'insights'
+                 : which === 'home' ? 'home'
                  : which === 'explore' ? 'explore'
                  : which === 'market' ? 'market'
                  : which === 'pathways' ? 'pathways'
@@ -1187,7 +1215,7 @@
     const tab = phone() ? phoneTab() : null;
     if (tab === 'write' || tab === 'insights') return tab;
     if (tab) return tab;
-    return 'explore';
+    return 'home';
   }
 
   function openHelpTour() {
@@ -1212,6 +1240,7 @@
   function closeFab() { setFabOpen(false); }
 
   function phoneTab() {
+    if (window.PalinodeDashboard && PalinodeDashboard.isOpen()) return 'home';
     if (exploring()) return 'explore';
     if (window.PalinodeMarketplace && PalinodeMarketplace.isOpen()) return 'market';
     if (window.PalinodeQuests && PalinodeQuests.isOpen()) return 'quests';
@@ -1493,6 +1522,233 @@
     grow();
   }
 
+  /* ---------- note reference panel (right rail while writing) ---------- */
+
+  let refState = null;
+
+  function refAside() {
+    return document.querySelector('aside.insights');
+  }
+
+  function closeNoteRef() {
+    refState = null;
+    const aside = refAside();
+    if (aside) aside.classList.remove('ref-open');
+    const panel = $('#ref-panel');
+    const body = $('#ref-panel-body');
+    if (panel) panel.hidden = true;
+    if (body) body.innerHTML = '';
+  }
+
+  function ensureRefRailOpen() {
+    el.body.classList.remove('insights-closed');
+    if (phone()) {
+      el.body.classList.remove('show-rail');
+      el.body.classList.add('show-insights');
+    }
+  }
+
+  function workRefSectionsHtml(w) {
+    const links = workLinks(w);
+    const cites = w.citations || [];
+    return `
+      ${w.gist ? `<div class="ref-sec"><h4>What it argues</h4><p>${esc(w.gist)}</p></div>` : ''}
+      ${w.start ? `<div class="ref-sec"><h4>Where to start</h4><p>${esc(w.start)}</p></div>` : ''}
+      ${w.counter ? `<div class="ref-sec"><h4>Read against</h4><p>${esc(w.counter)}</p></div>` : ''}
+      ${cites.length ? `<div class="ref-sec"><h4>Citations</h4>${cites.map(c =>
+        `<p><strong>${esc(citeLine(c))}</strong>${c.author ? '<br>' + esc(c.author) : ''}</p>`
+      ).join('')}</div>` : ''}
+      <div class="ref-sec">
+        <h4>${w.url ? 'Source' : (w.rights === 'open' ? 'Read the full text' : 'Where to find it')}</h4>
+        <div class="ref-act">
+          ${links.map(l => `<a class="ghost ${l.primary ? 'solid' : ''}" href="${esc(l.href)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  function conceptOfLocal(id) {
+    const bare = String(id || '').replace(/^c:/, '');
+    const list = (window.PalinodeCorpus && PalinodeCorpus.CONCEPTS) || [];
+    const local = list.find(c => c.id === bare);
+    if (local) return local;
+    if (Khora && typeof Khora.getConcept === 'function') return Khora.getConcept(bare) || null;
+    return null;
+  }
+
+  async function paintNoteRef(spec) {
+    const body = $('#ref-panel-body');
+    if (!body || !spec) return;
+
+    if (spec.type === 'work') {
+      body.innerHTML = `<p class="ref-author">Opening…</p>`;
+      const bare = String(spec.id).replace(/^w:/, '');
+      let w = findWork(bare);
+      if (Khora && Khora.isUuid && Khora.isUuid(bare)) {
+        try {
+          const live = await Khora.loadWork(bare);
+          w = mergeWork(live, w);
+        } catch (e) { /* keep local */ }
+      }
+      if (!w && Khora) {
+        try {
+          const hit = await Khora.resolveByTitle(bare, ['Item']);
+          if (hit) w = mergeWork(await Khora.loadWork(hit.id), null);
+        } catch (e) { /* keep going */ }
+      }
+      if (!w) {
+        body.innerHTML = `<p class="ref-author">That work is not in the library.</p>`;
+        return;
+      }
+      const rights = w.rights === 'open' || w.rights === 'restricted' ? rightsPill(w)
+        : (w.url ? '<span class="rights open"><i></i>Source</span>' : '');
+      const trad = w.tradition
+        ? (window.PalinodeCorpus.TRADITIONS[w.tradition] || w.tradition) : '';
+      body.innerHTML = `
+        <div class="ref-kicker">${rights}${trad ? `<span>${esc(trad)}</span>` : ''}${w.year ? `<span>${esc(w.year)}</span>` : ''}</div>
+        <h3 class="ref-title">${esc(w.title)}</h3>
+        <p class="ref-author">${esc(w.author || '')}</p>
+        ${workRefSectionsHtml(w)}
+        <div class="ref-act">
+          <button type="button" class="ghost solid" data-ref-act="room" data-work-id="${esc(w.id || bare)}">Open in Reading Room</button>
+        </div>`;
+      return;
+    }
+
+    if (spec.type === 'concept') {
+      const bare = String(spec.id || '').replace(/^c:/, '');
+      let c = conceptOfLocal(bare);
+      if (!c && Khora && typeof Khora.entity === 'function' && Khora.isUuid && Khora.isUuid(bare)) {
+        try {
+          const live = await Khora.entity({ id: bare });
+          if (live) c = Khora.remember(live) || Khora.toConcept(live) || live;
+        } catch (e) { /* fall through */ }
+      }
+      if (!c && (spec.label || spec.reading || spec.turn)) {
+        c = {
+          id: bare,
+          label: spec.label || 'Concept',
+          reading: spec.reading || '',
+          turn: spec.turn || '',
+          category: spec.category || 'resonance',
+          tradition: spec.tradition || '',
+          kin: spec.kin || []
+        };
+      }
+      if (!c) {
+        body.innerHTML = `<p class="ref-author">That concept is not available locally.</p>`;
+        return;
+      }
+      const trad = window.PalinodeCorpus.TRADITIONS[c.tradition] || c.node_type || c.tradition || '';
+      const kin = (c.kin || []).map(kid => {
+        const k = conceptOfLocal(typeof kid === 'string' ? kid : kid.id);
+        return k ? k.label : (typeof kid === 'string' ? kid : kid.label);
+      }).filter(Boolean);
+      body.innerHTML = `
+        <div class="ref-kicker">${orb(c.category || 'resonance', 'sm')}<span>${esc(trad || 'Concept')}</span></div>
+        <h3 class="ref-title">${esc(c.label)}</h3>
+        ${c.reading ? `<div class="ref-sec"><h4>From the graph</h4><p>${esc(c.reading)}</p></div>` : ''}
+        ${c.turn ? `<div class="ref-sec"><h4>Turn</h4><p class="ref-question">${esc(c.turn)}</p></div>` : ''}
+        ${kin.length ? `<div class="ref-sec"><h4>Adjacent</h4><ul class="ref-kin">${
+          kin.map(label => `<li>${esc(label)}</li>`).join('')
+        }</ul></div>` : ''}`;
+      return;
+    }
+
+    if (spec.type === 'attachment') {
+      if (!activeId) {
+        body.innerHTML = `<p class="ref-author">Open a note first.</p>`;
+        return;
+      }
+      const a = Attach.all(activeId).find(x => x.id === spec.id);
+      if (!a) {
+        body.innerHTML = `<p class="ref-author">That attachment is gone.</p>`;
+        return;
+      }
+      if (a.kind === 'link') {
+        body.innerHTML = `
+          <div class="ref-kicker"><span>Link</span></div>
+          <h3 class="ref-title">${esc(a.title || HOST(a.url))}</h3>
+          <p class="ref-author">${esc(HOST(a.url))}</p>
+          <div class="ref-act">
+            <a class="ghost solid" href="${esc(a.url)}" target="_blank" rel="noopener">Open the link</a>
+          </div>`;
+        return;
+      }
+      let preview = '';
+      const url = await Media.url(a.id);
+      if (url && a.kind === 'image') {
+        preview = `<img class="ref-preview" src="${esc(url)}" alt="${esc(a.name)}">`;
+      } else if (url && a.kind === 'video') {
+        preview = `<video class="ref-preview" src="${esc(url)}" controls preload="metadata"></video>`;
+      } else if (url && a.kind === 'audio') {
+        preview = `<audio class="ref-preview audio" src="${esc(url)}" controls preload="metadata"></audio>`;
+      }
+      body.innerHTML = `
+        <div class="ref-kicker"><span>${esc(a.kind)}</span>${a.size ? `<span>${esc(Media.human(a.size))}</span>` : ''}</div>
+        <h3 class="ref-title">${esc(a.name)}</h3>
+        ${preview}
+        ${a.mime ? `<div class="ref-sec"><h4>File</h4><p>${esc(a.mime)}${a.size ? ' · ' + esc(Media.human(a.size)) : ''}</p></div>` : ''}`;
+      return;
+    }
+
+    body.innerHTML = `<p class="ref-author">Nothing to show.</p>`;
+  }
+
+  async function openNoteRef(spec) {
+    if (!spec || !spec.type) return;
+    refState = spec;
+    ensureRefRailOpen();
+    const aside = refAside();
+    const panel = $('#ref-panel');
+    if (aside) aside.classList.add('ref-open');
+    if (panel) panel.hidden = false;
+    await paintNoteRef(spec);
+  }
+
+  function writeOnConcept(concept) {
+    if (!concept) return;
+    closeNoteRef();
+    closeExplore();
+    closePathways();
+    closeProfile();
+    closeMarket();
+    closeQuests();
+    const bareId = String(concept.id || concept.ref || '').replace(/^c:/, '');
+    const n = Notes.create({ promptText: concept.turn || '', title: '' });
+    if (bareId) {
+      const savedKey = 'c:' + bareId;
+      if (!Saved.has(n.id, savedKey)) {
+        const trad = (window.PalinodeCorpus && PalinodeCorpus.TRADITIONS[concept.tradition])
+          || concept.tradition || concept.node_type || '';
+        Saved.toggle(n.id, {
+          id: savedKey,
+          type: 'concept',
+          label: concept.label || 'Concept',
+          sub: trad,
+          category: concept.category || 'resonance'
+        });
+      }
+    }
+    openNote(n.id);
+    renderList();
+    renderComposer();
+    el.input.focus();
+    syncNav('write');
+    if (bareId) {
+      openNoteRef({
+        type: 'concept',
+        id: bareId,
+        label: concept.label,
+        reading: concept.reading,
+        turn: concept.turn,
+        category: concept.category,
+        tradition: concept.tradition,
+        kin: concept.kin
+      });
+    }
+    toast('New note, opened on ' + (concept.label || 'this') + '.');
+  }
+
   /* ---------- panel tabs ---------- */
 
   function setTab(name) {
@@ -1578,6 +1834,10 @@
       notePick.classList.remove('on');
       const rec = Notes.get(b.dataset.pick);
       if (!rec) return;
+      if (Saved.has(rec.id, payload.id)) {
+        toast('Already on “' + (rec.title || 'Untitled') + '”.');
+        return;
+      }
       Saved.toggle(rec.id, payload);
       renderComposer();
       if (window.PalinodeGraph && PalinodeGraph.refreshDetail) PalinodeGraph.refreshDetail();
@@ -1626,15 +1886,12 @@
       // The graph stays open behind the item: placing yourself is a detour
       // inside the exploration, not an exit from it.
       onPlace: axisId => openPlace(axisId, 'graph'),
-      onWrite: concept => {
-        window.PalinodeGraph.close();
-        document.body.classList.remove('exploring');
-        const n = Notes.create({ promptText: concept.turn, title: '' });
-        openNote(n.id);
-        renderList();
-        el.input.focus();
-        toast('New note, opened on ' + concept.label + '.');
+      onWrite: writeOnConcept,
+      onAddToPathway: step => {
+        if (window.PalinodePathways) PalinodePathways.offerAttachStep(step);
       },
+      onSaveNode: payload => saveNodeToNote(payload),
+      onNeedNote: payload => saveNodeToNote(payload),
       onOpenEpic: epicId => {
         window.PalinodeGraph.close();
         document.body.classList.remove('exploring');
@@ -1665,11 +1922,14 @@
       return;
     }
     cancelOffer();
+    closeDashboard();
     closePathways();
     closeProfile();
     closeMarket();
     closeQuests();
     el.body.classList.remove('show-insights', 'show-rail');
+    if (window.PalinodeStore && PalinodeStore.Prefs && PalinodeStore.Prefs.touchExplore)
+      PalinodeStore.Prefs.touchExplore();
     await window.PalinodeGraph.open({
       mode: 'corpus',
       note: activeId ? Notes.get(activeId) : { id: '', title: '', body: '' },
@@ -1677,7 +1937,11 @@
       onSavePathway: steps => {
         if (window.PalinodePathways) PalinodePathways.offerSave(steps, { noteId: activeId });
       },
-      onClose: () => { if (phone()) syncNav('write'); },
+      onClose: () => {
+        if (window.PalinodeStore && PalinodeStore.Prefs && PalinodeStore.Prefs.touchExplore)
+          PalinodeStore.Prefs.touchExplore();
+        if (phone()) syncNav('write');
+      },
       onSaveChange: renderComposer,
       onOpenNote: noteId => {
         window.PalinodeGraph.close();
@@ -1687,15 +1951,7 @@
       },
       onRead: workId => { window.PalinodeGraph.close(); document.body.classList.remove('exploring'); openWork(workId); },
       onPlace: axisId => openPlace(axisId, 'graph'),
-      onWrite: concept => {
-        window.PalinodeGraph.close();
-        document.body.classList.remove('exploring');
-        const n = Notes.create({ promptText: concept.turn, title: '' });
-        openNote(n.id);
-        renderList();
-        el.input.focus();
-        toast('New note, opened on ' + concept.label + '.');
-      },
+      onWrite: writeOnConcept,
       onAddToPathway: step => {
         if (window.PalinodePathways) PalinodePathways.offerAttachStep(step);
       },
@@ -1727,32 +1983,43 @@
   }
 
   function saveNodeToNote(payload) {
-    const apply = id => {
-      const rec = Notes.get(id);
-      if (!rec) return;
-      const now = Saved.toggle(id, payload);
-      renderComposer();
-      if (window.PalinodeGraph && PalinodeGraph.refreshDetail) PalinodeGraph.refreshDetail();
-      toast(now
-        ? 'Added to “' + (rec.title || 'Untitled') + '”.'
-        : 'Removed from “' + (rec.title || 'Untitled') + '”.');
-    };
-    if (activeId) { apply(activeId); return; }
+    if (!payload) return;
     pendingSave = payload;
     const list = $('#note-pick-list');
     const notes = Notes.all();
     list.innerHTML = notes.length
-      ? notes.map(n => `<button type="button" data-pick="${esc(n.id)}">${esc(n.title || 'Untitled')}</button>`).join('')
+      ? notes.map(n => {
+          const on = Saved.has(n.id, payload.id);
+          const title = esc(n.title || 'Untitled');
+          return `<button type="button" data-pick="${esc(n.id)}">${title}${on ? ' ✓' : ''}</button>`;
+        }).join('')
       : '<p class="lede">No notes yet. Start a new one.</p>';
+    const titleEl = $('#note-pick-title');
+    if (titleEl) titleEl.textContent = 'Add to a note';
     $('#note-pick-scrim').classList.add('on');
   }
 
   $('#btn-explore').addEventListener('click', openCorpus);
   el.constel.addEventListener('click', explore);      // the mini map is a door
 
-  /* ---------- the note as a container ---------- */
+  function openHome() {
+    closeExplore();
+    closePathways();
+    closeProfile();
+    closeMarket();
+    closeQuests();
+    el.body.classList.remove('show-insights', 'show-rail');
+    if (window.PalinodeDashboard) PalinodeDashboard.enter();
+    syncNav('home');
+    syncNotePage();
+  }
 
-  const HOST = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
+  $('#btn-home').addEventListener('click', () => {
+    if (window.PalinodeDashboard && PalinodeDashboard.isOpen()) return;
+    openHome();
+  });
+
+  /* ---------- the note as a container ---------- */
 
   async function renderComposer() {
     if (!activeId) return;
@@ -1876,14 +2143,22 @@
 
   $('#attach-grid').addEventListener('click', async e => {
     const k = e.target.closest('[data-kill]');
-    if (!k) return;
-    e.preventDefault(); e.stopPropagation();
-    const id = k.dataset.kill;
-    const a = Attach.all(activeId).find(x => x.id === id);
-    Attach.remove(activeId, id);
-    if (a && a.kind !== 'link') await Media.del(id);
-    renderComposer();
-    toast('Removed.');
+    if (k) {
+      e.preventDefault(); e.stopPropagation();
+      const id = k.dataset.kill;
+      const a = Attach.all(activeId).find(x => x.id === id);
+      Attach.remove(activeId, id);
+      if (a && a.kind !== 'link') await Media.del(id);
+      if (refState && refState.type === 'attachment' && refState.id === id) closeNoteRef();
+      renderComposer();
+      toast('Removed.');
+      return;
+    }
+    if (e.target.closest('video, audio, .kill')) return;
+    const card = e.target.closest('[data-att]');
+    if (!card) return;
+    e.preventDefault();
+    openNoteRef({ type: 'attachment', id: card.dataset.att });
   });
 
   $('#pathway-strip').addEventListener('click', e => {
@@ -1895,6 +2170,7 @@
     }
     const chip = e.target.closest('[data-pathway]');
     if (chip && window.PalinodePathways) {
+      closeNoteRef();
       closeExplore();
       el.body.classList.remove('show-insights', 'show-rail');
       PalinodePathways.enter();
@@ -1917,8 +2193,29 @@
     }
     const chip = e.target.closest('[data-saved]');
     if (!chip) return;
-    if (chip.dataset.type === 'work') openWork(chip.dataset.saved.replace(/^w:/, ''));
-    else explore();
+    if (chip.dataset.type === 'work') {
+      openNoteRef({ type: 'work', id: chip.dataset.saved });
+      return;
+    }
+    openNoteRef({ type: 'concept', id: chip.dataset.saved });
+  });
+
+  const refBack = $('#ref-back');
+  if (refBack) refBack.addEventListener('click', () => {
+    closeNoteRef();
+    if (phone()) el.body.classList.add('show-insights');
+  });
+
+  const refBody = $('#ref-panel-body');
+  if (refBody) refBody.addEventListener('click', e => {
+    const act = e.target.closest('[data-ref-act]');
+    if (!act) return;
+    if (act.dataset.refAct === 'room') {
+      const id = act.dataset.workId;
+      closeNoteRef();
+      if (phone()) el.body.classList.remove('show-insights');
+      openWork(id);
+    }
   });
 
   /* ---------- export: a standalone file that carries the media ---------- */
@@ -1996,10 +2293,16 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
   $('#btn-rail').addEventListener('click', () => {
     if (phone()) {
       closeExplore();
+      closeDashboard();
       closePathways();
       closeProfile();
       el.body.classList.remove('show-insights');
       el.body.classList.add('show-rail');
+      syncNav('write');
+      return;
+    }
+    if (window.PalinodeDashboard && PalinodeDashboard.isOpen()) {
+      closeDashboard();
       syncNav('write');
       return;
     }
@@ -2089,6 +2392,7 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
   }
   $('#btn-pathways').addEventListener('click', () => {
     closeExplore();
+    closeDashboard();
     closeProfile();
     closeMarket();
     closeQuests();
@@ -2100,6 +2404,7 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
   $('#btn-quests').addEventListener('click', () => {
     if (window.PalinodeQuests && PalinodeQuests.isOpen()) return;
     closeExplore();
+    closeDashboard();
     closePathways();
     closeProfile();
     closeMarket();
@@ -2111,6 +2416,7 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
   $('#btn-market').addEventListener('click', () => {
     if (window.PalinodeMarketplace && PalinodeMarketplace.isOpen()) return;
     closeExplore();
+    closeDashboard();
     closePathways();
     closeProfile();
     closeQuests();
@@ -2121,6 +2427,7 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
   $('#btn-profile').addEventListener('click', () => {
     if (window.PalinodeProfile && PalinodeProfile.isOpen()) return;
     closeExplore();
+    closeDashboard();
     closePathways();
     closeMarket();
     closeQuests();
@@ -2147,6 +2454,11 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
     if (e.key === 'Escape') {
       if (document.documentElement.classList.contains('fab-open')) {
         closeFab();
+        return;
+      }
+      const aside = refAside();
+      if (aside && aside.classList.contains('ref-open')) {
+        closeNoteRef();
         return;
       }
       el.scrim.classList.remove('on');
@@ -2334,20 +2646,7 @@ What I actually want is for someone to see how hard it has been. That is a small
         openNote(id);
         syncNav('write');
       };
-      PalinodePathways.onWrite = concept => {
-        if (!concept) return;
-        closeExplore();
-        closePathways();
-        closeProfile();
-        closeMarket();
-        closeQuests();
-        const n = Notes.create({ promptText: concept.turn, title: '' });
-        openNote(n.id);
-        renderList();
-        el.input.focus();
-        syncNav('write');
-        toast('New note, opened on ' + concept.label + '.');
-      };
+      PalinodePathways.onWrite = writeOnConcept;
       PalinodePathways.onPlace = axisId => openPlace(axisId, 'pathway');
       PalinodePathways.onRead = workId => {
         closeExplore();
@@ -2366,7 +2665,97 @@ What I actually want is for someone to see how hard it has been. That is a small
     if (window.PalinodeProfile)
       PalinodeProfile.onPlace = axisId => openPlace(axisId, 'profile');
 
-    window.PalinodeApp = { openCorpus };
+    if (window.PalinodeDashboard) {
+      PalinodeDashboard.onOpenNotes = () => {
+        closeExplore();
+        closeDashboard();
+        closePathways();
+        closeProfile();
+        closeMarket();
+        closeQuests();
+        if (phone()) el.body.classList.add('show-rail');
+        syncNav('write');
+      };
+      PalinodeDashboard.onOpenNote = noteId => {
+        if (noteId) openNote(noteId);
+        else if (typeof PalinodeDashboard.onOpenNotes === 'function')
+          PalinodeDashboard.onOpenNotes();
+        syncNav('write');
+      };
+      PalinodeDashboard.onOpenMarket = epicId => {
+        closeExplore();
+        closeDashboard();
+        closePathways();
+        closeProfile();
+        closeQuests();
+        el.body.classList.remove('show-insights', 'show-rail');
+        if (window.PalinodeMarketplace) {
+          if (epicId) PalinodeMarketplace.enter({ epicId });
+          else PalinodeMarketplace.enter();
+        }
+        syncNav('market');
+      };
+      PalinodeDashboard.onOpenPathways = pathId => {
+        closeExplore();
+        closeDashboard();
+        closeProfile();
+        closeMarket();
+        closeQuests();
+        el.body.classList.remove('show-insights');
+        if (window.PalinodePathways) {
+          PalinodePathways.enter();
+          if (pathId && typeof PalinodePathways.openWalk === 'function')
+            PalinodePathways.openWalk(pathId);
+        }
+        if (phone()) el.body.classList.add('show-rail');
+        syncNav('pathways');
+      };
+      PalinodeDashboard.onOpenQuests = questId => {
+        closeExplore();
+        closeDashboard();
+        closePathways();
+        closeProfile();
+        closeMarket();
+        el.body.classList.remove('show-insights');
+        if (window.PalinodeQuests) {
+          PalinodeQuests.enter();
+          if (questId) PalinodeQuests.open(questId);
+        }
+        if (phone()) el.body.classList.add('show-rail');
+        syncNav('quests');
+      };
+      PalinodeDashboard.onOpenProfile = () => {
+        closeExplore();
+        closeDashboard();
+        closePathways();
+        closeMarket();
+        closeQuests();
+        el.body.classList.remove('show-insights', 'show-rail');
+        if (window.PalinodeProfile) PalinodeProfile.enter();
+        syncNav('profile');
+      };
+      PalinodeDashboard.onPromptWrite = () => {
+        const s = Prompts.state();
+        const n = Notes.create({
+          promptId: s.prompt.id,
+          promptText: s.prompt.text,
+          title: ''
+        });
+        Prompts.markWritten(s.prompt.id);
+        closeExplore();
+        closeDashboard();
+        closePathways();
+        closeProfile();
+        closeMarket();
+        closeQuests();
+        openNote(n.id);
+        renderPrompt();
+        renderList();
+        syncNav('write');
+      };
+    }
+
+    window.PalinodeApp = { openCorpus, openHome, renderPrompt };
 
     renderPrompt();
     renderList();
@@ -2375,7 +2764,7 @@ What I actually want is for someone to see how hard it has been. That is a small
     if (first) openNote(first.id);
     else { el.editorWrap.hidden = true; el.empty.style.display = ''; }
     el.body.classList.remove('show-rail');
-    void openCorpus();
+    openHome();
     syncNotePage();
 
     if (window.PalinodeStore.usingMemory()) {

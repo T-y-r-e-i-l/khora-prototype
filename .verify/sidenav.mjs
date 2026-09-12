@@ -20,11 +20,11 @@ await mockKhora(page);
 await page.goto('http://localhost:8765/index.html', { waitUntil: 'networkidle' });
 await page.evaluate(() => localStorage.clear());
 await page.reload({ waitUntil: 'networkidle' });
-await page.waitForSelector('#graph:not([hidden])', { timeout: 8000 });
+await page.waitForSelector('#dashboard-wrap:not([hidden])', { timeout: 8000 });
 await page.evaluate(() => {
   const prefs = window.PalinodeStore && PalinodeStore.Prefs;
   if (prefs) {
-    ['explore', 'write', 'insights', 'market', 'pathways', 'quests', 'profile']
+    ['explore', 'write', 'insights', 'market', 'pathways', 'quests', 'profile', 'home']
       .forEach(id => prefs.tourDone(id));
   }
   if (window.PalinodeOnboarding) PalinodeOnboarding._reset();
@@ -91,20 +91,21 @@ check('the body starts at the top now', geo.bodyTop === 0, geo.bodyTop + 'px');
 // the DOM contract Tasks 3 and 6 consume: these exact ids, carrying these
 // exact data-views, in this order. A typo in either would ship green
 // against a bare count, so name them.
-const CONTRACT = 'btn-explore:explore,btn-rail:write,btn-market:market,btn-pathways:pathways,btn-quests:quests,btn-profile:profile';
+const CONTRACT = 'btn-home:home,btn-explore:explore,btn-rail:write,btn-market:market,btn-pathways:pathways,btn-quests:quests,btn-profile:profile';
 const actual = geo.items.map(i => i.id + ':' + i.view).join(',');
-check('six destinations', geo.items.length === 6,
+check('seven destinations', geo.items.length === 7,
   geo.items.map(i => i.id).join(','));
-check('the destinations are the contracted six, in order',
+check('the destinations are the contracted seven, in order',
   actual === CONTRACT, actual);
 check('Help sits at the foot of the rail',
   !!geo.helpBox && geo.helpBox.top - geo.items[geo.items.length - 1].top >= 72,
   geo.helpBox ? String(geo.helpBox.top - geo.items[geo.items.length - 1].top) : 'missing');
-check('Explore is the only one marked active',
-  geo.onIds.length === 1 && geo.onIds[0] === 'btn-explore',
+check('Home is the only one marked active',
+  geo.onIds.length === 1 && geo.onIds[0] === 'btn-home',
   geo.onIds.join(',') || 'none');
-check('Explore is the default view', await page.evaluate(
-  () => !document.getElementById('graph').hidden));
+check('Home is the default view', await page.evaluate(
+  () => document.getElementById('body').classList.contains('dashboard-mode')
+    && !document.getElementById('dashboard-wrap').hidden));
 check('destinations are 56px tall', geo.items.every(i => i.h === 56),
   geo.items.map(i => i.h).join(','));
 /* 56 wide, not the 40 of the pill: a 40px target leaves 'Explore' hanging

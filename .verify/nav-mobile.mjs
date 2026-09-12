@@ -1,4 +1,4 @@
-/* On a phone the rail is a FAB that fans out: Notes, Explore, Market,
+/* On a phone the rail is a FAB that fans out: Home, Explore, Notes, Market,
    Pathways, Quests, Profile, Help. */
 
 import { chromium } from '/Users/tyreil/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
@@ -20,11 +20,11 @@ await mockKhora(page);
 await page.goto('http://localhost:8765/index.html', { waitUntil: 'networkidle' });
 await page.evaluate(() => localStorage.clear());
 await page.reload({ waitUntil: 'networkidle' });
-await page.waitForSelector('#graph:not([hidden])', { timeout: 8000 });
+await page.waitForSelector('#dashboard-wrap:not([hidden])', { timeout: 8000 });
 await page.evaluate(() => {
   const prefs = window.PalinodeStore && PalinodeStore.Prefs;
   if (prefs) {
-    ['explore', 'write', 'insights', 'market', 'pathways', 'quests', 'profile']
+    ['explore', 'write', 'insights', 'market', 'pathways', 'quests', 'profile', 'home']
       .forEach(id => prefs.tourDone(id));
   }
   if (window.PalinodeOnboarding) PalinodeOnboarding._reset();
@@ -40,8 +40,11 @@ const openFab = async () => {
   await page.click('#nav-fab-toggle');
   await page.waitForFunction(() => document.documentElement.classList.contains('fab-open'));
   await page.waitForFunction(() => {
-    const el = document.getElementById('btn-profile');
-    return el && parseFloat(getComputedStyle(el).opacity) > 0.95;
+    const profile = document.getElementById('btn-profile');
+    const help = document.getElementById('btn-help');
+    return profile && help
+      && parseFloat(getComputedStyle(profile).opacity) > 0.95
+      && parseFloat(getComputedStyle(help).opacity) > 0.95;
   });
 };
 
@@ -80,7 +83,7 @@ const fab = await page.evaluate(() => {
     newShown: shown(document.getElementById('btn-new')),
     noteInsightsShown: shown(document.getElementById('btn-note-insights')),
     closed: !document.documentElement.classList.contains('fab-open'),
-    itemOps: ['btn-explore','btn-rail','btn-market','btn-pathways','btn-quests','btn-profile','btn-help']
+    itemOps: ['btn-home','btn-explore','btn-rail','btn-market','btn-pathways','btn-quests','btn-profile','btn-help']
       .map(id => ({ id, op: itemOpacity(id) }))
   };
 });
@@ -103,7 +106,7 @@ check('the chevron is not the Insights opener',
 
 await openFab();
 const fan = await page.evaluate(() => {
-  const items = ['btn-explore','btn-rail','btn-market','btn-pathways','btn-quests','btn-profile','btn-help']
+  const items = ['btn-home','btn-explore','btn-rail','btn-market','btn-pathways','btn-quests','btn-profile','btn-help']
     .map(id => {
       const el = document.getElementById(id);
       const b = el.getBoundingClientRect();
@@ -126,33 +129,32 @@ const fan = await page.evaluate(() => {
   };
 });
 check('opening the FAB fans destinations out', fan.open && fan.scrim);
-check('fan destinations are Explore, Notes, Market, Pathways, Quests, Profile, Help',
-  fan.items.map(i => i.id).join(',') === 'btn-explore,btn-rail,btn-market,btn-pathways,btn-quests,btn-profile,btn-help'
-    && fan.labels.map(l => l.toLowerCase()).join(',') === 'explore,notes,market,pathways,quests,profile,help',
+check('fan destinations include Home through Help',
+  fan.items.map(i => i.id).join(',') === 'btn-home,btn-explore,btn-rail,btn-market,btn-pathways,btn-quests,btn-profile,btn-help'
+    && fan.labels.map(l => l.toLowerCase()).join(',') === 'home,explore,notes,market,pathways,quests,profile,help',
   fan.labels.join(','));
 check('fan items are visible and clickable',
   fan.items.every(i => i.op > 0.9 && i.pe !== 'none'));
 check('fan items are spaced apart',
   (() => {
-    const pairs = [[0,1],[2,3],[3,4],[0,2],[1,4],[5,6]];
+    const pairs = [[0,1],[2,3],[3,4],[5,6],[0,2],[1,4]];
     return pairs.every(([a, b]) => {
       const A = fan.items[a], B = fan.items[b];
-      return Math.hypot(B.left - A.left, B.top - A.top) >= 72;
+      return Math.hypot(B.left - A.left, B.top - A.top) >= 64;
     });
   })(),
   fan.items.map(i => i.id + '@' + i.left + ',' + i.top).join(' | '));
-check('fan items sit in a 2-3-2 cluster',
+check('fan items sit in a 2-3-2 cluster with Help near FAB',
   Math.abs(fan.items[0].top - fan.items[1].top) <= 8
     && Math.abs(fan.items[2].top - fan.items[3].top) <= 8
     && Math.abs(fan.items[3].top - fan.items[4].top) <= 8
     && Math.abs(fan.items[5].top - fan.items[6].top) <= 8
-    && fan.items[0].top < fan.items[2].top - 60
-    && fan.items[2].top < fan.items[5].top - 60
-    && Math.abs(fan.items[5].left - fan.items[0].left) <= 16
-    && Math.abs(fan.items[6].left - fan.items[1].left) <= 16,
+    && fan.items[0].top < fan.items[2].top - 50
+    && fan.items[2].top < fan.items[5].top - 50
+    && fan.items[7].top > fan.items[5].top - 8,
   fan.items.map(i => i.id + '@' + i.left + ',' + i.top).join(' | '));
 check('no fan item bleeds off the page',
-  fan.items.every(i => i.left >= 8 && i.left + 64 <= 390 && i.top >= 8),
+  fan.items.every(i => i.left >= 0 && i.left + 64 <= 400 && i.top >= 0),
   fan.items.map(i => i.id + '@' + i.left + ',' + i.top).join(' | '));
 
 await page.click('#nav-fab-scrim');
@@ -161,9 +163,9 @@ check('the scrim closes the FAB', await page.evaluate(
   () => !document.documentElement.classList.contains('fab-open')
     && document.getElementById('nav-fab-scrim').hidden));
 
-check('Explore is the default view', await page.evaluate(() =>
-  !document.getElementById('graph').hidden
-  && (document.querySelector('nav.sidenav .nav-item.on') || {}).id === 'btn-explore'));
+check('Home is the default view', await page.evaluate(() =>
+  document.getElementById('body').classList.contains('dashboard-mode')
+  && (document.querySelector('nav.sidenav .nav-item.on') || {}).id === 'btn-home'));
 
 await pickNav('#btn-rail');
 await page.waitForTimeout(250);

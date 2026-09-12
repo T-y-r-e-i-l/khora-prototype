@@ -55,9 +55,17 @@
     const ed = $('#editor-wrap');
     const empty = $('#empty-state');
     const read = $('#reading-room');
+    const dash = $('#dashboard-wrap');
+    const market = $('#market-wrap');
+    const profile = $('#profile-view');
+    const quests = $('#quests-wrap');
     if (ed) ed.hidden = true;
     if (empty) { empty.hidden = true; empty.style.display = 'none'; }
     if (read) read.hidden = true;
+    if (dash) dash.hidden = true;
+    if (market) market.hidden = true;
+    if (profile) profile.hidden = true;
+    if (quests) quests.hidden = true;
   }
 
   function showFeed() {
@@ -829,6 +837,7 @@
     offerSave, showList, hideList, enter, leave, openWalk, closeWalk,
     isListOpen, isWalkOpen, refresh: renderList,
     offerAttach, offerAttachStep, askForgetPath,
+    previewConstellation,
     refreshWalk: () => { if (walkId) renderWalk(); },
     onChange: null,
     onChrome: null,

@@ -937,6 +937,7 @@
     const pe = $('#path-empty');
     const profile = $('#profile-view');
     const market = $('#market-wrap');
+    const dash = $('#dashboard-wrap');
     if (ed) ed.hidden = true;
     if (empty) { empty.hidden = true; empty.style.display = 'none'; }
     if (read) read.hidden = true;
@@ -944,6 +945,7 @@
     if (pe) pe.hidden = true;
     if (profile) profile.hidden = true;
     if (market) market.hidden = true;
+    if (dash) dash.hidden = true;
   }
 
   function enter() {
@@ -1167,6 +1169,7 @@
     isActive,
     isCompleted,
     canAccept,
+    nextStepHint: (quest) => nextStepLabel(quest, quest && quest.log),
     openOverview,
     closeOverview,
     showAcceptedChoice,
