@@ -31,12 +31,12 @@
       lastExploreAt: null,
       dashLayout: {
         panels: [
-          { id: 'd-explore', type: 'explore', x: 0, y: 0, w: 4, h: 4 },
-          { id: 'd-notes', type: 'notes', x: 4, y: 0, w: 5, h: 4 },
-          { id: 'd-pathways', type: 'pathways', x: 9, y: 0, w: 3, h: 2 },
-          { id: 'd-quests', type: 'quests', x: 9, y: 2, w: 3, h: 4 },
-          { id: 'd-library', type: 'library', x: 0, y: 4, w: 4, h: 3 },
-          { id: 'd-profile', type: 'profile', x: 4, y: 4, w: 5, h: 3 }
+          { id: 'd-notes', type: 'notes', x: 0, y: 0, w: 4, h: 5 },
+          { id: 'd-explore', type: 'explore', x: 4, y: 0, w: 5, h: 5 },
+          { id: 'd-profile', type: 'profile', x: 9, y: 0, w: 3, h: 5 },
+          { id: 'd-library', type: 'library', x: 0, y: 5, w: 6, h: 5 },
+          { id: 'd-pathways', type: 'pathways', x: 6, y: 5, w: 3, h: 5 },
+          { id: 'd-quests', type: 'quests', x: 9, y: 5, w: 3, h: 5 }
         ]
       }
     },

@@ -18,13 +18,33 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => (
     { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
+  /* Same path markup as sidenav icons in index.html */
+  const NAV_ICONS = {
+    explore: `<circle cx="12" cy="12" r="2.4" stroke="currentColor" stroke-width="1.4"/>
+      <circle cx="12" cy="12" r="8.4" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 3"/>
+      <circle cx="18.5" cy="8" r="1.7" fill="currentColor"/>`,
+    notes: `<path d="M5 4h11l3 3v13H5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+      <path d="M8 10h8M8 14h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>`,
+    library: `<path d="M5 4h11l3 3v13H5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+      <path d="M8 10h8M8 14h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>`,
+    pathways: `<circle cx="5" cy="12" r="2.1" fill="currentColor"/>
+      <circle cx="12" cy="12" r="2.1" fill="currentColor"/>
+      <circle cx="19" cy="12" r="2.1" fill="currentColor"/>
+      <path d="M7.2 12h2.6M14.2 12h2.6" stroke="currentColor" stroke-width="1.4"/>`,
+    quests: `<path d="M12 3.5l2.1 4.3 4.7.7-3.4 3.3.8 4.7L12 14.3 7.8 16.5l.8-4.7-3.4-3.3 4.7-.7L12 3.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>`,
+    profile: `<path d="M4 8h16M4 13h16M4 18h16" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      <circle cx="9" cy="8" r="2.1" fill="currentColor"/>
+      <circle cx="15.5" cy="13" r="2.1" fill="currentColor"/>
+      <circle cx="7.5" cy="18" r="2.1" fill="currentColor"/>`
+  };
+
   const CARD_META = {
-    explore:  { label: 'Explore',  orb: 'resonance', defaultW: 4, defaultH: 4 },
-    notes:    { label: 'Notes',    orb: 'clarity',   defaultW: 5, defaultH: 4 },
-    library:  { label: 'Library',  orb: 'clarity',   defaultW: 4, defaultH: 3 },
-    pathways: { label: 'Pathways', orb: 'stance',    defaultW: 3, defaultH: 2 },
-    quests:   { label: 'Quests',   orb: 'tension',   defaultW: 3, defaultH: 4 },
-    profile:  { label: 'Profile',  orb: 'resonance', defaultW: 5, defaultH: 3 }
+    explore:  { label: 'Explore',  orb: 'resonance', defaultW: 5, defaultH: 5 },
+    notes:    { label: 'Notes',    orb: 'clarity',   defaultW: 4, defaultH: 5 },
+    library:  { label: 'Library',  orb: 'clarity',   defaultW: 6, defaultH: 5 },
+    pathways: { label: 'Pathways', orb: 'stance',    defaultW: 3, defaultH: 5 },
+    quests:   { label: 'Quests',   orb: 'tension',   defaultW: 3, defaultH: 5 },
+    profile:  { label: 'Profile',  orb: 'resonance', defaultW: 3, defaultH: 5 }
   };
   const CARD_TYPES = Object.keys(CARD_META);
   const MOBILE_MQ = '(max-width: 767px)';
@@ -109,15 +129,9 @@
     return !!(cov && cov.placed > 0);
   }
 
-  function formatWhen(ts) {
-    if (!ts) return '';
-    const d = new Date(ts);
-    const now = new Date();
-    const sameDay = d.toDateString() === now.toDateString();
-    if (sameDay) return 'Last in the field today';
-    const y = new Date(now); y.setDate(now.getDate() - 1);
-    if (d.toDateString() === y.toDateString()) return 'Last in the field yesterday';
-    return 'Last in the field ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  function navIcon(type) {
+    const paths = NAV_ICONS[type] || NAV_ICONS.notes;
+    return `<svg class="dash-card-ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">${paths}</svg>`;
   }
 
   function cardShell(opts) {
@@ -126,12 +140,12 @@
     const kicker = opts.hideKicker
       ? `<span class="dash-card-type micro">${esc(meta.label)}</span>`
       : `<div class="dash-card-kicker">
-          <span class="orb sm" style="--c:var(--${esc(opts.orb || meta.orb || 'stance')})"></span>
+          ${navIcon(opts.id)}
           <h3>${esc(opts.title || meta.label)}</h3>
         </div>`;
     return `<article class="dash-card${extras ? ' ' + extras : ''}" data-dash-card="${esc(opts.id)}" id="dash-card-${esc(opts.id)}">
       <div class="dash-card-chrome">
-        <button type="button" class="dash-drag" aria-label="Drag to rearrange" title="Drag to rearrange">
+        <span class="dash-drag-grip" aria-hidden="true" title="Drag to rearrange">
           <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
             <circle cx="4" cy="3.5" r="1.2" fill="currentColor"/>
             <circle cx="10" cy="3.5" r="1.2" fill="currentColor"/>
@@ -140,14 +154,14 @@
             <circle cx="4" cy="10.5" r="1.2" fill="currentColor"/>
             <circle cx="10" cy="10.5" r="1.2" fill="currentColor"/>
           </svg>
-        </button>
+        </span>
         ${kicker}
         <div class="dash-card-menu">
           <button type="button" class="dash-menu-btn" data-dash-menu aria-haspopup="true" aria-label="Card options">⋯</button>
         </div>
       </div>
       <div class="dash-card-body">${opts.body}</div>
-      <div class="dash-card-foot">${opts.foot || ''}</div>
+      ${opts.foot ? `<div class="dash-card-foot">${opts.foot}</div>` : ''}
     </article>`;
   }
 
@@ -156,7 +170,7 @@
       gs-id="${esc(panel.id)}"
       gs-x="${panel.x}" gs-y="${panel.y}" gs-w="${panel.w}" gs-h="${panel.h}"
       data-panel-id="${esc(panel.id)}" data-panel-type="${esc(panel.type)}">
-      <div class="grid-stack-item-content">${inner}</div>
+      <div class="grid-stack-item-content dash-drag" title="Drag to rearrange">${inner}</div>
     </div>`;
   }
 
@@ -223,33 +237,24 @@
   }
 
   function exploreCard() {
-    const returning = isReturningExplorer();
-    const when = Prefs() && formatWhen(Prefs().lastExploreAt());
     const { steps } = exploreSteps();
     const preview = buildConstellation(steps);
-    const lede = returning
-      ? (when || 'Pick up where the nodes left you.')
-      : 'Works and ideas float here as luminous nodes.';
-    const body = `<button type="button" class="dash-constel-btn" data-dash-go="explore" aria-label="Open Explore">
+    const label = isReturningExplorer() ? 'Continue exploring' : 'Open Explore';
+    const body = `<button type="button" class="dash-constel-btn" data-dash-go="explore" aria-label="${esc(label)}">
         ${preview}
-      </button>
-      <p class="dash-constel-lede micro">${esc(lede)}</p>`;
-    const foot = returning
-      ? `<button type="button" class="ghost solid" data-dash-go="explore">Dive back in</button>`
-      : `<button type="button" class="ghost solid" data-dash-go="explore">Explore the field</button>`;
+      </button>`;
     return cardShell({
-      id: 'explore', title: 'Explore', orb: 'resonance', body, foot,
-      mod: 'dash-card--feature dash-card--explore'
+      id: 'explore', title: 'Explore', orb: 'resonance', body, foot: '',
+      mod: 'dash-card--feature dash-card--explore dash-card--constel'
     });
   }
 
   function notesCard() {
     return cardShell({
       id: 'notes', title: 'Notes', orb: 'clarity',
-      body: '<div class="dash-prompt-host" id="dash-prompt-host"></div>',
+      body: '<div class="dash-prompt-host dash-no-drag" id="dash-prompt-host"></div>',
       foot: '',
-      mod: 'dash-card--feature dash-card--notes dash-card--prompt',
-      hideKicker: true
+      mod: 'dash-card--feature dash-card--notes dash-card--prompt'
     });
   }
 
@@ -458,6 +463,9 @@
     if (!g || !window.GridStack) return;
     const mobile = isMobile();
     suppressPersist = true;
+    // Drag from the whole card (Ghost Writer–style). GridStack already
+    // cancels on button/input/textarea/select — never put the handle on a <button>
+    // or SVG-inside-button clicks get cancelled and drag feels broken.
     gridApi = window.GridStack.init({
       column: 12,
       cellHeight: 72,
@@ -467,7 +475,12 @@
       disableDrag: mobile,
       disableResize: mobile,
       handle: '.dash-drag',
-      draggable: { handle: '.dash-drag', appendTo: 'body', scroll: true },
+      draggable: {
+        handle: '.dash-drag',
+        appendTo: 'body',
+        scroll: false,
+        cancel: '.dash-no-drag, .note-list, .dash-card-foot a, .dash-card-foot button'
+      },
       resizable: { handles: 'se' }
     }, g);
     gridApi.on('change', () => schedulePersist());

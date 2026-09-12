@@ -2793,8 +2793,16 @@ nav.sidenav {
 }
 .dash-grid .grid-stack-item-content {
   inset: 0;
-  overflow: auto;
+  overflow: hidden; /* scroll inside .dash-card-body — overflow here fights drag */
   border-radius: 18px;
+}
+.dash-grid .grid-stack-item-content.dash-drag {
+  cursor: grab;
+  touch-action: none;
+}
+.dash-grid .grid-stack-item.ui-draggable-dragging > .grid-stack-item-content.dash-drag,
+.dash-grid .grid-stack-item-content.dash-drag:active {
+  cursor: grabbing;
 }
 .dash-grid .grid-stack-item > .ui-resizable-se {
   width: 14px; height: 14px;
@@ -2827,14 +2835,13 @@ nav.sidenav {
   display: flex; align-items: center; gap: 8px;
   flex: none;
 }
-.dash-drag {
-  appearance: none; border: 0; background: rgba(255,255,255,.06);
+.dash-drag-grip {
+  border: 0; background: rgba(255,255,255,.06);
   color: var(--ink-3); width: 28px; height: 28px; border-radius: 8px;
-  display: grid; place-items: center; cursor: grab; flex: none;
-  padding: 0;
+  display: grid; place-items: center; flex: none;
+  pointer-events: none; /* visual only — card surface is the handle */
 }
-.dash-drag:active { cursor: grabbing; }
-.dash-drag:hover { color: var(--ink); background: rgba(255,255,255,.1); }
+.dash-card:hover .dash-drag-grip { color: var(--ink); background: rgba(255,255,255,.1); }
 .dash-card-chrome .dash-card-kicker { flex: 1; min-width: 0; }
 .dash-card-type {
   flex: 1; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-4);
@@ -2874,18 +2881,75 @@ nav.sidenav {
     rgba(0,0,0,.3);
 }
 .dash-card--explore {
+  position: relative;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  height: 100%;
   background:
     radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--resonance) 22%, transparent), transparent 55%),
     linear-gradient(165deg, rgba(255,255,255,.06), rgba(255,255,255,.01)),
     rgba(0,0,0,.3);
+}
+.dash-card--explore .dash-card-chrome {
+  position: absolute;
+  z-index: 2;
+  top: 0; left: 0; right: 0;
+  padding: 12px 14px 28px;
+  background: linear-gradient(180deg, rgba(8,6,10,.72) 0%, rgba(8,6,10,.28) 55%, transparent 100%);
+  pointer-events: none;
+}
+.dash-card--explore .dash-card-chrome > * { pointer-events: auto; }
+.dash-card--explore .dash-card-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+.dash-constel-btn {
+  appearance: none; border: 0; background: none; padding: 0;
+  display: block; width: 100%; height: 100%;
+  min-height: 0; cursor: pointer; text-align: left;
+  color: inherit; border-radius: inherit;
+}
+.dash-card--explore .dash-constel,
+.dash-card--explore .path-constel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  border-radius: 0;
+  border: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 100% at 20% 10%, color-mix(in srgb, var(--resonance) 18%, transparent), transparent 50%),
+    rgba(0,0,0,.28);
+}
+.dash-card--explore .path-constel .node {
+  font-size: 11px;
+  padding: 3px 8px 3px 4px;
+  gap: 5px;
+}
+.dash-card--explore .dash-constel-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--resonance) 70%, white);
+  outline-offset: -3px;
 }
 .dash-card--rail,
 .dash-card--list {
   background: rgba(0,0,0,.32);
 }
 .dash-card-kicker {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 8px;
+  min-width: 0;
 }
+.dash-card-ico {
+  width: 16px; height: 16px; flex: none;
+  color: var(--ink-3);
+}
+.dash-card:hover .dash-card-ico { color: var(--ink-2); }
 .dash-card-kicker h3 {
   margin: 0;
   font-family: var(--sans);
@@ -2927,34 +2991,6 @@ nav.sidenav {
 .dash-card--profile .dash-card-foot .ghost.solid {
   flex: 1 1 auto;
   text-align: center;
-}
-
-.dash-constel-btn {
-  appearance: none; border: 0; background: none; padding: 0;
-  display: block; width: 100%; cursor: pointer; text-align: left;
-  color: inherit;
-}
-.dash-card--explore .dash-constel,
-.dash-card--explore .path-constel {
-  position: relative;
-  width: 100%;
-  height: min(200px, 55%);
-  min-height: 120px;
-  margin: 0;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.08);
-  overflow: hidden;
-  pointer-events: none;
-  background: rgba(0,0,0,.22);
-}
-.dash-card--explore .path-constel .node {
-  font-size: 11px;
-  padding: 3px 8px 3px 4px;
-  gap: 5px;
-}
-.dash-constel-lede {
-  margin: 10px 0 0 !important;
-  color: var(--ink-4);
 }
 
 .dash-card--prompt {
@@ -3046,22 +3082,40 @@ nav.sidenav {
 }
 .dash-prompt-src, .dash-prompt-skips { color: var(--ink-4); }
 .dash-card--profile .dash-card-body {
-  display: grid;
-  grid-template-columns: minmax(96px, 120px) minmax(0, 1fr);
-  gap: 14px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
 }
-.dash-card--profile .dash-radar {
+.dash-profile-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
   width: 100%;
+}
+.dash-profile-copy p { margin: 0; max-width: 28ch; }
+.dash-profile-copy .dash-analysis-line + .dash-analysis-line,
+.dash-profile-copy .dash-eyebrow + .dash-analysis-line { margin-top: 8px; }
+.dash-card--profile .dash-radar {
+  width: min(100%, 140px);
   margin: 0;
 }
-.dash-card--profile .dash-radar.empty { opacity: .55; }
+/* Empty radar: no dimming — rings must clear WCAG 1.4.11 (≥3:1 non-text) */
+.dash-card--profile .dash-radar.empty { opacity: 1; }
+.dash-radar.empty .prof-ring {
+  stroke: rgba(255, 255, 255, 0.48); /* ~4.9:1 on --void */
+  stroke-width: 1.5;
+}
 .dash-radar {
   width: min(100%, 200px);
   margin: 0 auto 12px;
 }
 .dash-radar svg { width: 100%; height: auto; display: block; }
-.dash-radar.empty { opacity: .55; }
+.dash-radar.empty { opacity: 1; }
 .dash-analysis-line {
   font-size: 12.5px;
   line-height: 1.55;
@@ -3089,10 +3143,10 @@ nav.sidenav {
     height: auto;
     min-height: 220px;
   }
-  .dash-drag, .dash-grid .grid-stack-item > .ui-resizable-se { display: none; }
+  .dash-drag-grip, .dash-grid .grid-stack-item > .ui-resizable-se { display: none; }
+  .dash-grid .grid-stack-item-content.dash-drag { cursor: default; touch-action: auto; }
   .dash-head { flex-direction: column; align-items: flex-start; }
   #dashboard-wrap { padding: 4px 2px 96px; }
-  .dash-card--profile .dash-card-body { grid-template-columns: 1fr; }
 }
 
 /* ---------- Marketplace continued ----------------------------- */
