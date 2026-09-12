@@ -14,6 +14,13 @@ const NODE_B = {
   node_type: 'COMPLEX_IDEA',
   explain: 'Opposed claims that produce a richer shape of knowing.'
 };
+const NODE_PALINODE = {
+  id: '3194979a-c2e5-45d3-b3c4-37d3b6beffd6',
+  title: 'Palinode',
+  entity_type: 'Node',
+  node_type: 'COMPLEX_IDEA',
+  explain: 'The hub of the field — a name for reading yourself back.'
+};
 const ITEM = {
   id: '22222222-2222-4222-8222-222222222222',
   title: 'On the Genealogy of Morals',
@@ -23,7 +30,7 @@ const ITEM = {
   url: 'https://example.org/genealogy'
 };
 
-export const FIXTURES = { NODE, NODE_B, ITEM };
+export const FIXTURES = { NODE, NODE_B, NODE_PALINODE, ITEM };
 
 export async function mockKhora(page) {
   await page.route('https://api.khora.dev/**', async route => {
@@ -51,14 +58,17 @@ export async function mockKhora(page) {
 
     if (method === 'GET' && path === '/intro') {
       return json({
-        nodes: [NODE, NODE_B],
-        links: [{ entity_id_linked1: NODE.id, entity_id_linked2: NODE_B.id, comment: 'related' }]
+        nodes: [NODE_PALINODE, NODE, NODE_B],
+        links: [
+          { entity_id_linked1: NODE_PALINODE.id, entity_id_linked2: NODE.id, comment: 'related' },
+          { entity_id_linked1: NODE.id, entity_id_linked2: NODE_B.id, comment: 'related' }
+        ]
       });
     }
-    if (method === 'GET' && path === '/random') return json([NODE, NODE_B]);
+    if (method === 'GET' && path === '/random') return json([NODE_PALINODE, NODE, NODE_B]);
     if (method === 'GET' && path === '/entity') {
       const id = url.searchParams.get('id');
-      const rec = [NODE, NODE_B, ITEM].find(e => e.id === id);
+      const rec = [NODE_PALINODE, NODE, NODE_B, ITEM].find(e => e.id === id);
       return rec ? json(rec) : json({ error: 'not found' }, 404);
     }
     if (method === 'GET' && path === '/summary') {
@@ -72,7 +82,7 @@ export async function mockKhora(page) {
       const body = req.postDataJSON() || {};
       const q = String(body.query || '').toLowerCase();
       const pool = [];
-      if (!(body.types || []).length || body.types.includes('Node')) pool.push(NODE, NODE_B);
+      if (!(body.types || []).length || body.types.includes('Node')) pool.push(NODE_PALINODE, NODE, NODE_B);
       if ((body.types || []).includes('Item')) pool.push(ITEM);
       const hits = q
         ? pool.filter(e => (e.title || '').toLowerCase().includes(q))

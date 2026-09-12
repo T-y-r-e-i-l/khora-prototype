@@ -1,4 +1,5 @@
-/* On a phone the rail is a FAB that fans out: Notes, Explore, Market, Pathways, Quests, Profile. */
+/* On a phone the rail is a FAB that fans out: Notes, Explore, Market,
+   Pathways, Quests, Profile, Help. */
 
 import { chromium } from '/Users/tyreil/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
 import { mockKhora } from './khora-mock.mjs';
@@ -20,6 +21,14 @@ await page.goto('http://localhost:8765/index.html', { waitUntil: 'networkidle' }
 await page.evaluate(() => localStorage.clear());
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForSelector('#graph:not([hidden])', { timeout: 8000 });
+await page.evaluate(() => {
+  const prefs = window.PalinodeStore && PalinodeStore.Prefs;
+  if (prefs) {
+    ['explore', 'write', 'insights', 'market', 'pathways', 'quests', 'profile']
+      .forEach(id => prefs.tourDone(id));
+  }
+  if (window.PalinodeOnboarding) PalinodeOnboarding._reset();
+});
 
 const tryClick = async sel => {
   try { await page.click(sel, { timeout: 3000 }); return { ok: true, why: '' }; }
@@ -71,7 +80,7 @@ const fab = await page.evaluate(() => {
     newShown: shown(document.getElementById('btn-new')),
     noteInsightsShown: shown(document.getElementById('btn-note-insights')),
     closed: !document.documentElement.classList.contains('fab-open'),
-    itemOps: ['btn-rail','btn-explore','btn-market','btn-pathways','btn-quests','btn-profile']
+    itemOps: ['btn-explore','btn-rail','btn-market','btn-pathways','btn-quests','btn-profile','btn-help']
       .map(id => ({ id, op: itemOpacity(id) }))
   };
 });
@@ -94,7 +103,7 @@ check('the chevron is not the Insights opener',
 
 await openFab();
 const fan = await page.evaluate(() => {
-  const items = ['btn-rail','btn-explore','btn-market','btn-pathways','btn-quests','btn-profile']
+  const items = ['btn-explore','btn-rail','btn-market','btn-pathways','btn-quests','btn-profile','btn-help']
     .map(id => {
       const el = document.getElementById(id);
       const b = el.getBoundingClientRect();
@@ -117,28 +126,30 @@ const fan = await page.evaluate(() => {
   };
 });
 check('opening the FAB fans destinations out', fan.open && fan.scrim);
-check('fan destinations are Notes, Explore, Market, Pathways, Quests, Profile',
-  fan.items.map(i => i.id).join(',') === 'btn-rail,btn-explore,btn-market,btn-pathways,btn-quests,btn-profile'
-    && fan.labels.map(l => l.toLowerCase()).join(',') === 'notes,explore,market,pathways,quests,profile',
+check('fan destinations are Explore, Notes, Market, Pathways, Quests, Profile, Help',
+  fan.items.map(i => i.id).join(',') === 'btn-explore,btn-rail,btn-market,btn-pathways,btn-quests,btn-profile,btn-help'
+    && fan.labels.map(l => l.toLowerCase()).join(',') === 'explore,notes,market,pathways,quests,profile,help',
   fan.labels.join(','));
 check('fan items are visible and clickable',
   fan.items.every(i => i.op > 0.9 && i.pe !== 'none'));
 check('fan items are spaced apart',
   (() => {
-    const pairs = [[0,1],[2,3],[3,4],[0,2],[1,4],[3,5]];
+    const pairs = [[0,1],[2,3],[3,4],[0,2],[1,4],[5,6]];
     return pairs.every(([a, b]) => {
       const A = fan.items[a], B = fan.items[b];
       return Math.hypot(B.left - A.left, B.top - A.top) >= 72;
     });
   })(),
   fan.items.map(i => i.id + '@' + i.left + ',' + i.top).join(' | '));
-check('fan items sit in a 2-3-1 cluster',
+check('fan items sit in a 2-3-2 cluster',
   Math.abs(fan.items[0].top - fan.items[1].top) <= 8
     && Math.abs(fan.items[2].top - fan.items[3].top) <= 8
     && Math.abs(fan.items[3].top - fan.items[4].top) <= 8
+    && Math.abs(fan.items[5].top - fan.items[6].top) <= 8
     && fan.items[0].top < fan.items[2].top - 60
     && fan.items[2].top < fan.items[5].top - 60
-    && Math.abs(fan.items[5].left - fan.items[3].left) <= 16,
+    && Math.abs(fan.items[5].left - fan.items[0].left) <= 16
+    && Math.abs(fan.items[6].left - fan.items[1].left) <= 16,
   fan.items.map(i => i.id + '@' + i.left + ',' + i.top).join(' | '));
 check('no fan item bleeds off the page',
   fan.items.every(i => i.left >= 8 && i.left + 64 <= 390 && i.top >= 8),

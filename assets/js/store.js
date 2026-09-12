@@ -27,7 +27,7 @@
     prefs: {
       filters: { resonance:true, tension:true, clarity:true, stance:true, lineage:true },
       dismissed: {},
-      tours: { explore: false, write: false, market: false, pathways: false, quests: false, profile: false }
+      tours: { explore: false, write: false, insights: false, market: false, pathways: false, quests: false, profile: false }
     },
     // Only answered items live here. Scores are never stored — they are
     // recomputed from these responses plus the authored seed.

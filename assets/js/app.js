@@ -1155,7 +1155,7 @@
     if (btn) btn.classList.add('on');
     syncNotePage();
 
-    const tourId = which === 'insights' ? null
+    const tourId = which === 'insights' ? 'insights'
                  : which === 'explore' ? 'explore'
                  : which === 'market' ? 'market'
                  : which === 'pathways' ? 'pathways'
@@ -1168,6 +1168,33 @@
     if (resolved && window.PalinodeOnboarding) {
       requestAnimationFrame(() => PalinodeOnboarding.maybeStart(resolved));
     }
+  }
+
+  function onInsightsOpened() {
+    if (!window.PalinodeOnboarding) return;
+    requestAnimationFrame(() => PalinodeOnboarding.maybeStart('insights'));
+  }
+
+  function helpTourId() {
+    if (window.PalinodeOnboarding && PalinodeOnboarding.insightsOpen()) return 'insights';
+    const on = document.querySelector('nav.sidenav .nav-item.on:not(#btn-help)');
+    if (on) {
+      const v = on.getAttribute('data-view');
+      if (v === 'write' || on.id === 'btn-rail') return 'write';
+      if (v && v !== 'insights') return v;
+      if (v === 'insights') return 'insights';
+    }
+    const tab = phone() ? phoneTab() : null;
+    if (tab === 'write' || tab === 'insights') return tab;
+    if (tab) return tab;
+    return 'explore';
+  }
+
+  function openHelpTour() {
+    if (!window.PalinodeOnboarding) return;
+    const id = helpTourId();
+    if (!id) return;
+    PalinodeOnboarding.start(id);
   }
 
   function setFabOpen(open) {
@@ -2026,6 +2053,7 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
     }
     el.body.classList.add('show-insights');
     syncNav('insights');
+    onInsightsOpened();
   });
   $('#btn-note-insights').addEventListener('click', () => {
     if (!phone()) return;
@@ -2040,11 +2068,25 @@ ${parts.length ? `<h2>Attached</h2>${parts.join('\n')}` : ''}
     }
     el.body.classList.add('show-insights');
     syncNav('write');
+    onInsightsOpened();
   });
   $('#btn-insights').addEventListener('click', () => {
     if (window.PalinodeMarketplace && PalinodeMarketplace.isOpen()) return;
+    const opening = phone()
+      ? !el.body.classList.contains('show-insights')
+      : el.body.classList.contains('insights-closed');
     el.body.classList.toggle(phone() ? 'show-insights' : 'insights-closed');
+    if (opening) onInsightsOpened();
   });
+  const btnHelp = document.getElementById('btn-help');
+  if (btnHelp) {
+    btnHelp.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (phone()) closeFab();
+      openHelpTour();
+    });
+  }
   $('#btn-pathways').addEventListener('click', () => {
     closeExplore();
     closeProfile();

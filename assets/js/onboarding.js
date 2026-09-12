@@ -6,18 +6,57 @@
 (function () {
   const Prefs = () => window.PalinodeStore && PalinodeStore.Prefs;
 
+  function phone() { return window.matchMedia('(max-width: 900px)').matches; }
+
+  function $(id) { return document.getElementById(id); }
+
+  function visible(el) {
+    if (!el) return false;
+    if (el.hidden) return false;
+    const st = getComputedStyle(el);
+    if (st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0') return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 2 && r.height > 2;
+  }
+
+  /* Corpus Explore: the Palinode concept is the hub. Note graphs use data-id=note. */
+  function findExploreHub() {
+    const labels = document.querySelectorAll('#gx-nodes .gx-node .gx-label');
+    for (const lab of labels) {
+      if ((lab.textContent || '').trim() !== 'Palinode') continue;
+      const node = lab.closest('.gx-node');
+      if (!visible(node)) continue;
+      const orb = node.querySelector('.gx-orb');
+      return (orb && visible(orb)) ? orb : node;
+    }
+    const note = document.querySelector('#gx-nodes .gx-node[data-id="note"]');
+    if (visible(note)) {
+      const orb = note.querySelector('.gx-orb');
+      return (orb && visible(orb)) ? orb : note;
+    }
+    const sel = document.querySelector('#gx-nodes .gx-node.sel');
+    if (visible(sel)) {
+      const orb = sel.querySelector('.gx-orb');
+      return (orb && visible(orb)) ? orb : sel;
+    }
+    return null;
+  }
+
   const TOURS = {
     explore: [
       {
         id: 'field',
-        selector: '#gx-canvas',
+        // Prefer the Palinode hub orb; canvas is only a last resort.
+        find: findExploreHub,
+        fallback: '#gx-canvas',
         body: 'This is the field — works and ideas float here as luminous nodes.',
         placement: 'bottom'
       },
       {
         id: 'chrome',
-        selector: '#gx-chrome',
-        fallback: '#gx-hint',
+        // #gx-chrome is inset:0 (full graph) — anchor the filter strip itself.
+        selector: '#gx-corpus-row',
+        fallback: '#gx-top',
         body: 'Search, filters, and a selected node’s sheet live in this chrome.',
         placement: 'bottom'
       },
@@ -26,6 +65,36 @@
         selector: '#btn-rail',
         preferMobileSelector: '#nav-fab-toggle',
         body: 'Notes is where you write. The Reading rail answers what you put down.',
+        placement: 'right'
+      },
+      {
+        id: 'market',
+        selector: '#btn-market',
+        body: 'Market holds mentors, epics, and sessions you can enroll in.',
+        placement: 'right'
+      },
+      {
+        id: 'pathways',
+        selector: '#btn-pathways',
+        body: 'Pathways are trails you save from Explore — walks for later, or for someone else.',
+        placement: 'right'
+      },
+      {
+        id: 'quests',
+        selector: '#btn-quests',
+        body: 'Quests are stepped practices. Accept free ones from Explore, or from an epic.',
+        placement: 'right'
+      },
+      {
+        id: 'profile',
+        selector: '#btn-profile',
+        body: 'Profile is your belief map — spectra you place yourself on, not just lean toward.',
+        placement: 'right'
+      },
+      {
+        id: 'help',
+        selector: '#btn-help',
+        body: 'Help replays these tips for whatever page you are on.',
         placement: 'right'
       }
     ],
@@ -48,6 +117,28 @@
         selector: 'aside.insights',
         preferMobileSelector: '#btn-note-insights',
         body: 'Reading gathers insights, scores, and kin as you write.',
+        placement: 'left'
+      }
+    ],
+    insights: [
+      {
+        id: 'head',
+        selector: 'aside.insights .ins-head .row',
+        fallback: 'aside.insights',
+        body: 'Reading is the mirror for the note — hide it anytime with the chevron.',
+        placement: 'left'
+      },
+      {
+        id: 'tabs',
+        selector: '#seg',
+        preferMobileSelector: '#seg-select',
+        body: 'Switch between Insights, Readings, and Beliefs in this rail.',
+        placement: 'left'
+      },
+      {
+        id: 'score',
+        selector: '#score',
+        body: 'Scores and filters track the texture of what you wrote.',
         placement: 'left'
       }
     ],
@@ -116,21 +207,13 @@
   let stepIndex = 0;
   let steps = [];
   let bound = false;
-
-  const phone = () => window.matchMedia('(max-width: 900px)').matches;
-
-  function $(id) { return document.getElementById(id); }
-
-  function visible(el) {
-    if (!el) return false;
-    if (el.hidden) return false;
-    const st = getComputedStyle(el);
-    if (st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0') return false;
-    const r = el.getBoundingClientRect();
-    return r.width > 2 && r.height > 2;
-  }
+  let hubRetryTimer = null;
 
   function resolveTarget(step) {
+    if (typeof step.find === 'function') {
+      const found = step.find();
+      if (visible(found)) return found;
+    }
     const candidates = [];
     if (phone() && step.preferMobileSelector) candidates.push(step.preferMobileSelector);
     if (step.selector) candidates.push(step.selector);
@@ -146,16 +229,50 @@
     return (TOURS[viewId] || []).filter(s => resolveTarget(s));
   }
 
-  function finish() {
+  function insightsOpen() {
+    const body = document.getElementById('body') || document.querySelector('.body');
+    const aside = document.querySelector('aside.insights');
+    if (!body || !aside) return false;
+    // Reading lives on the Notes shell — not Explore / Market / Pathways / etc.
+    const graph = document.getElementById('graph');
+    if ((window.PalinodeGraph && PalinodeGraph.isOpen()) || (graph && !graph.hidden)) return false;
+    if (body.classList.contains('market-mode') ||
+        body.classList.contains('quests-mode') ||
+        body.classList.contains('profile-mode') ||
+        body.classList.contains('pathways-mode')) return false;
+    if (window.PalinodeMarketplace && PalinodeMarketplace.isOpen()) return false;
+    if (window.PalinodeQuests && PalinodeQuests.isOpen()) return false;
+    if (window.PalinodeProfile && PalinodeProfile.isOpen()) return false;
+    if (window.PalinodePathways &&
+        (PalinodePathways.isListOpen() || PalinodePathways.isWalkOpen())) return false;
+    if (phone()) return body.classList.contains('show-insights') && visible(aside);
+    if (body.classList.contains('insights-closed')) return false;
+    if (getComputedStyle(aside).display === 'none') return false;
+    return visible(aside.querySelector('.ins-head')) || visible(aside);
+  }
+
+  function finish(opts) {
+    const chain = !opts || opts.chain !== false;
     const view = activeView;
     hide();
     if (view && Prefs()) Prefs().tourDone(view);
+    // After Notes (or any) tour ends, Reading may still be open for its first visit.
+    if (chain && view !== 'insights') {
+      requestAnimationFrame(() => {
+        if (activeView) return;
+        if (insightsOpen()) maybeStart('insights');
+      });
+    }
   }
 
   function hide() {
     activeView = null;
     stepIndex = 0;
     steps = [];
+    if (hubRetryTimer) {
+      clearTimeout(hubRetryTimer);
+      hubRetryTimer = null;
+    }
     const tip = $('coach-tip');
     const scrim = $('coach-scrim');
     if (tip) tip.hidden = true;
@@ -304,21 +421,25 @@
     });
   }
 
-  function maybeStart(viewId) {
+  function beginTour(viewId, { force = false } = {}) {
     bind();
     if (!viewId || !TOURS[viewId]) return false;
-    if (Prefs() && Prefs().isTourDone(viewId)) return false;
-    if (activeView && activeView === viewId) return false;
-    if (activeView && activeView !== viewId) finish();
+    if (!force && Prefs() && Prefs().isTourDone(viewId)) return false;
+    if (!force && activeView === viewId) return false;
+    if (activeView) {
+      if (force) hide();
+      else finish({ chain: false });
+    }
 
     const wait = () => {
+      if (!force && Prefs() && Prefs().isTourDone(viewId)) return false;
       steps = usableSteps(viewId);
-      if (!steps.length) {
-        return false;
-      }
+      if (!steps.length) return false;
       activeView = viewId;
       stepIndex = 0;
       renderStep();
+      // Corpus nodes arrive async — re-anchor the field tip onto Palinode when it lands.
+      if (viewId === 'explore') scheduleHubRetry();
       return true;
     };
 
@@ -326,20 +447,48 @@
     requestAnimationFrame(() => {
       setTimeout(() => {
         if (activeView) return;
-        if (Prefs() && Prefs().isTourDone(viewId)) return;
+        if (!force && Prefs() && Prefs().isTourDone(viewId)) return;
         wait();
       }, 120);
     });
     return true;
   }
 
+  function scheduleHubRetry() {
+    if (hubRetryTimer) clearTimeout(hubRetryTimer);
+    let tries = 0;
+    const tick = () => {
+      hubRetryTimer = null;
+      if (activeView !== 'explore' || stepIndex !== 0) return;
+      const step = steps[0];
+      if (!step || step.id !== 'field') return;
+      const hub = findExploreHub();
+      if (hub) {
+        renderStep();
+        return;
+      }
+      if (tries++ < 20) hubRetryTimer = setTimeout(tick, 150);
+    };
+    hubRetryTimer = setTimeout(tick, 150);
+  }
+
+  function maybeStart(viewId) {
+    return beginTour(viewId, { force: false });
+  }
+
+  function start(viewId) {
+    return beginTour(viewId, { force: true });
+  }
+
   function isActive() { return !!activeView; }
 
   window.PalinodeOnboarding = {
     maybeStart,
+    start,
     next,
     dismiss,
     isActive,
+    insightsOpen,
     /* test helper */
     _reset() { hide(); }
   };

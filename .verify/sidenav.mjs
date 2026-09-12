@@ -21,6 +21,14 @@ await page.goto('http://localhost:8765/index.html', { waitUntil: 'networkidle' }
 await page.evaluate(() => localStorage.clear());
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForSelector('#graph:not([hidden])', { timeout: 8000 });
+await page.evaluate(() => {
+  const prefs = window.PalinodeStore && PalinodeStore.Prefs;
+  if (prefs) {
+    ['explore', 'write', 'insights', 'market', 'pathways', 'quests', 'profile']
+      .forEach(id => prefs.tourDone(id));
+  }
+  if (window.PalinodeOnboarding) PalinodeOnboarding._reset();
+});
 
 /* Collapsing takes the Reading rail's column to zero, so reopening it is a
    question of whether its chevron is still reachable at all. An unreachable
@@ -48,13 +56,17 @@ if (!hasRail) await finish();
 const geo = await page.evaluate(() => {
   const nav = document.querySelector('nav.sidenav');
   const r = nav.getBoundingClientRect();
-  const items = [...nav.querySelectorAll('.nav-item')]
+  const items = [...nav.querySelectorAll('.nav-item:not(.nav-help)')]
     .filter(el => getComputedStyle(el).display !== 'none')
     .map(el => {
     const b = el.getBoundingClientRect();
     return { id: el.id, view: el.dataset.view || '',
              w: Math.round(b.width), h: Math.round(b.height), top: Math.round(b.top) };
   });
+  const help = document.getElementById('btn-help');
+  const helpBox = help && getComputedStyle(help).display !== 'none'
+    ? (() => { const b = help.getBoundingClientRect(); return { top: Math.round(b.top), h: Math.round(b.height) }; })()
+    : null;
   // a label may hang outside its own 56px target and still be perfectly
   // legible; what would actually cut it off is the 78px rail
   const labelFits = [...nav.querySelectorAll('.nav-lab')].filter(lab => {
@@ -66,9 +78,9 @@ const geo = await page.evaluate(() => {
              out: Math.round(Math.max(r.left - b.left, b.right - r.right)) };
   });
   return { width: Math.round(r.width), height: Math.round(r.height),
-           top: Math.round(r.top), items, labelFits,
+           top: Math.round(r.top), items, helpBox, labelFits,
            navScrolls: nav.scrollWidth > nav.clientWidth + 1,
-           onIds: [...document.querySelectorAll('.nav-item.on')].map(el => el.id),
+           onIds: [...document.querySelectorAll('.nav-item.on:not(.nav-help)')].map(el => el.id),
            bodyTop: Math.round(document.getElementById('body').getBoundingClientRect().top) };
 });
 
@@ -79,12 +91,15 @@ check('the body starts at the top now', geo.bodyTop === 0, geo.bodyTop + 'px');
 // the DOM contract Tasks 3 and 6 consume: these exact ids, carrying these
 // exact data-views, in this order. A typo in either would ship green
 // against a bare count, so name them.
-const CONTRACT = 'btn-rail:write,btn-explore:explore,btn-market:market,btn-pathways:pathways,btn-quests:quests,btn-profile:profile';
+const CONTRACT = 'btn-explore:explore,btn-rail:write,btn-market:market,btn-pathways:pathways,btn-quests:quests,btn-profile:profile';
 const actual = geo.items.map(i => i.id + ':' + i.view).join(',');
 check('six destinations', geo.items.length === 6,
   geo.items.map(i => i.id).join(','));
 check('the destinations are the contracted six, in order',
   actual === CONTRACT, actual);
+check('Help sits at the foot of the rail',
+  !!geo.helpBox && geo.helpBox.top - geo.items[geo.items.length - 1].top >= 72,
+  geo.helpBox ? String(geo.helpBox.top - geo.items[geo.items.length - 1].top) : 'missing');
 check('Explore is the only one marked active',
   geo.onIds.length === 1 && geo.onIds[0] === 'btn-explore',
   geo.onIds.join(',') || 'none');

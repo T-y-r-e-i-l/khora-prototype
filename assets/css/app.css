@@ -2132,6 +2132,15 @@ nav.sidenav {
 .nav-item.on svg { color: var(--stance); }
 .nav-item > * { position: relative; }
 
+/* Help sits at the foot of the rail, separated from destinations. */
+.nav-help {
+  margin-top: auto;
+}
+.nav-help.on::before { background: transparent; }
+.nav-help.on { color: var(--ink-3); }
+.nav-help.on svg { color: inherit; }
+.nav-help:hover { color: var(--ink-2); }
+
 /* the Reading rail keeps its own collapse control */
 .ins-collapse {
   width: 24px; height: 24px; flex: none; display: grid; place-items: center;
@@ -2295,10 +2304,15 @@ nav.sidenav {
     transition-delay: .14s;
   }
 
-  /* Bottom — 1, under Pathways / center column */
+  /* Bottom — Profile + Help under the middle row */
   html.fab-open #btn-profile {
-    transform: translate(-128px, -32px) scale(1);
+    transform: translate(-176px, -32px) scale(1);
     transition-delay: .17s;
+  }
+  html.fab-open #btn-help {
+    margin-top: 0;
+    transform: translate(-80px, -32px) scale(1);
+    transition-delay: .2s;
   }
 
   .nav-fab-scrim {
