@@ -3080,3 +3080,92 @@ nav.sidenav {
   .mkt-chat { width: 100%; }
   #mkt-tabs { flex-wrap: wrap; }
 }
+
+/* ---------- coach marks (Figma-style, Khora colors) ---------- */
+#coach-scrim {
+  position: fixed; inset: 0; z-index: 110;
+  pointer-events: none;
+}
+#coach-scrim:not([hidden]) { display: block; }
+#coach-spot {
+  position: absolute;
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(4, 3, 6, 0.58);
+  transition: top .2s var(--ease), left .2s var(--ease), width .2s var(--ease), height .2s var(--ease);
+  pointer-events: none;
+}
+#coach-tip {
+  position: fixed;
+  z-index: 112;
+  width: min(280px, calc(100vw - 24px));
+  padding: 14px 14px 12px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #14121a;
+  border: 1px solid rgba(20, 18, 26, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 16px 46px rgba(0, 0, 0, 0.45);
+  font-family: var(--sans);
+  pointer-events: auto;
+}
+#coach-tip[hidden] { display: none !important; }
+#coach-tip .coach-close {
+  position: absolute; top: 8px; right: 8px;
+  width: 24px; height: 24px; border: 0; background: none;
+  color: rgba(20, 18, 26, 0.45); font-size: 18px; line-height: 1;
+  cursor: pointer; border-radius: 6px;
+}
+#coach-tip .coach-close:hover { color: #14121a; background: rgba(0, 0, 0, 0.06); }
+#coach-tip .coach-body {
+  margin: 0 22px 14px 0;
+  font-size: 13px; line-height: 1.45; font-weight: 600;
+  color: #14121a;
+}
+#coach-tip .coach-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+#coach-tip .coach-progress {
+  font-size: 11px; font-weight: 600;
+  color: rgba(20, 18, 26, 0.45); letter-spacing: 0.02em;
+}
+#coach-tip .coach-next {
+  appearance: none; cursor: pointer;
+  font-family: var(--sans); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: #14121a; background: transparent;
+  border: 1px solid rgba(20, 18, 26, 0.28);
+  border-radius: 8px; padding: 6px 12px;
+  transition: background .18s var(--ease), border-color .18s var(--ease);
+}
+#coach-tip .coach-next:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(20, 18, 26, 0.45);
+}
+#coach-tip .coach-arrow {
+  position: absolute; width: 12px; height: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+#coach-tip[data-place="bottom"] .coach-arrow {
+  top: -6px; left: var(--arrow-x, 50%); margin-left: -6px;
+  border-top: 1px solid rgba(20, 18, 26, 0.08);
+  border-left: 1px solid rgba(20, 18, 26, 0.08);
+}
+#coach-tip[data-place="top"] .coach-arrow {
+  bottom: -6px; left: var(--arrow-x, 50%); margin-left: -6px;
+  border-bottom: 1px solid rgba(20, 18, 26, 0.08);
+  border-right: 1px solid rgba(20, 18, 26, 0.08);
+}
+#coach-tip[data-place="left"] .coach-arrow {
+  right: -6px; top: var(--arrow-y, 50%); margin-top: -6px;
+  border-top: 1px solid rgba(20, 18, 26, 0.08);
+  border-right: 1px solid rgba(20, 18, 26, 0.08);
+}
+#coach-tip[data-place="right"] .coach-arrow {
+  left: -6px; top: var(--arrow-y, 50%); margin-top: -6px;
+  border-bottom: 1px solid rgba(20, 18, 26, 0.08);
+  border-left: 1px solid rgba(20, 18, 26, 0.08);
+}
+@media (prefers-reduced-motion: reduce) {
+  #coach-spot { transition: none; }
+}

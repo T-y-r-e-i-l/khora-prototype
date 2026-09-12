@@ -1154,6 +1154,20 @@
     const btn = document.getElementById(id);
     if (btn) btn.classList.add('on');
     syncNotePage();
+
+    const tourId = which === 'insights' ? null
+                 : which === 'explore' ? 'explore'
+                 : which === 'market' ? 'market'
+                 : which === 'pathways' ? 'pathways'
+                 : which === 'quests' ? 'quests'
+                 : which === 'profile' ? 'profile'
+                 : which === 'write' ? 'write'
+                 : null;
+    // Default rail click without an explicit which maps to write via btn-rail.
+    const resolved = tourId || (id === 'btn-rail' ? 'write' : null);
+    if (resolved && window.PalinodeOnboarding) {
+      requestAnimationFrame(() => PalinodeOnboarding.maybeStart(resolved));
+    }
   }
 
   function setFabOpen(open) {

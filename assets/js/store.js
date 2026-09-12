@@ -24,7 +24,11 @@
     notes: [],
     pathways: [],
     prompt: { date: null, deck: [], cursor: 0, skips: 0, written: [] },
-    prefs: { filters: { resonance:true, tension:true, clarity:true, stance:true, lineage:true }, dismissed: {} },
+    prefs: {
+      filters: { resonance:true, tension:true, clarity:true, stance:true, lineage:true },
+      dismissed: {},
+      tours: { explore: false, write: false, market: false, pathways: false, quests: false, profile: false }
+    },
     // Only answered items live here. Scores are never stored — they are
     // recomputed from these responses plus the authored seed.
     belief: { responses: {}, dismissedItems: [] }
@@ -38,6 +42,10 @@
       const next = Object.assign(blank(), parsed);
       // Saves written before the belief instrument existed have no such key.
       next.belief = Object.assign(blank().belief, parsed.belief || {});
+      next.prefs = Object.assign(blank().prefs, parsed.prefs || {});
+      next.prefs.filters = Object.assign(blank().prefs.filters, (parsed.prefs && parsed.prefs.filters) || {});
+      next.prefs.dismissed = Object.assign({}, (parsed.prefs && parsed.prefs.dismissed) || {});
+      next.prefs.tours = Object.assign(blank().prefs.tours, (parsed.prefs && parsed.prefs.tours) || {});
       next.pathways = parsed.pathways || [];
       (next.notes || []).forEach(n => { if (!n.pathwayIds) n.pathwayIds = []; });
       return next;
@@ -170,7 +178,16 @@
       delete state.prefs.dismissed[noteId];
       save();
     },
-    dismissed(noteId) { return state.prefs.dismissed[noteId] || []; }
+    dismissed(noteId) { return state.prefs.dismissed[noteId] || []; },
+    isTourDone(id) {
+      const tours = state.prefs.tours || {};
+      return !!tours[id];
+    },
+    tourDone(id) {
+      if (!state.prefs.tours) state.prefs.tours = {};
+      state.prefs.tours[id] = true;
+      save();
+    }
   };
 
   /* ---------- attachments: media and links kept on the note ---------- */

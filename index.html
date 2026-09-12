@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/app.css?v=84">
+<link rel="stylesheet" href="assets/css/app.css?v=85">
 </head>
 <body>
 
@@ -730,6 +730,19 @@
 
 <div id="toast"></div>
 
+<div id="coach-scrim" hidden aria-hidden="true">
+  <div id="coach-spot"></div>
+</div>
+<div id="coach-tip" hidden role="dialog" aria-modal="true" aria-labelledby="coach-body">
+  <button type="button" class="coach-close" id="coach-close" aria-label="Dismiss tour">×</button>
+  <p class="coach-body" id="coach-body"></p>
+  <div class="coach-foot">
+    <span class="coach-progress" id="coach-progress"></span>
+    <button type="button" class="coach-next" id="coach-next">Next</button>
+  </div>
+  <span class="coach-arrow" id="coach-arrow" aria-hidden="true"></span>
+</div>
+
 <script src="assets/js/corpus.js"></script>
 <script src="assets/js/prompts.js"></script>
 <script src="assets/js/media.js"></script>
@@ -749,6 +762,7 @@
 <script src="assets/js/graph3d.js?v=2"></script>
 <script src="assets/js/pathways.js?v=34"></script>
 <script src="assets/js/profile.js?v=1"></script>
-<script src="assets/js/app.js?v=50"></script>
+<script src="assets/js/onboarding.js?v=1"></script>
+<script src="assets/js/app.js?v=51"></script>
 </body>
 </html>
