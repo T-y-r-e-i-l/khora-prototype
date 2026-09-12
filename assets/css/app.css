@@ -2745,7 +2745,7 @@ nav.sidenav {
 }
 .dash-head {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
   margin: 0 0 22px;
@@ -2756,7 +2756,7 @@ nav.sidenav {
     linear-gradient(135deg, rgba(255,255,255,.05), transparent 42%),
     rgba(0,0,0,.22);
 }
-.dash-head-copy { max-width: 48ch; }
+.dash-head-copy { max-width: 48ch; flex: 1; min-width: 0; }
 .dash-kicker {
   margin: 0 0 6px;
   font-size: 10px;
@@ -2780,10 +2780,15 @@ nav.sidenav {
   color: var(--ink-3);
 }
 .dash-head-actions {
-  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start;
   flex: none;
+  margin: -4px -6px 0 0;
 }
-.dash-head-actions .ghost:disabled { opacity: .4; cursor: default; }
+.dash-head-menu-btn {
+  width: 32px; height: 32px;
+  font-size: 20px;
+}
+.dash-head-menu-btn:hover { background: rgba(255,255,255,.08); color: var(--ink); }
 
 /* GridStack layout (Ghost Writer–style freeform cards) */
 .dash-grid.grid-stack {
@@ -3127,7 +3132,10 @@ nav.sidenav {
   .dash-grid.grid-stack {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 20px;
+    --gs-item-margin: 0;
+    margin: 0 !important;
+    height: auto !important;
   }
   .dash-grid .grid-stack-item {
     position: relative !important;
@@ -3135,13 +3143,38 @@ nav.sidenav {
     top: auto !important;
     width: 100% !important;
     height: auto !important;
-    min-height: 220px;
+    min-height: 0 !important;
+    margin: 0 !important;
   }
   .dash-grid .grid-stack-item-content {
     inset: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
     position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible;
+  }
+  /* Size to content — height:100% was trapping cards in 220px slots and
+     making the 20px gap look uneven (overlap / collapsed Explore). */
+  .dash-grid .dash-card {
     height: auto;
-    min-height: 220px;
+    min-height: 0;
+  }
+  .dash-grid .dash-card--explore {
+    height: auto;
+    min-height: 260px;
+  }
+  .dash-grid .dash-card--explore .dash-card-body,
+  .dash-grid .dash-card--explore .dash-constel-btn,
+  .dash-grid .dash-card--explore .path-constel,
+  .dash-grid .dash-card--explore .dash-constel {
+    flex: none;
+    height: 260px;
+    min-height: 260px;
   }
   .dash-drag-grip, .dash-grid .grid-stack-item > .ui-resizable-se { display: none; }
   .dash-grid .grid-stack-item-content.dash-drag { cursor: default; touch-action: auto; }

@@ -498,10 +498,57 @@
       actions.className = 'dash-head-actions';
       head.appendChild(actions);
     }
-    const free = unusedTypes();
     actions.innerHTML = `
-      <button type="button" class="ghost" id="dash-btn-add" ${free.length ? '' : 'disabled'}>Add card</button>
-      <button type="button" class="ghost" id="dash-btn-reset">Reset layout</button>`;
+      <button type="button" class="dash-menu-btn dash-head-menu-btn" id="dash-btn-home-menu"
+        data-dash-home-menu aria-haspopup="true" aria-label="Home layout options">⋯</button>`;
+  }
+
+  function showHomeMenu(anchor) {
+    closePicker();
+    const free = unusedTypes();
+    const pop = document.createElement('div');
+    pop.className = 'dash-type-picker';
+    pop.setAttribute('role', 'menu');
+    pop.innerHTML = `
+      <button type="button" role="menuitem" id="dash-menu-add" data-dash-home-action="add"
+        ${free.length ? '' : 'disabled'}>Add card</button>
+      <button type="button" role="menuitem" id="dash-menu-reset" data-dash-home-action="reset">Reset layout</button>`;
+    document.body.appendChild(pop);
+    pickerEl = pop;
+
+    const rect = anchor.getBoundingClientRect();
+    const pw = pop.offsetWidth;
+    let left = rect.right - pw;
+    let top = rect.bottom + 6;
+    if (left < 8) left = 8;
+    if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+    if (top + pop.offsetHeight > window.innerHeight - 8) top = rect.top - pop.offsetHeight - 6;
+    pop.style.left = Math.max(8, left) + 'px';
+    pop.style.top = Math.max(8, top) + 'px';
+
+    pop.addEventListener('click', e => {
+      e.stopPropagation();
+      const act = e.target.closest('[data-dash-home-action]');
+      if (!act || act.disabled) return;
+      const kind = act.getAttribute('data-dash-home-action');
+      closePicker();
+      if (kind === 'reset') {
+        resetLayout();
+        return;
+      }
+      if (kind === 'add') {
+        const types = unusedTypes();
+        if (!types.length) return;
+        requestAnimationFrame(() => {
+          showTypePicker({
+            title: 'Add card',
+            types,
+            anchor,
+            onPick: addPanel
+          });
+        });
+      }
+    });
   }
 
   function closePicker() {
@@ -649,18 +696,11 @@
     bound = true;
 
     view.addEventListener('click', e => {
-      if (e.target.closest('#dash-btn-add')) {
-        const free = unusedTypes();
-        showTypePicker({
-          title: 'Add card',
-          types: free,
-          anchor: e.target.closest('#dash-btn-add'),
-          onPick: addPanel
-        });
-        return;
-      }
-      if (e.target.closest('#dash-btn-reset')) {
-        resetLayout();
+      const homeMenu = e.target.closest('[data-dash-home-menu]');
+      if (homeMenu) {
+        e.preventDefault();
+        e.stopPropagation();
+        showHomeMenu(homeMenu);
         return;
       }
 
@@ -728,7 +768,7 @@
     document.addEventListener('click', e => {
       if (!pickerEl) return;
       if (pickerEl.contains(e.target)) return;
-      if (e.target.closest('[data-dash-menu]') || e.target.closest('#dash-btn-add')) return;
+      if (e.target.closest('[data-dash-menu]') || e.target.closest('[data-dash-home-menu]')) return;
       closePicker();
     });
 

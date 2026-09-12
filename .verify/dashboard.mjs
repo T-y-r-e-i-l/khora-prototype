@@ -65,7 +65,7 @@ check('Explore shows a constellation preview', boot.hasConstel);
 check('Notes hosts the real prompt module',
   boot.promptMounted && /Write on this/i.test(boot.writeLabel || ''),
   JSON.stringify({ mounted: boot.promptMounted, write: boot.writeLabel }));
-check('layout chrome actions exist', await page.isVisible('#dash-btn-add') && await page.isVisible('#dash-btn-reset'));
+check('layout chrome actions exist', await page.isVisible('#dash-btn-home-menu'));
 
 await page.click('#dash-card-explore [data-dash-go="explore"]');
 await page.waitForSelector('#graph:not([hidden])', { timeout: 8000 });
@@ -98,14 +98,19 @@ const afterRemove = await page.evaluate(() => {
   return {
     types: types.join(','),
     hasPathways: !!document.getElementById('dash-card-pathways'),
-    addEnabled: !document.getElementById('dash-btn-add').disabled
+    freeTypes: window.PalinodeDashboard.CARD_META
+      ? Object.keys(PalinodeDashboard.CARD_META).filter(t =>
+          !PalinodeStore.Prefs.dashLayout().panels.some(p => p.type === t))
+      : ['pathways']
   };
 });
 check('Remove drops Pathways from layout',
-  !afterRemove.hasPathways && !afterRemove.types.includes('pathways') && afterRemove.addEnabled,
+  !afterRemove.hasPathways && !afterRemove.types.includes('pathways') && afterRemove.freeTypes.includes('pathways'),
   JSON.stringify(afterRemove));
 
-await page.click('#dash-btn-add');
+await page.click('#dash-btn-home-menu');
+await page.waitForSelector('#dash-menu-add:not([disabled])');
+await page.click('#dash-menu-add');
 await page.waitForSelector('.dash-type-picker [data-pick-type="pathways"]');
 await page.click('.dash-type-picker [data-pick-type="pathways"]');
 await page.waitForTimeout(200);
@@ -137,7 +142,9 @@ const afterSwap = await page.evaluate(() => {
 check('Swap replaces Library with Profile',
   !afterSwap.hasLibrary && afterSwap.hasProfile, JSON.stringify(afterSwap));
 
-await page.click('#dash-btn-reset');
+await page.click('#dash-btn-home-menu');
+await page.waitForSelector('#dash-menu-reset');
+await page.click('#dash-menu-reset');
 await page.waitForTimeout(200);
 const afterReset = await page.evaluate(() => {
   const types = PalinodeStore.Prefs.dashLayout().panels.map(p => p.type).sort().join(',');
@@ -178,7 +185,9 @@ check('layout persists across reload',
   persisted.noQuests && !persisted.types.includes('quests'),
   JSON.stringify(persisted));
 
-await page.click('#dash-btn-reset');
+await page.click('#dash-btn-home-menu');
+await page.waitForSelector('#dash-menu-reset');
+await page.click('#dash-menu-reset');
 await page.waitForTimeout(150);
 
 await page.click('#btn-write');
