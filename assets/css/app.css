@@ -1659,9 +1659,74 @@ body.exploring { overflow: hidden; }
 .link-form input:focus { border-color: rgba(255,255,255,.26); }
 .link-form input::placeholder { color: var(--ink-4); }
 
-/* saved nodes, as chips on the note */
+/* saved nodes on the note — concept/work cards with graph excerpt */
 .saved-strip { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 .saved-strip[hidden] { display: none; }
+#saved-strip.saved-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+#saved-strip.saved-strip[hidden] { display: none; }
+.saved-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: rgba(0,0,0,.3);
+  cursor: pointer;
+  transition: border-color .16s var(--ease), background .16s var(--ease);
+  min-width: 0;
+}
+.saved-card:hover { border-color: rgba(255,255,255,.22); background: rgba(0,0,0,.38); }
+.saved-card:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--clarity) 55%, white);
+  outline-offset: 2px;
+}
+.saved-card-x {
+  position: absolute; top: 8px; right: 8px;
+  appearance: none; border: 0; cursor: pointer;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(0,0,0,.35); color: var(--ink-4);
+  font-size: 14px; line-height: 1; padding: 0;
+  display: grid; place-items: center;
+}
+.saved-card-x:hover { color: var(--tension); background: rgba(229,72,77,.14); }
+.saved-card-kicker {
+  display: flex; align-items: center; gap: 7px;
+  padding-right: 24px;
+  font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink-4); font-weight: 700;
+}
+.saved-card-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ink);
+  padding-right: 18px;
+}
+.saved-card-graph h5 {
+  margin: 0 0 4px;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink-4);
+}
+.saved-card-graph p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
 .saved-chip {
   display: inline-flex; align-items: center; gap: 7px;
   border: 1px solid var(--hairline); background: rgba(0,0,0,.3);
@@ -1675,6 +1740,13 @@ body.exploring { overflow: hidden; }
   color: var(--ink-4); font-size: 13px; line-height: 1; padding: 2px 5px; border-radius: 50%;
 }
 .saved-chip .x:hover { color: var(--tension); background: rgba(229,72,77,.12); }
+
+@media (max-width: 767px) {
+  #saved-strip.saved-strip {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
 
 /* attachment grid */
 .attach-grid {

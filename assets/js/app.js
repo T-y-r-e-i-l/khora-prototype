@@ -2028,13 +2028,32 @@
     const note = Notes.get(activeId);
     const paths = ((note && note.pathwayIds) || []).map(id => Pathways.get(id)).filter(Boolean);
 
-    // saved concepts and works, as chips on the note
+    // saved concepts and works, as cards with graph reading
+    function savedGraphText(x) {
+      if (x.type === 'work') {
+        const w = findWork(String(x.id || '').replace(/^w:/, ''));
+        return (w && (w.gist || w.reading || w.summary)) || '';
+      }
+      const c = conceptOfLocal(x.id);
+      return (c && c.reading) || '';
+    }
+
     $('#saved-strip').hidden = !saved.length;
-    $('#saved-strip').innerHTML = saved.map(x => `
-      <span class="saved-chip" data-saved="${esc(x.id)}" data-type="${esc(x.type)}">
-        ${orb(x.category, 'sm')}<span class="t">${esc(x.label)}</span>
-        <span class="x" data-unsave="${esc(x.id)}" title="Remove">×</span>
-      </span>`).join('');
+    $('#saved-strip').innerHTML = saved.map(x => {
+      const reading = savedGraphText(x);
+      const sub = x.sub || '';
+      return `<article class="saved-card" data-saved="${esc(x.id)}" data-type="${esc(x.type)}">
+        <button type="button" class="saved-card-x" data-unsave="${esc(x.id)}" title="Remove" aria-label="Remove">×</button>
+        <div class="saved-card-kicker">${orb(x.category, 'sm')}${sub ? `<span>${esc(sub)}</span>` : ''}</div>
+        <h4 class="saved-card-title">${esc(x.label)}</h4>
+        ${reading
+          ? `<div class="saved-card-graph">
+              <h5>From the graph</h5>
+              <p>${esc(reading)}</p>
+            </div>`
+          : ''}
+      </article>`;
+    }).join('');
 
     $('#pathway-strip').hidden = !paths.length;
     $('#pathway-strip').innerHTML = paths.map(p => `
@@ -2187,17 +2206,19 @@
   $('#saved-strip').addEventListener('click', e => {
     const un = e.target.closest('[data-unsave]');
     if (un) {
+      e.preventDefault();
+      e.stopPropagation();
       Saved.toggle(activeId, { id: un.dataset.unsave });
       renderComposer();
       return;
     }
-    const chip = e.target.closest('[data-saved]');
-    if (!chip) return;
-    if (chip.dataset.type === 'work') {
-      openNoteRef({ type: 'work', id: chip.dataset.saved });
+    const card = e.target.closest('[data-saved]');
+    if (!card) return;
+    if (card.dataset.type === 'work') {
+      openNoteRef({ type: 'work', id: card.dataset.saved });
       return;
     }
-    openNoteRef({ type: 'concept', id: chip.dataset.saved });
+    openNoteRef({ type: 'concept', id: card.dataset.saved });
   });
 
   const refBack = $('#ref-back');
